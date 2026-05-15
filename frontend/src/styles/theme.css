@@ -1,0 +1,168 @@
+/* === ORIGINAL GLASSY DESIGN REBUILT === */
+/* Dark Glassmorphism - Original Mercure Style */
+:root, [data-theme="dark"] {
+  --bg-primary: #020617;
+  --bg-secondary: #0f0f23;
+  --bg-tertiary: #1e1e2e;
+  --text-primary: #ffffff;
+  --text-secondary: #b8bcc6;
+  --text-tertiary: #6b7280;
+  --accent-blue: #0ea5e9;
+  --accent-cyan: #06b6d4;
+  --accent-indigo: #6366f1;
+  --accent-green: #22c55e;
+  --border-light: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(15, 23, 42, 0.75);
+  --glass-heavy: rgba(2, 6, 23, 0.9);
+  --glass-input: rgba(255, 255, 255, 0.04);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.3);
+}
+
+/* Light - Subtle Blue Glass (Non-White) */
+[data-theme="light"] {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #e2e8f0;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-tertiary: #64748b;
+  --accent-blue: #0284c7;
+  --border-light: rgba(59, 130, 246, 0.15);
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-heavy: rgba(248, 250, 252, 0.95);
+  --glass-input: rgba(255, 255, 255, 0.7);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+  --shadow-glow: 0 0 20px rgba(2, 132, 199, 0.25);
+}
+
+/* CORE GLASS EFFECT - Fixed/Enhanced */
+.glass-card, .glass-element, .bottom-dock {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-bg);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  border: 1px solid var(--border-light);
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+/* GLASS GLOW LAYER */
+.glass-card::before, .bottom-dock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  filter: blur(15px);
+  opacity: 0.8;
+  z-index: -1;
+}
+
+/* HOVER GLASS LIFT */
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow), var(--shadow-glass);
+  border-color: rgba(var(--accent-blue), 0.3);
+}
+
+/* LOGO - Transparent + Theme Brightness */
+.logo {
+  filter: brightness(1.1) contrast(1.05);
+  background: transparent !important;
+  mix-blend-mode: darken;
+  isolation: isolate;
+  transition: filter 0.4s ease;
+}
+
+[data-theme="light"] .logo {
+  filter: brightness(1.0) contrast(1.15);
+}
+
+/* FOOTER ICONS - Original Glassy Dock */
+.bottom-dock-container {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.bottom-dock {
+  background: var(--glass-heavy);
+  backdrop-filter: blur(30px);
+  border: 1px solid var(--border-light);
+  border-radius: 50px;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.dock-item {
+  color: var(--text-secondary);
+  font-size: 22px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+}
+
+.dock-item:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
+  transform: scale(1.1) translateY(-4px);
+  box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+}
+
+.dock-item.active {
+  background: var(--accent-blue);
+  color: white;
+  border-radius: 25px;
+  width: auto;
+  padding: 0 24px;
+  gap: 12px;
+}
+
+.dock-divider {
+  height: 32px;
+  width: 1px;
+  background: var(--border-light);
+}
+
+/* BUTTONS - Glassy Gradient */
+.apple-btn {
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: 16px;
+  padding: 14px 28px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.apple-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: inherit;
+  filter: blur(8px);
+  z-index: -1;
+}
+
+.apple-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+}
+
+* {
+  box-sizing: border-box;
+}

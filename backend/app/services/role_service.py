@@ -1,0 +1,105 @@
+from sqlalchemy.orm import Session
+from typing import List, Optional, Any
+from datetime import datetime
+from app.repositories.role_repo import role_repo
+from app.schemas.role_assignment import RoleAssignmentCreate, RoleAssignmentUpdate
+from app.models.notification import AuditLog, Activity
+from app.models.user import User
+from sqlalchemy import func
+import json
+
+class RoleService:
+    def get_all(self, db: Session, skip: int = 0, limit: int = 100, manager_id: Optional[str] = None):
+        from app.models.employee import Employee
+        
+        # Base query joining RoleAssignment with Employee
+        query = db.query(role_repo.model, Employee.name, Employee.email, Employee.performance_score).join(
+            Employee, Employee.employee_id == role_repo.model.employee_id
+        )
+        
+        if manager_id:
+            query = query.filter(Employee.manager_id == manager_id)
+            
+        results = query.offset(skip).limit(limit).all()
+        
+        # Flatten and attach data
+        final_results = []
+        for role, name, email, score in results:
+            role.employee_name = name
+            role.employee_email = email
+            role.performance_score = float(score) if score is not None else None
+            final_results.append(role)
+            
+        return final_results
+
+    def get_by_id(self, db: Session, id: int):
+        return role_repo.get_by_id(db, id)
+
+    def assign_role(self, db: Session, obj_in: RoleAssignmentCreate, assigned_by: str):
+        # ID generation
+        count = db.query(func.count(role_repo.model.id)).scalar()
+        obj_in.assignment_id = f"RL-{str(count + 1).zfill(3)}"
+        obj_in.assigned_by = assigned_by
+        obj_in.assigned_at = datetime.now()
+        
+        db_obj = role_repo.create(db, obj_in)
+        
+        # Audit Log
+        changer = db.query(User).filter(User.username == assigned_by).first()
+        audit = AuditLog(
+            table_name="role_assignments",
+            record_id=str(db_obj.id),
+            action="CREATE",
+            new_value=obj_in.dict(),
+            changed_by=str(changer.id) if changer else None
+        )
+        db.add(audit)
+        
+        # Activity
+        act = Activity(
+            user_id=changer.id if changer else None,
+            username=assigned_by,
+            action="Assigned Role",
+            module="Auth",
+            type="General",
+            target_id=db_obj.employee_id,
+            description=f"Assigned role {db_obj.role_name} to {db_obj.employee_id}",
+            message=f"Assigned role {db_obj.role_name} to {db_obj.employee_id}"
+        )
+
+        db.add(act)
+        
+        db.commit()
+        db.refresh(db_obj)
+        return db_obj
+
+    def update_assignment(self, db: Session, assignment_id: Any, obj_in: RoleAssignmentUpdate, assigned_by: str = "system"):
+        if isinstance(assignment_id, str) and assignment_id.startswith("RL-"):
+            db_obj = role_repo.get_by_assignment_id(db, assignment_id)
+        else:
+            db_obj = role_repo.get_by_id(db, int(assignment_id))
+            
+        if not db_obj:
+            return None
+        
+        old_val = {c.key: getattr(db_obj, c.key, None) for c in db_obj.__table__.columns}
+        res = role_repo.update(db, db_obj, obj_in)
+        
+        # Audit Log
+        changer = db.query(User).filter(User.username == assigned_by).first()
+        audit = AuditLog(
+            table_name="role_assignments",
+            record_id=str(db_obj.id),
+            action="UPDATE",
+            old_value=old_val,
+            new_value=obj_in.dict(exclude_unset=True),
+            changed_by=str(changer.id) if changer else None
+        )
+        db.add(audit)
+        
+        db.commit()
+        db.refresh(res)
+        return res
+
+role_service = RoleService()
+
