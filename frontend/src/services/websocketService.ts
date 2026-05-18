@@ -18,6 +18,17 @@ class WebSocketService {
     }
 
     private getWsUrl(): string {
+        const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL;
+        if (envUrl && envUrl.includes('http')) {
+            try {
+                const urlObj = new URL(envUrl);
+                const protocol = urlObj.protocol === 'https:' ? 'wss:' : 'ws:';
+                return `${protocol}//${urlObj.host}/ws/${this.currentUserId}`;
+            } catch (e) {
+                console.error('[WS] Failed to parse API URL for WebSocket host:', e);
+            }
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         // Using window.location.host allows the Vite proxy to handle the /ws path
         return `${protocol}//${window.location.host}/ws/${this.currentUserId}`;
