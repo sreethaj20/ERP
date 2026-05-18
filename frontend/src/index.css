@@ -3,6 +3,7 @@
 /* === DARK THEME (Default) === */
 :root,
 [data-theme="dark"] {
+    color-scheme: dark;
     /* Updated Dark Mode Palette from User Feedback */
     --bg-primary: #0B1121;
     /* Rich dark navy background */

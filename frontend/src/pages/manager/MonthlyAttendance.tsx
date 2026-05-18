@@ -216,7 +216,10 @@ export default function MonthlyAttendance() {
                                             {/* Expanded TL Team Members */}
                                             {isExp && (() => {
                                                 const teamMembers = employees.filter((e: any) => 
-                                                    String(e.reporting_to_id || e.manager_id || e.reporting_manager_id || e.team_leader_id) === String(emp.employee_id)
+                                                    String(e.reporting_to_id) === String(emp.employee_id) ||
+                                                    String(e.manager_id) === String(emp.employee_id) ||
+                                                    String(e.reporting_manager_id) === String(emp.employee_id) ||
+                                                    String(e.team_leader_id) === String(emp.employee_id)
                                                 );
                                                 return (
                                                     <tr>
@@ -355,7 +358,12 @@ export default function MonthlyAttendance() {
                                             </tr>
                                             {/* TL expanded team monthly */}
                                             {isExp && (() => {
-                                                const teamMembers = employees.filter((e: any) => String(e.reporting_to_id || e.manager_id) === String(emp.employee_id));
+                                                const teamMembers = employees.filter((e: any) => 
+                                                    String(e.reporting_to_id) === String(emp.employee_id) ||
+                                                    String(e.manager_id) === String(emp.employee_id) ||
+                                                    String(e.reporting_manager_id) === String(emp.employee_id) ||
+                                                    String(e.team_leader_id) === String(emp.employee_id)
+                                                );
                                                 return (
                                                     <tr>
                                                         <td colSpan={8} style={{ padding: '0 14px 14px 50px' }}>

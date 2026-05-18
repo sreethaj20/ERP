@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaClock, FaCoffee, FaSignOutAlt, FaHistory, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import GlassCard from "./GlassCard";
 import { getActiveShiftSession, takeBreak, endBreak, endShiftSession, startShiftSession, getEmployeeShift, requestEarlyLogin, getEmployees } from "../utils/storage";
+import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
 function calcShiftHours(start: string | undefined, end: string | undefined): number {
     if (!start || !end) return 8;
@@ -20,6 +21,7 @@ export default function ShiftActivityWidget() {
     const userId = sessionStorage.getItem("userId") || "";
     const role = sessionStorage.getItem("userRole") || "";
     const navigate = useNavigate();
+    const { canLogout, handleSafeLogout } = useLogoutLogic();
 
     const [session, setSession] = useState<any>(null);
     const [autoStarted, setAutoStarted] = React.useState(false);
@@ -172,7 +174,7 @@ export default function ShiftActivityWidget() {
         }
     };
 
-    const handleLogout = async () => {
+    const executeLogout = async () => {
         if (session.on_break) {
             setMessage({ type: 'error', text: "Cannot logout while on break!" });
             return;
@@ -186,6 +188,10 @@ export default function ShiftActivityWidget() {
             setMessage({ type: 'error', text: res.message || "Logout failed" });
             setTimeout(() => setMessage(null), 5000);
         }
+    };
+
+    const handleLogout = async () => {
+        await handleSafeLogout(executeLogout);
     };
 
     // Everyone should be able to log in/out to track attendance
@@ -342,13 +348,15 @@ export default function ShiftActivityWidget() {
                                 <FaClock style={{ marginRight: '8px' }} /> End Break
                             </button>
                         )}
-                        <button
-                            onClick={handleLogout}
-                            className="apple-btn"
-                            style={{ background: 'rgba(255, 69, 58, 0.2)', color: '#ff453a', border: '1px solid rgba(255, 69, 58, 0.3)' }}
-                        >
-                            <FaSignOutAlt style={{ marginRight: '8px' }} /> Logout
-                        </button>
+                        {canLogout && (
+                            <button
+                                onClick={handleLogout}
+                                className="apple-btn"
+                                style={{ background: 'rgba(255, 69, 58, 0.2)', color: '#ff453a', border: '1px solid rgba(255, 69, 58, 0.3)' }}
+                            >
+                                <FaSignOutAlt style={{ marginRight: '8px' }} /> Logout
+                            </button>
+                        )}
                     </div>
                 </div>
 

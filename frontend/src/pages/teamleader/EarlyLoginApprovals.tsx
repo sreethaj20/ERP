@@ -35,12 +35,13 @@ export default function EarlyLoginApprovals() {
         }
     };
 
-    const pendingRequests = requests.filter(r => r.status === 'pending');
-    const historyRequests = requests.filter(r => r.status !== 'pending');
+    const pendingRequests = requests.filter(r => r.status?.toLowerCase() === 'pending');
+    const historyRequests = requests.filter(r => r.status?.toLowerCase() !== 'pending');
 
     const statusColor = (status: string) => {
-        if (status === 'approved') return { color: '#30d158', bg: 'rgba(48,209,88,0.12)' };
-        if (status === 'rejected') return { color: '#ff453a', bg: 'rgba(255,69,58,0.12)' };
+        const statusLower = status?.toLowerCase();
+        if (statusLower === 'approved') return { color: '#30d158', bg: 'rgba(48,209,88,0.12)' };
+        if (statusLower === 'rejected') return { color: '#ff453a', bg: 'rgba(255,69,58,0.12)' };
         return { color: '#ff9f0a', bg: 'rgba(255,159,10,0.12)' };
     };
 

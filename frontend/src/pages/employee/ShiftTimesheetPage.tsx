@@ -253,12 +253,12 @@ export default function ShiftTimesheetPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '24px' }}>
                 {[
                     { label: 'Active Now', value: activeCount, color: '#0a84ff', icon: <FaClock />, glow: activeCount > 0 },
-                    { label: 'Present', value: totalPresent, color: '#30d158', icon: <FaCheckCircle /> },
-                    { label: 'Half Day', value: totalHalfDay, color: '#ff9f0a', icon: <FaMoon /> },
+                    { label: 'Working Days (Present)', value: totalPresent, color: '#30d158', icon: <FaCheckCircle /> },
+                    { label: 'Half Days', value: totalHalfDay, color: '#ff9f0a', icon: <FaMoon /> },
                     { label: 'Absent', value: totalAbsent, color: '#ff453a', icon: <FaExclamationTriangle /> },
                     { label: 'Work Hours', value: fmtSeconds(totalWorkSecs), color: '#64d2ff', icon: <FaClock /> },
                     { label: 'Break Time', value: fmtSeconds(totalBreakSecs), color: '#bf5af2', icon: <FaCoffee /> },
-                    { label: 'My Progress', value: personalProgress, color: '#30d158', icon: <FaCalendarCheck />, glow: true },
+                    { label: 'Working Days / Expected', value: personalProgress, color: '#30d158', icon: <FaCalendarCheck />, glow: true },
                 ].map((card: any, i) => (
                     <GlassCard key={i} className="stat-card" style={{
                         border: card.glow ? `1px solid rgba(10,132,255,0.35)` : undefined,
@@ -434,7 +434,9 @@ export default function ShiftTimesheetPage() {
                             const sessionBreaks = (session.break_logs && session.break_logs.length > 0)
                                 ? session.break_logs
                                 : breakLogs.filter((b: any) => String(b.session_id) === String(session.session_id) || String(b.session_id) === String(session.id));
-                            const statusStyle = STATUS_STYLES[session.status] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)' };
+                            
+                            const displayStatus = session.remark === 'Shift Extension' ? 'Shift Extension' : session.status;
+                            const statusStyle = STATUS_STYLES[displayStatus] || STATUS_STYLES[session.status] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)' };
                             const isActive = !session.logout_time;
                             const onBreak = session.on_break;
 
@@ -533,7 +535,7 @@ export default function ShiftTimesheetPage() {
                                         </div>
                                         <div style={{ textAlign: 'center' }}>
                                             <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '10px', fontWeight: '800', color: statusStyle.color, background: statusStyle.bg }}>
-                                                {session.status}
+                                                {displayStatus}
                                             </span>
                                         </div>
                                         <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '11px' }}>

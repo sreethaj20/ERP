@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Any
 from datetime import date, datetime
 
@@ -79,7 +79,8 @@ class HROnboardingBase(BaseModel):
     offer_letter_signed_url: Optional[str] = None
     bank_proof_url: Optional[str] = None
 
-    @validator('expected_join_date', 'dob', 'orientation_date', pre=True)
+    @field_validator('expected_join_date', 'dob', 'orientation_date', mode='before')
+    @classmethod
     def parse_dates(cls, v):
         if isinstance(v, str) and v:
             if 'T' in v:
@@ -176,8 +177,7 @@ class HROnboardingOut(HROnboardingBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class HROnboardingBulkCreate(BaseModel):
     employees: List[HROnboardingCreate]

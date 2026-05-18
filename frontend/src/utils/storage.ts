@@ -138,11 +138,13 @@ export const initStorage = async () => {
             );
         } else if (role === "recruiter") {
             tasks.push(
+                refreshAttendance(),
                 refreshJobs(), refreshCandidates(), refreshInterviews(),
                 refreshOffers(), refreshScreeningLogs(), refreshCompanyProfile()
             );
         } else if (role === "it") {
             tasks.push(
+                refreshAttendance(),
                 refreshITTransfers(), refreshITReturns(), refreshCompanyProfile(),
                 refreshITHardwareTasks()
             );
@@ -152,7 +154,10 @@ export const initStorage = async () => {
                 refreshEarlyLogins(), refreshInterviews(), refreshCompanyProfile()
             );
         } else {
-            tasks.push(refreshLeaves(), refreshCompanyProfile(), refreshPreboarding(), refreshOnboarding(), refreshOffboarding(), refreshHolidays());
+            tasks.push(
+                refreshAttendance(),
+                refreshLeaves(), refreshCompanyProfile(), refreshPreboarding(), refreshOnboarding(), refreshOffboarding(), refreshHolidays()
+            );
         }
 
         // Safer parallel execution: one module failing won't crash the entire dashboard
@@ -508,8 +513,11 @@ export const recordLogoutPresence = async () => {
         const response = await api.post('hr/attendance/checkout', { employee_id: empId });
         console.log('[ATTENDANCE] Checkout success on logout:', response.status);
 
-        // 🚀 LINK: Automatically end shift session on logout
-        await endShiftSession().catch(e => console.warn('[SHIFT] Auto-end failed:', e));
+        // 🚀 LINK: Automatically end shift session on logout (Skip for managers who don't track shifts)
+        const role = sessionStorage.getItem("userRole");
+        if (role !== "manager") {
+            await endShiftSession().catch(e => console.warn('[SHIFT] Auto-end failed:', e));
+        }
     } catch (e: any) {
         // Non-blocking — logout must not be held up by this
         console.warn('[ATTENDANCE] Checkout on logout failed (non-blocking):', e?.message);

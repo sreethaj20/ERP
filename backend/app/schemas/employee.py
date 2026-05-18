@@ -198,8 +198,7 @@ class EmployeeOut(EmployeeBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class DepartmentBase(BaseModel):
     name: str
@@ -215,8 +214,7 @@ class DepartmentOut(DepartmentBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class EmployeeShort(BaseModel):
     id: int
@@ -233,8 +231,7 @@ class EmployeeShort(BaseModel):
     reporting_manager: Optional[str] = None
     team_leader_id: Optional[Any] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class EmployeeListOut(EmployeeShort):
     """Safe schema for bulk employee listings (No PII)"""
@@ -251,5 +248,4 @@ class EmployeeListOut(EmployeeShort):
     reporting_to: Optional[str] = None
     reporting_manager: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

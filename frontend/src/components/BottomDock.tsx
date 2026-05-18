@@ -5,15 +5,21 @@ import {
     FaUserCircle, FaUserPlus, FaChartBar, FaUserTie, FaUserClock
 } from 'react-icons/fa';
 import { logoutUser } from '../utils/storage';
+import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
 export default function BottomDock() {
     const location = useLocation();
     const pathSegments = location.pathname.split('/').filter(Boolean);
     const currentRole = pathSegments[0] || 'employee';
+    const { canLogout, handleSafeLogout } = useLogoutLogic();
 
-    const handleLogout = async () => {
+    const executeLogout = async () => {
         if (!window.confirm('Are you sure you want to sign out?')) return;
         await logoutUser(); // records checkout + clears session + redirects
+    };
+
+    const handleLogout = async () => {
+        await handleSafeLogout(executeLogout);
     };
 
     // ... (rest of getDockItems remains same)
@@ -107,16 +113,20 @@ export default function BottomDock() {
                     </NavLink>
                 ))}
 
-                <div className="dock-divider"></div>
+                {canLogout && (
+                    <>
+                        <div className="dock-divider"></div>
 
-                <button
-                    className="dock-item"
-                    onClick={handleLogout}
-                    title="Sign Out"
-                    style={{ color: '#ff453a' }} // Apple Red
-                >
-                    <span className="dock-icon"><FaSignOutAlt /></span>
-                </button>
+                        <button
+                            className="dock-item"
+                            onClick={handleLogout}
+                            title="Sign Out"
+                            style={{ color: '#ff453a' }} // Apple Red
+                        >
+                            <span className="dock-icon"><FaSignOutAlt /></span>
+                        </button>
+                    </>
+                )}
             </div>
         </div>
     );

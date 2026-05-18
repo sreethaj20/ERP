@@ -8,28 +8,25 @@ import {
 } from 'react-icons/fa';
 import Logo from './Logo';
 import { logoutUser, endShiftSession, getActiveSessionHours } from '../utils/storage';
+import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
 export default function Sidebar() {
     const location = useLocation();
+    const { canLogout, handleSafeLogout } = useLogoutLogic();
 
     // Extract role from URL path (e.g., /manager/dashboard -> manager)
     const pathSegments = location.pathname.split('/').filter(Boolean);
     const currentRole = pathSegments[0] || 'employee';
 
-    const handleLogout = async () => {
-        if (!window.confirm('Are you sure you want to logout?')) return;
-
-        const isManager = currentRole.toLowerCase() === 'manager';
-        if (!isManager) {
-            const userId = sessionStorage.getItem('userId') || '';
-            const result = await endShiftSession(userId).catch(() => null);
-            if (result && !result?.success) {
-                if (!window.confirm(`⚠️ ${result?.message}\n\nForce logout anyway? Attendance will be marked Absent.`)) return;
-            }
-        }
+    const executeLogout = async () => {
+        if (!window.confirm('Are you sure you want to logout of the portal?')) return;
 
         // logoutUser is async: records checkout → clears session → redirects to /login
         await logoutUser();
+    };
+
+    const handleLogout = async () => {
+        await handleSafeLogout(executeLogout);
     };
 
     // Define menu items based on role
@@ -140,10 +137,12 @@ export default function Sidebar() {
             </nav>
 
             <div className="sidebar-footer">
-                <button onClick={handleLogout} className="logout-btn">
-                    <FaSignOutAlt />
-                    <span>Logout</span>
-                </button>
+                {canLogout && (
+                    <button onClick={handleLogout} className="logout-btn">
+                        <FaSignOutAlt />
+                        <span>Logout</span>
+                    </button>
+                )}
             </div>
         </aside>
     );

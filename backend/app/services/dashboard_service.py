@@ -353,12 +353,22 @@ class DashboardService:
         }
 
     def get_teamleader_dashboard(self, db: Session, tl_id: str, user_id: int):
+        tl_ids = {tl_id} if tl_id else set()
+        if user_id:
+            tl_ids.add(str(user_id))
+            tl_emp = db.query(Employee).filter(Employee.user_id == user_id).first()
+            if tl_emp:
+                tl_ids.add(str(tl_emp.id))
+                if tl_emp.employee_id:
+                    tl_ids.add(tl_emp.employee_id)
+        tl_ids = list(tl_ids)
+
         team_members = db.query(Employee).filter(
             or_(
-                Employee.team_leader_id == tl_id,
-                Employee.reporting_to_id == tl_id,
-                Employee.manager_id == tl_id,
-                Employee.reporting_manager_id == tl_id
+                Employee.team_leader_id.in_(tl_ids),
+                Employee.reporting_to_id.in_(tl_ids),
+                Employee.manager_id.in_(tl_ids),
+                Employee.reporting_manager_id.in_(tl_ids)
             ),
             Employee.deleted_at == None
         ).all()
@@ -383,10 +393,10 @@ class DashboardService:
         
         pending_leaves = db.query(LeaveRequest).join(Employee, LeaveRequest.employee_id == Employee.employee_id).filter(
             or_(
-                Employee.team_leader_id == tl_id,
-                Employee.reporting_to_id == tl_id,
-                Employee.manager_id == tl_id,
-                Employee.reporting_manager_id == tl_id
+                Employee.team_leader_id.in_(tl_ids),
+                Employee.reporting_to_id.in_(tl_ids),
+                Employee.manager_id.in_(tl_ids),
+                Employee.reporting_manager_id.in_(tl_ids)
             ),
             LeaveRequest.status == "Pending",
             LeaveRequest.deleted_at == None
@@ -458,12 +468,20 @@ class DashboardService:
         }
 
     def get_teamleader_reports(self, db: Session, tl_id: str):
+        tl_ids = {tl_id} if tl_id else set()
+        tl_emp = db.query(Employee).filter(Employee.employee_id == tl_id).first()
+        if tl_emp:
+            tl_ids.add(str(tl_emp.id))
+            if tl_emp.user_id:
+                tl_ids.add(str(tl_emp.user_id))
+        tl_ids = list(tl_ids)
+
         team_members = db.query(Employee).filter(
             or_(
-                Employee.team_leader_id == tl_id,
-                Employee.reporting_to_id == tl_id,
-                Employee.manager_id == tl_id,
-                Employee.reporting_manager_id == tl_id
+                Employee.team_leader_id.in_(tl_ids),
+                Employee.reporting_to_id.in_(tl_ids),
+                Employee.manager_id.in_(tl_ids),
+                Employee.reporting_manager_id.in_(tl_ids)
             ),
             Employee.deleted_at == None
         ).all()

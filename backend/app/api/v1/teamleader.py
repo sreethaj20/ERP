@@ -32,17 +32,22 @@ def get_team_members(db: Session = Depends(get_db), current_user: User = Depends
         return []
     tl_id = (emp.employee_id or "").strip()
     u_id = str(current_user.id)
+    db_id = str(emp.id)
     
     return db.query(Employee).filter(
         or_(
             Employee.team_leader_id == tl_id,
             Employee.team_leader_id == u_id,
+            Employee.team_leader_id == db_id,
             Employee.reporting_to_id == tl_id,
             Employee.reporting_to_id == u_id,
+            Employee.reporting_to_id == db_id,
             Employee.manager_id == tl_id,
             Employee.manager_id == u_id,
+            Employee.manager_id == db_id,
             Employee.reporting_manager_id == tl_id,
-            Employee.reporting_manager_id == u_id
+            Employee.reporting_manager_id == u_id,
+            Employee.reporting_manager_id == db_id
         ),
         Employee.deleted_at == None
     ).all()
@@ -101,10 +106,28 @@ def get_team_early_login_requests_route(db: Session = Depends(get_db), current_u
         return []
         
     tl_id = emp.employee_id
+    u_id = str(current_user.id)
+    db_id = str(emp.id)
     
     results = db.query(attendance_repo.early_login_model, Employee.first_name, Employee.last_name)\
         .join(Employee, attendance_repo.early_login_model.employee_id == Employee.employee_id)\
-        .filter(Employee.team_leader_id == tl_id)\
+        .filter(
+            or_(
+                Employee.team_leader_id == tl_id,
+                Employee.team_leader_id == u_id,
+                Employee.team_leader_id == db_id,
+                Employee.reporting_to_id == tl_id,
+                Employee.reporting_to_id == u_id,
+                Employee.reporting_to_id == db_id,
+                Employee.manager_id == tl_id,
+                Employee.manager_id == u_id,
+                Employee.manager_id == db_id,
+                Employee.reporting_manager_id == tl_id,
+                Employee.reporting_manager_id == u_id,
+                Employee.reporting_manager_id == db_id
+            ),
+            Employee.deleted_at == None
+        )\
         .order_by(attendance_repo.early_login_model.date.desc()).all()
         
     out = []

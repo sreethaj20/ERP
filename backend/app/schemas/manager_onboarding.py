@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Any
 from datetime import date, datetime
 
@@ -26,7 +26,8 @@ class ManagerOnboardingBase(BaseModel):
     hardware_req: Optional[Any] = None
     documents: Optional[Any] = None
 
-    @validator('join_date', 'offer_date', 'dob', pre=True)
+    @field_validator('join_date', 'offer_date', 'dob', mode='before')
+    @classmethod
     def parse_onboarding_dates(cls, v):
         if isinstance(v, str):
             if 'T' in v:
@@ -71,8 +72,7 @@ class ManagerOnboardingOut(ManagerOnboardingBase):
     hr_status: Optional[str] = "pending"
     it_status: Optional[str] = "pending"
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class ManagerOnboardingBulkCreate(BaseModel):
     employees: List[ManagerOnboardingCreate]

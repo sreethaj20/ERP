@@ -73,7 +73,7 @@ class AttendanceService:
             query = query.filter(attn_models.Attendance.employee_id == employee_id, attn_models.Attendance.deleted_at == None)
         elif viewer_role and viewer_role.lower() == "manager" and viewer_id:
             # 🚀 PRODUCTION OPTIMIZATION: Use a single flat fetch for hierarchy check
-            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id).all()
+            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id, emp_models.Employee.reporting_to_id).all()
             
             manager_emp = db.query(emp_models.Employee).filter(emp_models.Employee.user_id == viewer_id).first()
             if manager_emp:
@@ -85,8 +85,8 @@ class AttendanceService:
                 while added:
                     added = False
                     current_count = len(team_ids)
-                    for e_id, mgr, rep_mgr, tl in all_emps:
-                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids):
+                    for e_id, mgr, rep_mgr, tl, rep_to in all_emps:
+                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids or rep_to in team_ids):
                             team_ids.add(e_id)
                             added = True
                     if len(team_ids) == current_count: break
@@ -142,7 +142,7 @@ class AttendanceService:
         
         if user_role and user_role.lower() == "manager" and user_id:
             # 🚀 PRODUCTION OPTIMIZATION: Use a single flat fetch for hierarchy check
-            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id).all()
+            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id, emp_models.Employee.reporting_to_id).all()
             
             manager_emp = db.query(emp_models.Employee).filter(emp_models.Employee.user_id == user_id).first()
             if manager_emp:
@@ -154,8 +154,8 @@ class AttendanceService:
                 while added:
                     added = False
                     current_count = len(team_ids)
-                    for e_id, mgr, rep_mgr, tl in all_emps:
-                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids):
+                    for e_id, mgr, rep_mgr, tl, rep_to in all_emps:
+                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids or rep_to in team_ids):
                             team_ids.add(e_id)
                             added = True
                     if len(team_ids) == current_count: break
@@ -195,7 +195,7 @@ class AttendanceService:
 
         if user_role and user_role.lower() == "manager" and viewer_user_id:
             # 🚀 PRODUCTION OPTIMIZATION: Use flat-fetch for hierarchy
-            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id).all()
+            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id, emp_models.Employee.reporting_to_id).all()
             
             manager_emp = db.query(emp_models.Employee).filter(emp_models.Employee.user_id == viewer_user_id).first()
             if manager_emp:
@@ -206,8 +206,8 @@ class AttendanceService:
                 while added:
                     added = False
                     current_count = len(team_ids)
-                    for e_id, mgr, rep_mgr, tl in all_emps:
-                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids):
+                    for e_id, mgr, rep_mgr, tl, rep_to in all_emps:
+                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids or rep_to in team_ids):
                             team_ids.add(e_id)
                             added = True
                     if len(team_ids) == current_count: break
@@ -486,13 +486,22 @@ class ShiftService:
                         early_req = db.query(leave_models.EarlyLoginRequest).filter(
                             leave_models.EarlyLoginRequest.employee_id == employee_id,
                             leave_models.EarlyLoginRequest.date == today,
-                            leave_models.EarlyLoginRequest.status == "approved"
+                            func.lower(leave_models.EarlyLoginRequest.status) == "approved"
                         ).first()
                         if not early_req:
                             raise HTTPException(status_code=403, detail=f"Shift starts at {shift.start_time}. Early login requires an approved request.")
                         
                         if now_dt.time() < early_req.requested_start_time:
                             raise HTTPException(status_code=403, detail=f"Your approved early login time for today is {early_req.requested_start_time}. Please wait until then.")
+
+        # Calculate is_late and Shift Extension based on grace period
+        is_late = False
+        if shift:
+            shift_start_dt = datetime.combine(today, shift.start_time)
+            if now_dt > (shift_start_dt + timedelta(minutes=shift.grace_time or 0)):
+                is_late = True
+                # User defined logic: Logging in after grace time counts as a Shift Extension
+                is_extension = True
 
         # 6. Create Session Object
         import uuid
@@ -518,12 +527,7 @@ class ShiftService:
         )
         db.add(session)
 
-        # 6. Synchronize with Legacy Attendance Audit
-        is_late = False
-        if shift:
-            shift_start_dt = datetime.combine(today, shift.start_time)
-            if now_dt > (shift_start_dt + timedelta(minutes=shift.grace_time or 0)):
-                is_late = True
+        # 7. Synchronize with Legacy Attendance Audit
 
         legacy = db.query(attn_models.Attendance).filter(attn_models.Attendance.employee_id == employee_id, attn_models.Attendance.date == today).first()
         if not legacy:
@@ -889,6 +893,23 @@ class ShiftService:
 
     def get_team_attendance(self, db: Session, team_leader_id: str, user_id: str = None):
         from sqlalchemy import String, cast
+        tl_ids = {team_leader_id} if team_leader_id else set()
+        if user_id:
+            tl_ids.add(user_id)
+            tl_emp = db.query(emp_models.Employee).filter(emp_models.Employee.user_id == (int(user_id) if user_id.isdigit() else user_id)).first()
+            if tl_emp:
+                tl_ids.add(str(tl_emp.id))
+                if tl_emp.employee_id:
+                    tl_ids.add(tl_emp.employee_id)
+        if team_leader_id:
+            tl_emp_by_code = db.query(emp_models.Employee).filter(emp_models.Employee.employee_id == team_leader_id).first()
+            if tl_emp_by_code:
+                tl_ids.add(str(tl_emp_by_code.id))
+                if tl_emp_by_code.user_id:
+                    tl_ids.add(str(tl_emp_by_code.user_id))
+        
+        tl_ids = list(tl_ids)
+
         results = db.query(shift_models.ShiftSession, emp_models.Employee.first_name, emp_models.Employee.last_name, emp_models.Employee.role, emp_models.Employee.department)\
             .join(emp_models.Employee, or_(
                 shift_models.ShiftSession.employee_id == emp_models.Employee.employee_id,
@@ -896,14 +917,10 @@ class ShiftService:
             ))\
             .filter(
                 or_(
-                    emp_models.Employee.team_leader_id == team_leader_id,
-                    emp_models.Employee.team_leader_id == user_id,
-                    emp_models.Employee.reporting_to_id == team_leader_id,
-                    emp_models.Employee.reporting_to_id == user_id,
-                    emp_models.Employee.manager_id == team_leader_id,
-                    emp_models.Employee.manager_id == user_id,
-                    emp_models.Employee.reporting_manager_id == team_leader_id,
-                    emp_models.Employee.reporting_manager_id == user_id
+                    emp_models.Employee.team_leader_id.in_(tl_ids),
+                    emp_models.Employee.reporting_to_id.in_(tl_ids),
+                    emp_models.Employee.manager_id.in_(tl_ids),
+                    emp_models.Employee.reporting_manager_id.in_(tl_ids)
                 ),
                 emp_models.Employee.deleted_at == None
             ).order_by(shift_models.ShiftSession.started_at.desc()).all()

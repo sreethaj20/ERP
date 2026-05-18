@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { getAttendance, getHolidays, getData, getEmployees, getEmployeeShift } from '../utils/storage';
+import { getAttendance, getHolidays, getLeaves, getEmployees, getEmployeeShift } from '../utils/storage';
 
 interface AttendanceCalendarProps {
     type?: 'individual' | 'team';
@@ -38,7 +38,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             const [attendanceData, holidayData, leaveData, employeeData] = await Promise.all([
                 getAttendance(),
                 getHolidays(),
-                getData('leaves'),
+                getLeaves(),
                 getEmployees()
             ]);
             console.log("[CALENDAR] Fetched holidays for render:", holidayData);
@@ -92,116 +92,102 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
-        // Check Holidays first - Highest Priority
-        const holiday = holidays.find(h => {
-            const hDate = String(h.date || '').substring(0, 10);
-            return hDate === dateStr;
-        });
-
-        if (holiday) {
-            return 'holiday';
-        }
-
-        const myShift = getEmployeeShift((employeeId || userId) as string);
-        const weekOffs = (myShift && myShift.week_off_days && myShift.week_off_days.length > 0) ? myShift.week_off_days : ['Sunday'];
-        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-
-        if (weekOffs.includes(dayName)) return 'weekend';
-        if (dateObj > today) return 'future';
-
-        // Priority 1: Check approved leaves (This overrides any attendance records)
-        let approvedLeave = null;
-
-        if (type === 'individual') {
-            approvedLeave = leaves.find(l => {
-                const lStart = String(l.start_date || l.from_date || '').substring(0, 10);
-                const lEnd = String(l.end_date || l.to_date || '').substring(0, 10);
-                return (
-                    ((employeeId && String(l.employee_id) === String(employeeId)) || String(l.employee_id) === String(userId)) &&
-                    l.status?.toLowerCase() === 'approved' &&
-                    dateStr >= lStart &&
-                    dateStr <= lEnd
-                );
-            });
-        } else {
-            // For Team View: Check if ANY team member who reports to this user is on leave
-            const myTeam = employees
-                .filter((e: any) => {
-                    const tlId = String(e.team_leader_id || '');
-                    const repId = String(e.reporting_to_id || '');
-                    const mgrId = String(e.manager_id || '');
-                    
-                    return tlId === String(userId) || tlId === String(employeeId) ||
-                           repId === String(userId) || repId === String(employeeId) ||
-                           mgrId === String(userId) || mgrId === String(employeeId);
-                })
-                .map((e: any) => String(e.employee_id || e.id));
-
-            approvedLeave = leaves.find(l => {
-                const lStart = String(l.start_date || l.from_date || '').substring(0, 10);
-                const lEnd = String(l.end_date || l.to_date || '').substring(0, 10);
-                
-                // Final Robust Match: 
-                // 1. Employee is in the manager's team list
-                // 2. OR the leave record directly names this user as Manager/TL
-                const isTeamMember = myTeam.includes(String(l.employee_id));
-                const isDirectlyManaged = (employeeId && (String(l.manager_id) === String(employeeId) || String(l.team_leader_id) === String(employeeId))) ||
-                                          (String(l.manager_id) === String(userId) || String(l.team_leader_id) === String(userId));
-
-                return (
-                    (isTeamMember || isDirectlyManaged) &&
-                    l.status?.toLowerCase() === 'approved' &&
-                    dateStr >= lStart &&
-                    dateStr <= lEnd
-                );
-            });
-        }
-
-        if (approvedLeave) return 'leave';
-
+        // 1. Fetch Actual Attendance Records First
         let dayRecords = [];
         if (type === 'individual') {
-            // Match by business employee_id (EMP-XXX) OR numeric user id
             dayRecords = records.filter(r =>
                 r.date === dateStr &&
-                (
-                    (employeeId && String(r.employee_id) === String(employeeId)) ||
-                    String(r.employee_id) === String(userId)
-                )
+                ((employeeId && String(r.employee_id) === String(employeeId)) || String(r.employee_id) === String(userId))
             );
         } else {
             const userRole = sessionStorage.getItem("userRole");
             if (userRole === 'teamleader') {
-                // TL sees team records filtered by TL's employee_id as team_leader_id
                 const myTeamIds = employees
                     .filter((e: any) => {
                         const tlId = String(e.team_leader_id || '');
                         const repId = String(e.reporting_to_id || '');
                         const mgrId = String(e.manager_id || '');
-                        
+                        const repMgrId = String(e.reporting_manager_id || '');
                         return tlId === String(userId) || tlId === String(employeeId) ||
                                repId === String(userId) || repId === String(employeeId) ||
-                               mgrId === String(userId) || mgrId === String(employeeId);
+                               mgrId === String(userId) || mgrId === String(employeeId) ||
+                               repMgrId === String(userId) || repMgrId === String(employeeId);
                     })
                     .flatMap((e: any) => [String(e.employee_id), String(e.id)]);
+                
+                // Include the Team Leader themselves in the team aggregate view
+                if (employeeId) myTeamIds.push(String(employeeId));
+                if (userId) myTeamIds.push(String(userId));
+
                 dayRecords = records.filter(r => r.date === dateStr && myTeamIds.includes(String(r.employee_id)));
             } else {
                 dayRecords = records.filter(r => r.date === dateStr);
             }
         }
 
-        if (dayRecords.length === 0) {
-            return 'absent';
+        // Determine if they actually worked (Team Aggregation Logic)
+        let workedRecordStatus = null;
+        if (dayRecords.length > 0) {
+            // Check all records for highest priority status
+            const hasExtension = dayRecords.some(r => String(r.status || '').toLowerCase().includes('extension') || String(r.remark || '').toLowerCase().includes('extension'));
+            const hasPresent = dayRecords.some(r => String(r.status || '').toLowerCase().includes('present') || String(r.status || '').toLowerCase().includes('active'));
+            const hasHalfDay = dayRecords.some(r => String(r.status || '').toLowerCase().includes('half'));
+            const hasLeave = dayRecords.some(r => String(r.status || '').toLowerCase().includes('leave') || String(r.remark || '').toLowerCase().includes('leave'));
+
+            if (hasExtension) workedRecordStatus = 'shift-extension';
+            else if (hasPresent) workedRecordStatus = 'present';
+            else if (hasHalfDay) workedRecordStatus = 'half-day';
+            else if (hasLeave) workedRecordStatus = 'leave';
+            else workedRecordStatus = 'absent';
         }
 
-        const recordStatus = String(dayRecords[0].status || '').toLowerCase();
-        if (recordStatus.includes('leave')) return 'leave';
-        if (recordStatus.includes('extension')) return 'shift-extension';
-        if (recordStatus.includes('present')) return 'present';
-        if (recordStatus.includes('absent')) return 'absent';
-        if (recordStatus.includes('half')) return 'half-day';
+        // 2. Check Priorities
+        const holiday = holidays.find(h => String(h.date || '').substring(0, 10) === dateStr);
+        const myShift = getEmployeeShift((employeeId || userId) as string);
+        const weekOffs = (myShift && myShift.week_off_days && myShift.week_off_days.length > 0) ? myShift.week_off_days : ['Sunday'];
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
-        return 'present';
+        // If they ACTUALLY worked (Present or Extension), let it override weekends/holidays so overtime is visible
+        if (workedRecordStatus === 'shift-extension' || workedRecordStatus === 'present' || workedRecordStatus === 'half-day') {
+            return workedRecordStatus;
+        }
+
+        if (holiday) return 'holiday';
+        if (weekOffs.includes(dayName)) return 'weekend';
+        if (dateObj > today) return 'future';
+
+        // 3. Check Leaves
+        let approvedLeave = null;
+        if (type === 'individual') {
+            approvedLeave = leaves.find(l => {
+                const lStart = String(l.start_date || l.from_date || '').substring(0, 10);
+                const lEnd = String(l.end_date || l.to_date || '').substring(0, 10);
+                return (((employeeId && String(l.employee_id) === String(employeeId)) || String(l.employee_id) === String(userId)) && l.status?.toLowerCase() === 'approved' && dateStr >= lStart && dateStr <= lEnd);
+            });
+        } else {
+            const myTeam = employees
+                .filter((e: any) => {
+                    const tlId = String(e.team_leader_id || '');
+                    const repId = String(e.reporting_to_id || '');
+                    const mgrId = String(e.manager_id || '');
+                    const repMgrId = String(e.reporting_manager_id || '');
+                    return tlId === String(userId) || tlId === String(employeeId) || repId === String(userId) || repId === String(employeeId) || mgrId === String(userId) || mgrId === String(employeeId) || repMgrId === String(userId) || repMgrId === String(employeeId);
+                })
+                .map((e: any) => String(e.employee_id || e.id));
+
+            approvedLeave = leaves.find(l => {
+                const lStart = String(l.start_date || l.from_date || '').substring(0, 10);
+                const lEnd = String(l.end_date || l.to_date || '').substring(0, 10);
+                const isTeamMember = myTeam.includes(String(l.employee_id));
+                const isDirectlyManaged = (employeeId && (String(l.manager_id) === String(employeeId) || String(l.team_leader_id) === String(employeeId))) || (String(l.manager_id) === String(userId) || String(l.team_leader_id) === String(userId));
+                return ((isTeamMember || isDirectlyManaged) && l.status?.toLowerCase() === 'approved' && dateStr >= lStart && dateStr <= lEnd);
+            });
+        }
+
+        if (approvedLeave) return 'leave';
+        
+        // 4. Default to absent if past date with no work record
+        return 'absent';
     };
 
     const statusColors: Record<string, string> = {
@@ -269,7 +255,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                     const status = getStatus(day);
                     const isToday = new Date().toDateString() === new Date(year, month, day).toDateString();
                     const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                    const holiday = status === 'holiday' ? holidays.find(h => h.date === dateStr) : null;
+                    const holiday = status === 'holiday' ? holidays.find(h => String(h.date || '').substring(0, 10) === dateStr) : null;
 
                     return (
                         <div

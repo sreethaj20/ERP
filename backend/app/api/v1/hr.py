@@ -58,7 +58,12 @@ def get_all_employees(skip: int = 0, limit: int = 100, db: Session = Depends(get
     Returns safe summary data to prevent PII leakage.
     """
     # Optimized fetch for list view
-    columns = ["id", "employee_id", "name", "first_name", "last_name", "role", "department", "email", "designation", "status", "joining_date", "profile_photo_url", "reporting_to"]
+    # Optimized fetch for list view - Include all hierarchy fields for proper frontend grouping
+    columns = [
+        "id", "employee_id", "name", "first_name", "last_name", "role", "department", 
+        "email", "designation", "status", "joining_date", "profile_photo_url", 
+        "reporting_to", "reporting_to_id", "manager_id", "team_leader_id", "reporting_manager_id"
+    ]
     return employee_service.get_all_employees(db, skip, limit, role_filter="hr_master", columns=columns)
 
 @router.post("/employees", response_model=EmployeeOut)

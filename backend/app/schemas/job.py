@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List, Any, Dict
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -23,7 +23,8 @@ class JobBase(BaseModel):
     priority: Optional[str] = "medium"
     status: Optional[str] = "open"
 
-    @validator('experience_min', 'experience_max', 'salary_min', 'salary_max', pre=True)
+    @field_validator('experience_min', 'experience_max', 'salary_min', 'salary_max', mode='before')
+    @classmethod
     def parse_numeric_fields(cls, v):
         if v is None or v == "": return 0.0
         if isinstance(v, (int, float, Decimal)): return float(v)
@@ -50,8 +51,7 @@ class JobOut(JobBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class CandidateBase(BaseModel):
     candidate_id: Optional[str] = None
@@ -78,7 +78,8 @@ class CandidateBase(BaseModel):
     created_by: Optional[str] = None
     recruiter_name: Optional[str] = None
 
-    @validator('total_experience_years', 'relevant_experience_years', 'current_ctc', 'expected_ctc', pre=True)
+    @field_validator('total_experience_years', 'relevant_experience_years', 'current_ctc', 'expected_ctc', mode='before')
+    @classmethod
     def parse_candidate_numeric(cls, v):
         if v is None or v == "": return Decimal("0.00")
         if isinstance(v, (int, float, Decimal)): return Decimal(str(v))
@@ -103,8 +104,7 @@ class CandidateOut(CandidateBase):
     name: Optional[str] = None # For frontend compat
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class ScreeningLogBase(BaseModel):
     candidate_id: str
@@ -126,8 +126,7 @@ class ScreeningLogOut(ScreeningLogBase):
     id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class InterviewBase(BaseModel):
     candidate_id: str
@@ -143,14 +142,16 @@ class InterviewBase(BaseModel):
     interviewer_names: Optional[str] = None
     duration_minutes: Optional[int] = 60
 
-    @validator('interview_date', pre=True)
+    @field_validator('interview_date', mode='before')
+    @classmethod
     def parse_interview_date(cls, v):
         if isinstance(v, str):
             if 'T' in v:
                 return v.split('T')[0]
         return v
 
-    @validator('interview_time', pre=True, always=True)
+    @field_validator('interview_time', mode='before')
+    @classmethod
     def coerce_time_to_str(cls, v):
         if v is None:
             return "10:00"
@@ -181,8 +182,7 @@ class InterviewOut(InterviewBase):
     job_title: Optional[str] = None      # Joined field
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class OfferBase(BaseModel):
     offer_id: Optional[str] = None
@@ -192,7 +192,8 @@ class OfferBase(BaseModel):
     joining_date: date
     offer_expiry_date: Optional[date] = None
     
-    @validator('offer_date', 'joining_date', 'offer_expiry_date', pre=True)
+    @field_validator('offer_date', 'joining_date', 'offer_expiry_date', mode='before')
+    @classmethod
     def parse_offer_dates(cls, v):
         if isinstance(v, str):
             if 'T' in v:
@@ -214,7 +215,8 @@ class OfferBase(BaseModel):
     offer_letter_url: Optional[str] = None
     offer_status: Optional[str] = None  # frontend sometimes sends offer_status instead of status
 
-    @validator('offered_ctc', 'fixed_component', 'variable_component', 'joining_bonus', 'relocation_bonus', 'ctc', 'salary', pre=True)
+    @field_validator('offered_ctc', 'fixed_component', 'variable_component', 'joining_bonus', 'relocation_bonus', 'ctc', 'salary', mode='before')
+    @classmethod
     def parse_offer_numeric(cls, v):
         if v is None or v == "": return Decimal("0.00")
         if isinstance(v, (int, float, Decimal)): return Decimal(str(v))
@@ -249,8 +251,7 @@ class OfferOut(OfferBase):
     rejected_at: Optional[datetime] = None
     rejection_reason: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
     def model_post_init(self, __context: Any) -> None:
         if self.offer_status is None:
@@ -270,5 +271,4 @@ class ApplicationOut(ApplicationBase):
     id: int
     applied_date: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

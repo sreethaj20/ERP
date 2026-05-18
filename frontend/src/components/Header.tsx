@@ -4,6 +4,7 @@ import { FaBell, FaUserCircle, FaSignOutAlt, FaArrowLeft, FaSun, FaMoon } from '
 import Logo from './Logo';
 import { logoutUser, endShiftSession, getNotifications, markNotificationRead, getData } from '../utils/storage';
 import { useTheme } from '../context/ThemeContext';
+import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
 interface HeaderProps {
   role: string;
@@ -16,6 +17,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const isDashboard = location.pathname.endsWith('/dashboard');
   const userId = sessionStorage.getItem('userId') || '';
   const { theme, toggleTheme } = useTheme();
+  const { canLogout, handleSafeLogout } = useLogoutLogic();
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -65,23 +67,15 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const displayRole = roleMap[roleKey] || (role.charAt(0).toUpperCase() + role.slice(1).replace(/([A-Z])/g, ' $1').trim());
   const displayTitle = title || `${displayRole} Portal`;
 
-  const handleLogout = async () => {
+  const executeLogout = async () => {
     if (!window.confirm('Are you sure you want to logout?')) return;
-
-    const isManager = role.toLowerCase() === 'manager';
-    const userId = sessionStorage.getItem('userId') || "";
-
-    try {
-      if (!isManager && userId) {
-        // End shift session (non-blocking)
-        await endShiftSession().catch(e => console.warn("End shift failed during logout:", e));
-      }
-    } catch (e) {
-      console.error("Logout health check failed:", e);
-    }
 
     // logoutUser is async: records checkout → clears session → redirects to /login
     await logoutUser();
+  };
+
+  const handleLogout = async () => {
+    await handleSafeLogout(executeLogout);
   };
 
 
@@ -250,27 +244,29 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
             )}
           </div>
 
-          <button
-            onClick={handleLogout}
-            style={{
-              background: 'rgba(255, 69, 58, 0.1)',
-              border: 'none',
-              color: '#ff453a',
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease'
-            }}
-            title="Logout"
-            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'}
-          >
-            <FaSignOutAlt size={18} />
-          </button>
+          {canLogout && (
+            <button
+              onClick={handleLogout}
+              style={{
+                background: 'rgba(255, 69, 58, 0.1)',
+                border: 'none',
+                color: '#ff453a',
+                width: '40px',
+                height: '40px',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease'
+              }}
+              title="Logout"
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'}
+            >
+              <FaSignOutAlt size={18} />
+            </button>
+          )}
         </div>
       </div>
     </div>

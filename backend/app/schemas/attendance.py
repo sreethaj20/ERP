@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Any, Dict
 from datetime import date as DateType, datetime as dt, time
 from decimal import Decimal
@@ -22,7 +22,8 @@ class AttendanceBase(BaseModel):
     notes: Optional[str] = None
     source: Optional[str] = "Manual"
 
-    @validator('check_in', 'check_out', 'created_at', 'updated_at', 'login_time', 'logout_time', 'current_break_start', 'date', pre=True, allow_reuse=True, check_fields=False)
+    @field_validator('check_in', 'check_out', 'created_at', 'updated_at', 'login_time', 'logout_time', 'current_break_start', 'date', mode='before', check_fields=False)
+    @classmethod
     def sanitize_zero_dt(cls, v):
         """MySQL sentinel '0000-00-00 00:00:00' → None. Also robustly parse strings to dt objects."""
         if v is None:
@@ -66,7 +67,10 @@ class AttendanceUpdate(BaseModel):
     remarks: Optional[str] = None
     notes: Optional[str] = None
 
-    _sanitize = validator('check_in', 'check_out', 'check_in_time', 'check_out_time', pre=True, allow_reuse=True)(AttendanceBase.sanitize_zero_dt)
+    @field_validator('check_in', 'check_out', 'check_in_time', 'check_out_time', mode='before', check_fields=False)
+    @classmethod
+    def sanitize(cls, v):
+        return AttendanceBase.sanitize_zero_dt(v)
 
 class AttendanceOut(AttendanceBase):
     id: int
@@ -82,8 +86,7 @@ class AttendanceOut(AttendanceBase):
     month: Optional[int] = None
     year: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class AttendanceCorrectionBase(BaseModel):
     attendance_id: Optional[int] = None
@@ -94,7 +97,10 @@ class AttendanceCorrectionBase(BaseModel):
     corrected_status: Optional[str] = "Present"
     reason: str
 
-    _sanitize = validator('requested_check_in', 'requested_check_out', pre=True, allow_reuse=True)(AttendanceBase.sanitize_zero_dt)
+    @field_validator('requested_check_in', 'requested_check_out', mode='before', check_fields=False)
+    @classmethod
+    def sanitize(cls, v):
+        return AttendanceBase.sanitize_zero_dt(v)
 
 class AttendanceCorrectionCreate(AttendanceCorrectionBase):
     employee_id: str
@@ -111,10 +117,12 @@ class AttendanceCorrectionOut(AttendanceCorrectionBase):
     approved_by: Optional[str] = None
     created_at: Optional[dt] = None
     
-    _sanitize = validator('created_at', 'requested_check_in', 'requested_check_out', pre=True, allow_reuse=True)(AttendanceBase.sanitize_zero_dt)
+    @field_validator('created_at', 'requested_check_in', 'requested_check_out', mode='before', check_fields=False)
+    @classmethod
+    def sanitize(cls, v):
+        return AttendanceBase.sanitize_zero_dt(v)
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class ShiftBase(BaseModel):
     shift_name: str
@@ -132,8 +140,7 @@ class ShiftOut(ShiftBase):
     id: int
     created_at: Optional[dt] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class ShiftSessionBase(BaseModel):
     employee_id: Optional[str] = None
@@ -184,10 +191,12 @@ class ShiftSessionOut(ShiftSessionBase):
     
     created_at: Optional[dt] = None
 
-    _sanitize = validator('login_time', 'logout_time', 'created_at', 'current_break_start', 'date', pre=True, allow_reuse=True)(AttendanceBase.sanitize_zero_dt)
+    @field_validator('login_time', 'logout_time', 'created_at', 'current_break_start', 'date', mode='before', check_fields=False)
+    @classmethod
+    def sanitize(cls, v):
+        return AttendanceBase.sanitize_zero_dt(v)
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class BreakLogBase(BaseModel):
     session_id: str
@@ -208,10 +217,12 @@ class BreakLogOut(BreakLogBase):
     start_time: Optional[dt] = None
     end_time: Optional[dt] = None
 
-    _sanitize = validator('break_start', 'break_end', 'created_at', 'start_time', 'end_time', pre=True, allow_reuse=True)(AttendanceBase.sanitize_zero_dt)
+    @field_validator('break_start', 'break_end', 'created_at', 'start_time', 'end_time', mode='before', check_fields=False)
+    @classmethod
+    def sanitize(cls, v):
+        return AttendanceBase.sanitize_zero_dt(v)
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 class StaffTimesheetItem(BaseModel):
     id: Optional[int] = None
@@ -242,8 +253,12 @@ class StaffTimesheetItem(BaseModel):
     break_logs: Optional[List[BreakLogOut]] = []
     breaks_count: Optional[int] = 0
 
-    _sanitize = validator('login_time', 'logout_time', 'started_at', 'ended_at', 'date', 'current_break_start', pre=True, allow_reuse=True, check_fields=False)(AttendanceBase.sanitize_zero_dt)
+    @field_validator('login_time', 'logout_time', 'started_at', 'ended_at', 'date', 'current_break_start', mode='before', check_fields=False)
+    @classmethod
+    def sanitize(cls, v):
+        return AttendanceBase.sanitize_zero_dt(v)
 
-    class Config:
-        from_attributes = True
-        populate_by_name = True
+    model_config = {
+        "from_attributes": True,
+        "populate_by_name": True
+    }

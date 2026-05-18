@@ -12,6 +12,8 @@ export default function AttendanceManagement() {
   const [attendance, setAttendance] = useState(getAttendance());
   const [requests, setRequests] = useState<any[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState("");
+
 
   useEffect(() => {
     const load = async () => {
@@ -198,7 +200,28 @@ export default function AttendanceManagement() {
       </div>
 
       <GlassCard title="Today's Presence Audit" subtitle="Real-time employee login/logout activities">
-        <div style={{ overflowX: "auto", marginTop: "15px" }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
+          <div style={{ position: 'relative', width: '300px' }}>
+            <input 
+              type="text" 
+              placeholder="Search employee or department..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 15px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border-light)',
+                borderRadius: '8px',
+                color: 'var(--text-primary)',
+                fontSize: '13px',
+                outline: 'none'
+              }}
+            />
+          </div>
+        </div>
+        <div style={{ overflowX: "auto" }}>
+
           <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
               <tr style={thStyle}>
@@ -215,7 +238,15 @@ export default function AttendanceManagement() {
             <tbody>
               {(() => {
                 const assignedIds = new Set();
+                const searchLower = searchTerm.toLowerCase();
                 
+                const filteredEmployees = employees.filter(e => 
+                  (e.name || '').toLowerCase().includes(searchLower) ||
+                  (e.employee_id || '').toLowerCase().includes(searchLower) ||
+                  (e.department || '').toLowerCase().includes(searchLower) ||
+                  (e.role || '').toLowerCase().includes(searchLower)
+                );
+
                 // Helper to render and mark as assigned
                 const renderAndAssign = (list: any[]) => {
                   const filtered = list.filter(e => !assignedIds.has(e.id));
@@ -223,8 +254,11 @@ export default function AttendanceManagement() {
                   return filtered.map((m: any) => renderEmployeeRow(m));
                 };
 
+                const visibleEmployees = searchTerm ? filteredEmployees : employees;
+
+
                 // 1. LEADERSHIP & MANAGEMENT
-                const management = employees.filter((e: any) => 
+                const management = visibleEmployees.filter((e: any) => 
                   ['hr', 'manager', 'admin', 'hradmin', 'administrator', 'superadmin'].includes((e.role || '').toLowerCase().replace(/[\s_]+/g, '')) ||
                   (e.department || '').toLowerCase().includes('management') ||
                   (e.department || '').toLowerCase().includes('human resource') ||
@@ -232,14 +266,14 @@ export default function AttendanceManagement() {
                 );
 
                 // 2. RECRUITMENT & TALENT
-                const recruiters = employees.filter((e: any) => 
+                const recruiters = visibleEmployees.filter((e: any) => 
                   ['recruiter', 'requiter'].includes((e.role || '').toLowerCase()) ||
                   (e.department || '').toLowerCase().includes('recruitment') ||
                   (e.department || '').toLowerCase().includes('talent')
                 );
 
                 // 3. IT INFRASTRUCTURE
-                const itStaff = employees.filter((e: any) => 
+                const itStaff = visibleEmployees.filter((e: any) => 
                   ['it', 'itadmin', 'it_admin', 'itdepartment'].includes((e.role || '').toLowerCase().replace(/[\s_]+/g, '')) ||
                   (e.department || '').toLowerCase().includes('it') ||
                   (e.department || '').toLowerCase().includes('tech') ||
@@ -248,10 +282,19 @@ export default function AttendanceManagement() {
 
                 // 4. TEAM LEADERS (and their subordinates)
                 const tlRoles = ['teamleader', 'tl', 'team_leader'];
-                const teamLeaders = employees.filter((e: any) => 
-                  tlRoles.includes((e.role || '').toLowerCase().replace(/\s+/g, '')) || 
+                const teamLeaders = visibleEmployees.filter((e: any) => 
+                  tlRoles.includes((e.role || '').toLowerCase().replace(/[\s_]+/g, '')) || 
                   (e.designation || '').toLowerCase() === 'tl'
                 );
+
+                // 5. MANAGERS (as separate groups if needed)
+                const managerRoles = ['manager', 'projectmanager', 'pm'];
+                const branchManagers = visibleEmployees.filter((e: any) => 
+                  managerRoles.includes((e.role || '').toLowerCase().replace(/[\s_]+/g, '')) &&
+                  !assignedIds.has(e.id)
+                );
+
+
 
                 return (<>
                   {/* Management */}
@@ -284,15 +327,27 @@ export default function AttendanceManagement() {
                       <GroupHeader label="Operational Teams (TL Groups)" count={teamLeaders.length} />
                       {teamLeaders.filter(tl => !assignedIds.has(tl.id)).map((tl: any) => {
                         assignedIds.add(tl.id);
-                        const subordinates = employees.filter((e: any) =>
-                          String(e.reporting_to_id) === String(tl.id) ||
-                          String(e.reporting_to_id) === String(tl.employee_id) ||
-                          String(e.manager_id) === String(tl.employee_id)
-                        );
-                        // All subordinates will be rendered under the TL, even if they aren't marked as assigned yet
-                        // (We mark them as assigned here so they don't show up in General Workforce)
+                        const subordinates = visibleEmployees.filter((e: any) => {
+                          if (assignedIds.has(e.id)) return false;
+                          const tid = String(tl.id);
+                          const eid = String(tl.employee_id || '');
+                          return (
+                            String(e.reporting_to_id) === tid ||
+                            String(e.reporting_to_id) === eid ||
+                            String(e.manager_id) === tid ||
+                            String(e.manager_id) === eid ||
+                            String(e.team_leader_id) === tid ||
+                            String(e.team_leader_id) === eid ||
+                            String(e.reporting_manager_id) === tid ||
+                            String(e.reporting_manager_id) === eid
+                          );
+                        });
+
+                        
+                        // Mark all found subordinates as assigned
                         subordinates.forEach(s => assignedIds.add(s.id));
                         const isExpanded = expandedNodes[tl.id] || false;
+                        
                         return (
                           <React.Fragment key={tl.id}>
                             {renderEmployeeRow(tl, 0, subordinates.length, () => setExpandedNodes({ ...expandedNodes, [tl.id]: !isExpanded }))}
@@ -303,15 +358,65 @@ export default function AttendanceManagement() {
                     </>
                   )}
 
-                  {/* General Workforce */}
+                  {/* Manager Groups (for those not under TLs) */}
+                  {branchManagers.length > 0 && (
+                    <>
+                      <GroupHeader label="Management Units" count={branchManagers.length} />
+                      {branchManagers.map((mgr: any) => {
+                        assignedIds.add(mgr.id);
+                        const subordinates = employees.filter((e: any) => {
+                          if (assignedIds.has(e.id)) return false;
+                          const tid = String(mgr.id);
+                          const eid = String(mgr.employee_id || '');
+                          return (
+                            String(e.reporting_to_id) === tid ||
+                            String(e.reporting_to_id) === eid ||
+                            String(e.manager_id) === tid ||
+                            String(e.manager_id) === eid ||
+                            String(e.reporting_manager_id) === tid ||
+                            String(e.reporting_manager_id) === eid
+                          );
+                        });
+                        
+                        subordinates.forEach(s => assignedIds.add(s.id));
+                        const isExpanded = expandedNodes[mgr.id] || false;
+                        
+                        return (
+                          <React.Fragment key={mgr.id}>
+                            {renderEmployeeRow(mgr, 0, subordinates.length, () => setExpandedNodes({ ...expandedNodes, [mgr.id]: !isExpanded }))}
+                            {isExpanded && subordinates.map((sub: any) => renderEmployeeRow(sub, 1))}
+                          </React.Fragment>
+                        );
+                      })}
+                    </>
+                  )}
+
+
+                  {/* General Workforce (Grouped by Dept if many) */}
                   {(() => {
-                    const generalStaff = employees.filter(e => !assignedIds.has(e.id));
-                    return generalStaff.length > 0 ? (
+                    const generalStaff = visibleEmployees.filter(e => !assignedIds.has(e.id));
+                    if (generalStaff.length === 0) return null;
+
+                    // If more than 8 general employees, group by department to avoid long lists
+                    if (generalStaff.length > 8 && !searchTerm) {
+                      const depts = Array.from(new Set(generalStaff.map(e => e.department || 'Other')));
+                      return depts.map(dept => {
+                        const deptStaff = generalStaff.filter(e => (e.department || 'Other') === dept);
+                        return (
+                          <React.Fragment key={dept}>
+                            <GroupHeader label={`${dept} Team`} count={deptStaff.length} />
+                            {renderAndAssign(deptStaff)}
+                          </React.Fragment>
+                        );
+                      });
+                    }
+
+                    return (
                       <>
                         <GroupHeader label="General Workforce" count={generalStaff.length} />
                         {renderAndAssign(generalStaff)}
                       </>
-                    ) : null;
+                    );
                   })()}
                 </>);
               })()}
@@ -322,6 +427,7 @@ export default function AttendanceManagement() {
     </div>
   );
 }
+
 
 const statRow: React.CSSProperties = {
   display: "flex",

@@ -317,7 +317,10 @@ function ShiftTable({
                 const sessionBreaks = (session.break_logs && session.break_logs.length > 0)
                     ? session.break_logs
                     : breakLogs.filter((b: any) => String(b.session_id) === String(session.session_id) || String(b.session_id) === String(session.id));
-                const statusStyle = STATUS_STYLES[session.status] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)' };
+                
+                const displayStatus = session.remark === 'Shift Extension' ? 'Shift Extension' : session.status;
+                const statusStyle = STATUS_STYLES[displayStatus] || STATUS_STYLES[session.status] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)' };
+                
                 const isActive = !session.logout_time;
                 const roleKey = (session.role || '').toLowerCase().replace(/[\s_]+/g, '');
                 const roleCfg = ROLE_CONFIG[roleKey];
@@ -392,7 +395,7 @@ function ShiftTable({
                             <div style={{ textAlign: 'center', fontSize: '13px', color: breakSec > 0 ? '#bf5af2' : 'var(--text-tertiary)' }}>{fmtSecs(breakSec)}</div>
                             <div style={{ textAlign: 'center' }}>
                                 <span style={{ padding: '3px 10px', borderRadius: '7px', fontSize: '10px', fontWeight: '800', color: statusStyle.color, background: statusStyle.bg }}>
-                                    {session.status}
+                                    {displayStatus}
                                 </span>
                             </div>
                             <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '11px' }}>{isExpanded ? '▲' : '▼'}</div>

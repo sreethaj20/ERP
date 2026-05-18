@@ -101,17 +101,9 @@ export default function EarlyLoginRequest() {
             <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>Requested Date</label>
             <input
               type="date"
+              className="glass-input"
               value={requestedDate}
               onChange={(e) => setRequestedDate(e.target.value)}
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid var(--border-light)',
-                borderRadius: '12px', 
-                padding: '12px',
-                color: 'var(--text-primary)', 
-                fontSize: '14px',
-                outline: 'none'
-              }}
               disabled={!myEmployee}
             />
           </div>
@@ -121,17 +113,9 @@ export default function EarlyLoginRequest() {
             <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>Requested Login Time</label>
             <input
               type="time"
+              className="glass-input"
               value={requestedTime}
               onChange={(e) => setRequestedTime(e.target.value)}
-              style={{
-                background: 'rgba(255,255,255,0.03)',
-                border: '1px solid var(--border-light)',
-                borderRadius: '12px', 
-                padding: '12px',
-                color: 'var(--text-primary)', 
-                fontSize: '14px',
-                outline: 'none'
-              }}
               disabled={!myEmployee}
             />
           </div>

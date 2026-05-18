@@ -299,6 +299,9 @@ class EmployeeService:
             if 'reporting_to' not in columns: target_cols.append(Employee.reporting_to)
             if 'manager_id' not in columns: target_cols.append(Employee.manager_id)
             if 'reporting_manager_id' not in columns: target_cols.append(Employee.reporting_manager_id)
+            if 'team_leader_id' not in columns: target_cols.append(Employee.team_leader_id)
+            if 'reporting_to_id' not in columns: target_cols.append(Employee.reporting_to_id)
+
             
             query = db.query(*target_cols, User.role.label("user_role"), Manager.name.label("joined_mgr_name"))\
                 .outerjoin(User, Employee.user_id == User.id)\
@@ -327,7 +330,14 @@ class EmployeeService:
             # Handle KeyedTuple result
             for res in results:
                 emp_dict = {c: getattr(res, c) for c in columns if hasattr(res, c)}
+                
+                # Ensure hierarchy fields from target_cols are also included even if not in 'columns' list
+                for extra in ['reporting_to', 'manager_id', 'reporting_manager_id', 'team_leader_id', 'reporting_to_id']:
+                    if extra not in emp_dict and hasattr(res, extra):
+                        emp_dict[extra] = getattr(res, extra)
+                        
                 emp_dict['role'] = res.user_role or emp_dict.get('role') or "employee"
+
                 
                 # Hydrate reporting name from join if missing
                 if not emp_dict.get('reporting_to') and res.joined_mgr_name:
@@ -682,36 +692,35 @@ class EmployeeService:
         
         is_admin_target = target_role in admin_roles or any(r in target_designation for r in admin_roles)
         
-        if role_lower == "manager":
-            # Manager can approve admin roles (Organization oversight)
-            if is_admin_target:
-                return True
+        if role_lower == "manager" and is_admin_target:
+            return True
             
-            # Plus anyone in their reporting hierarchy (Same as TL logic but with manager identity)
+        # 🌳 LEVEL 3: Hierarchy Verification (For Managers and Team Leaders)
+        if role_lower in ["manager", "teamleader", "tl"]:
             from app.models.user import User
-            approver_user = db.query(User).filter(User.employee_id == approver_employee_id).first()
-            approver_user_pk = str(approver_user.id) if approver_user else None
-            approver_identities = {str(approver_employee_id), approver_user_pk}
             
+            # Resolve all possible identities of the approver
+            approver_identities = {str(approver_employee_id)}
+            
+            approver_user = db.query(User).filter(User.employee_id == approver_employee_id).first()
+            if approver_user:
+                approver_identities.add(str(approver_user.id))
+                
+            approver_emp = db.query(Employee).filter(Employee.employee_id == approver_employee_id).first()
+            if not approver_emp and approver_user:
+                approver_emp = db.query(Employee).filter(Employee.user_id == approver_user.id).first()
+                
+            if approver_emp:
+                approver_identities.add(str(approver_emp.id))
+                if approver_emp.employee_id:
+                    approver_identities.add(str(approver_emp.employee_id))
+                if approver_emp.user_id:
+                    approver_identities.add(str(approver_emp.user_id))
+            
+            # Flatten target's supervisors, including reporting_to_id
             supervisors = {
                 str(employee_target.team_leader_id) if employee_target.team_leader_id else None,
-                str(employee_target.manager_id) if employee_target.manager_id else None,
-                str(employee_target.reporting_manager_id) if employee_target.reporting_manager_id else None
-            }
-            return any(identity in supervisors for identity in approver_identities if identity)
-
-        # 🌳 LEVEL 3: Strict Hierarchy Verification (For Team Leaders)
-        if role_lower in ["teamleader", "tl"]:
-            from app.models.user import User
-            approver_user = db.query(User).filter(User.employee_id == approver_employee_id).first()
-            approver_user_pk = str(approver_user.id) if approver_user else None
-            
-            # Consolidate all identities for matching
-            approver_identities = {str(approver_employee_id), approver_user_pk}
-            
-            # Flatten target's supervisors
-            supervisors = {
-                str(employee_target.team_leader_id) if employee_target.team_leader_id else None,
+                str(employee_target.reporting_to_id) if employee_target.reporting_to_id else None,
                 str(employee_target.manager_id) if employee_target.manager_id else None,
                 str(employee_target.reporting_manager_id) if employee_target.reporting_manager_id else None
             }

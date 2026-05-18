@@ -24,7 +24,10 @@ from app.schemas.employee import EmployeeShort
 @router.get("", response_model=List[EmployeeShort])
 def get_all_employees(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager", "it", "recruiter"]))):
     """Returns basic employee info (ID, Name, Role) for dropdowns and references."""
-    columns = ["id", "employee_id", "name", "first_name", "last_name", "role", "department", "reporting_to"]
+    columns = [
+        "id", "employee_id", "name", "first_name", "last_name", "role", "department", 
+        "reporting_to", "reporting_to_id", "manager_id", "team_leader_id", "reporting_manager_id"
+    ]
     return employee_service.get_all_employees(db, skip, limit, columns=columns)
 
 
