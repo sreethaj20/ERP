@@ -9,6 +9,8 @@ interface GlassCardProps {
   className?: string;
   style?: React.CSSProperties;
   onClick?: () => void;
+  onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
 const GlassCard: React.FC<GlassCardProps> = ({
@@ -19,7 +21,9 @@ const GlassCard: React.FC<GlassCardProps> = ({
   children,
   className = "",
   style,
-  onClick
+  onClick,
+  onMouseEnter,
+  onMouseLeave
 }) => {
   return (
     <div
@@ -33,6 +37,8 @@ const GlassCard: React.FC<GlassCardProps> = ({
         ...style
       }}
       onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       {(title || subtitle || headerAction || icon) && (
         <div style={{ marginBottom: "20px", display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

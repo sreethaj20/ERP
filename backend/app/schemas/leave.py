@@ -6,6 +6,7 @@ from decimal import Decimal
 class LeaveBase(BaseModel):
     employee_id: Optional[str] = None
     name: Optional[str] = None
+    employee_name: Optional[str] = None
     department: Optional[str] = None
     leave_type: str # Casual, Sick, Earned, Unpaid
     start_date: date

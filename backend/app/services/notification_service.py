@@ -15,12 +15,15 @@ class NotificationService:
         db_obj = notification_repo.create(db, obj_in)
         # Push to websocket
         await websocket_manager.send_personal_message({
-            "type": "notification",
-            "title": title,
-            "message": message,
-            "category": category,
-            "id": db_obj.id,
-            "created_at": str(db_obj.created_at)
+            "event": "data_updated",
+            "data": {
+                "type": "notifications",
+                "id": db_obj.id,
+                "title": title,
+                "message": message,
+                "category": category,
+                "created_at": str(db_obj.created_at)
+            }
         }, str(user_id))
         return db_obj
 
@@ -113,9 +116,20 @@ class AnnouncementService:
         return announcement_repo.remove_by_id(db, id)
 
 class ActivityService:
-    def log_activity(self, db: Session, user_id: int, username: str, action: str, module: str = None, target_id: str = None, description: str = None):
-        obj_in = ActivityCreate(user_id=user_id, username=username, action=action, module=module, target_id=target_id, description=description)
-        return activity_repo.create(db, obj_in)
+    def log_activity(self, db: Session, user_id: Any, username: str, action: str, module: str = None, target_id: str = None, description: str = None):
+        valid_uid = None
+        if user_id and str(user_id).isdigit() and int(user_id) > 0:
+            from app.models.user import User
+            if db.query(User.id).filter(User.id == int(user_id)).first():
+                valid_uid = int(user_id)
+        msg = description or f"{username} performed {action}"
+        obj_in = ActivityCreate(user_id=valid_uid, username=username, action=action, message=msg, module=module, target_id=target_id, description=description)
+        try:
+            with db.begin_nested():
+                return activity_repo.create(db, obj_in)
+        except Exception as e:
+            print(f"[ACTIVITY SERVICE ERROR] Failed to log activity: {e}")
+            return None
 
     def get_activities(self, db: Session, skip: int = 0, limit: int = 100):
         try:
@@ -129,20 +143,43 @@ class ActivityService:
             raise e
 
 class AuditService:
-    def log_audit(self, db: Session, table_name: str, record_id: str, action: str, changed_by: int, old_value: dict = None, new_value: dict = None):
+    def log_audit(self, db: Session, table_name: str, record_id: str, action: str, changed_by: Any = None, old_value: dict = None, new_value: dict = None):
         from app.models.notification import AuditLog
-        db_obj = AuditLog(
-            table_name=table_name,
-            record_id=str(record_id),
-            action=action,
-            changed_by=str(changed_by) if changed_by is not None else None,
-            old_value=old_value,
-            new_value=new_value
-        )
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
-        return db_obj
+        from app.models.user import User
+
+        valid_user_id = None
+        if changed_by and str(changed_by).strip() not in ["0", "None", "null", ""]:
+            try:
+                c_str = str(changed_by).strip()
+                if c_str.isdigit() and int(c_str) > 0:
+                    uid = int(c_str)
+                    if db.query(User.id).filter(User.id == uid).first():
+                        valid_user_id = uid
+                else:
+                    user = db.query(User.id).filter(
+                        (User.username == c_str) | (User.employee_id == c_str) | (User.email == c_str)
+                    ).first()
+                    if user:
+                        valid_user_id = user[0]
+            except Exception:
+                valid_user_id = None
+
+        try:
+            with db.begin_nested():
+                db_obj = AuditLog(
+                    table_name=table_name,
+                    record_id=str(record_id),
+                    action=action[:20] if action else "UPDATE",
+                    changed_by=valid_user_id,
+                    old_value=str(old_value) if old_value else None,
+                    new_value=str(new_value) if new_value else None
+                )
+                db.add(db_obj)
+                db.flush()
+                return db_obj
+        except Exception as e:
+            print(f"[AUDIT LOG ERROR] Failed to log audit: {e}")
+            return None
 
     def get_audit_logs(self, db: Session, skip: int = 0, limit: int = 100):
         from app.models.notification import AuditLog

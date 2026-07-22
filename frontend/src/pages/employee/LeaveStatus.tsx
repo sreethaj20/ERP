@@ -12,26 +12,26 @@ export default function LeaveStatus() {
   const fetchData = async () => {
     setLoading(true);
     try {
-        const data = await getMyLeaves();
-        setLeaveList(data);
+      const data = await getMyLeaves();
+      setLeaveList(data);
     } catch (e) {
-        console.error("Failed to fetch leaves:", e);
+      console.error("Failed to fetch leaves:", e);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-    
+
     const handleUpdate = (msg: any) => {
-        if (msg.event === "data_updated" && msg.data.type === "leaves") {
-            fetchData();
-        }
+      if (msg.event === "data_updated" && msg.data.type === "leaves") {
+        fetchData();
+      }
     };
     webSocketService.on("data_updated", handleUpdate);
     return () => {
-        webSocketService.off("data_updated", handleUpdate);
+      webSocketService.off("data_updated", handleUpdate);
     };
   }, []);
 
@@ -46,10 +46,10 @@ export default function LeaveStatus() {
   const Pipeline = ({ leave }: { leave: any }) => {
     const info = getStatusInfo(leave.status);
     const userRole = (sessionStorage.getItem('userRole') || 'employee').toLowerCase();
-    
+
     // Who is the official approver for this user?
     const approverLabel = userRole === 'employee' ? 'Team Leader' : 'Manager';
-    
+
     const stages = [
       { id: 'approver', label: approverLabel },
       { id: 'final', label: 'Final' }
@@ -165,8 +165,8 @@ export default function LeaveStatus() {
 
         <GlassCard title="Approval Flow" subtitle="Who approves what">
           <p style={{ color: "var(--text-secondary)", fontSize: '13px', lineHeight: '1.6' }}>
-            To simplify approvals, <b>Standard Employees</b> are now approved directly by their <b>Team Leader</b>. 
-            <br/><br/>
+            To simplify approvals, <b>Standard Employees</b> are now approved directly by their <b>Team Leader</b>.
+            <br /><br />
             <b>Staff Personnel</b> (HR, IT, Recruiter, TLs) are approved directly by the <b>Reporting Manager</b>. All approvals are final upon one click.
           </p>
         </GlassCard>

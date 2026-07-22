@@ -81,7 +81,7 @@ export default function OnboardingRequests() {
 
       const userEmail = result.email || request?.email || 'N/A';
       const userRole = result.role || request?.role_name || 'employee';
-      alert(`✅ Staff Lifecycle Authorized!\n\n🔐 Login: ${userEmail}\n🔑 Password: ${DEFAULT_PASSWORD}\n📋 Role: ${userRole.toUpperCase()}\n\nNote: This staff member is now directly provisioned in your workforce.`);
+      alert(`✅ Staff Lifecycle Authorized!\n\n🔐 Username: ${userEmail.split('@')[0]}\n🔑 Password: ${DEFAULT_PASSWORD}\n📋 Role: ${userRole.toUpperCase()}\n\nNote: This staff member is now directly provisioned in your workforce.`);
 
       // Always refresh local state
       await loadData();

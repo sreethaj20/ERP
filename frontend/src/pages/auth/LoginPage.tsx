@@ -11,7 +11,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   // Core States
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -110,7 +110,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const authData = await loginUser(email, password);
+      const authData = await loginUser(username, password);
       const user = authData.user;
       const token = authData.access_token || authData.token;
 
@@ -171,7 +171,7 @@ export default function LoginPage() {
       await initStorage();
       navigate(dashboardPath, { replace: true });
     } catch (err: any) {
-      setError(err.message || "Invalid email address or password.");
+      setError(err.message || "Invalid username or password.");
     } finally {
       setLoading(false);
     }
@@ -240,7 +240,7 @@ export default function LoginPage() {
       await resetPassword(forgotEmail, verificationCode, newPassword);
       setSuccessMsg("Password reset successfully! You can now log in.");
       setView("login");
-      setEmail(forgotEmail);
+      setUsername(forgotEmail.split('@')[0]);
     } catch (err: any) {
       setError(err.message || "Failed to reset password. Session may have expired.");
     } finally {
@@ -250,10 +250,10 @@ export default function LoginPage() {
 
   const setDemoUser = (role: string) => {
     const demos: any = {
-      manager: { u: "manager@test.com", p: DEFAULT_PASSWORD },
+      manager: { u: "manager", p: DEFAULT_PASSWORD },
     };
     if (demos[role]) {
-      setEmail(demos[role].u);
+      setUsername(demos[role].u);
       setPassword(demos[role].p);
     }
   };
@@ -369,10 +369,10 @@ export default function LoginPage() {
         {view === "login" && (
           <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
             <div style={inputGroupStyle}>
-              <label style={labelStyle}>Work Email (Username)</label>
+              <label style={labelStyle}>Username</label>
               <div style={{ position: "relative" }}>
                 <FaEnvelope style={iconStyle} />
-                <input type="email" placeholder="name@company.com" className="glass-input" value={email} onChange={(e) => setEmail(e.target.value)} required style={fieldStyle}
+                <input type="text" placeholder="Enter Username" className="glass-input" value={username} onChange={(e) => setUsername(e.target.value)} required style={fieldStyle}
                   onFocus={(e) => {
                     e.currentTarget.style.background = "rgba(41, 151, 255, 0.1)";
                     e.currentTarget.style.borderColor = "var(--accent-blue)";

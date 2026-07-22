@@ -10,6 +10,7 @@ import {
   FaFileInvoiceDollar, FaTasks, FaBullhorn, FaFileAlt,
   FaHistory, FaChartPie, FaBuilding, FaIdCard
 } from "react-icons/fa";
+import NoticePeriodBanner from "../../components/NoticePeriodBanner";
 import CompanyInfoWidget from "../../components/CompanyInfoWidget";
 import AnnouncementWidget from "../../components/AnnouncementWidget";
 import { calculateExperience } from "../../utils/dateHelpers";
@@ -40,12 +41,12 @@ export default function EmployeeDashboard() {
       syncCompanyProfile(dData.company);
       setLeaves(pLeaves);
       setPendingCount(dData.pending_requests || 0);
-      
+
       // Sync employee profile for the banner
       if (dData.employee_profile) {
-          sessionStorage.setItem("department", dData.employee_profile.department);
-          sessionStorage.setItem("joinDate", dData.employee_profile.joining_date);
-          sessionStorage.setItem("reportingTo", dData.employee_profile.reporting_to);
+        sessionStorage.setItem("department", dData.employee_profile.department);
+        sessionStorage.setItem("joinDate", dData.employee_profile.joining_date);
+        sessionStorage.setItem("reportingTo", dData.employee_profile.reporting_to);
       }
 
     } catch (error) {
@@ -99,14 +100,23 @@ export default function EmployeeDashboard() {
         lop++;
       } else {
         const status = (dayRecord.status || '').toLowerCase();
-        if (status.includes('present') || status.includes('extension')) present++;
-        else if (status.includes('leave')) leave++;
-        else if (status.includes('half')) {
+        const remark = (dayRecord.remark || '').toLowerCase();
+        if (
+          status.includes('present') || 
+          status.includes('extension') || 
+          status.includes('active') || 
+          remark.includes('extension')
+        ) {
+          present++;
+        } else if (status.includes('leave') || remark.includes('leave')) {
+          leave++;
+        } else if (status.includes('half')) {
           halfDay++;
           present += 0.5;
           lop += 0.5;
+        } else if (status.includes('absent')) {
+          lop++;
         }
-        else if (status.includes('absent')) lop++;
       }
     }
     return { present, leave, lop, halfDay };
@@ -143,6 +153,8 @@ export default function EmployeeDashboard() {
       <ShiftActivityWidget />
 
       <WelcomeBanner role="Team Member" />
+
+      <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
 
       {/* Hero Stats */}
       <div className="grid-5" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "20px", marginTop: "20px", marginBottom: "40px" }}>
@@ -205,7 +217,7 @@ export default function EmployeeDashboard() {
         {modules.map((mod, index) => (
           <div key={index} onClick={() => navigate(mod.path)} className="glass-module-card">
             <div style={{ position: "absolute", top: "20px", right: "20px", opacity: 0.2 }}>
-                {React.cloneElement(mod.icon as React.ReactElement, { size: 40 })}
+              {React.cloneElement(mod.icon as React.ReactElement, { size: 40 })}
             </div>
             <div style={{ fontWeight: '700', fontSize: '18px', marginBottom: '8px' }}>{mod.title}</div>
             <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '24px' }}>{mod.subtitle}</div>

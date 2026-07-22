@@ -38,9 +38,23 @@ class Employee(Base):
     role = Column(String(30)) # Business Role e.g. Software Engineer
     
     # Canonical Dates
-    joining_date = Column(Date, name="date_of_joining")
-    joining_date_v2 = Column(Date, name="joining_date")
-    join_date = Column(Date, name="join_date")
+    joining_date = Column(Date, name="joining_date")
+    
+    @property
+    def joining_date_v2(self):
+        return self.joining_date
+        
+    @joining_date_v2.setter
+    def joining_date_v2(self, value):
+        self.joining_date = value
+        
+    @property
+    def join_date(self):
+        return self.joining_date
+        
+    @join_date.setter
+    def join_date(self, value):
+        self.joining_date = value
     offer_date = Column(Date)
     exit_date = Column(Date)
     resignation_date = Column(Date)

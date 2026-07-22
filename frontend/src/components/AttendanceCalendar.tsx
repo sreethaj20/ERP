@@ -152,16 +152,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             return workedRecordStatus;
         }
 
-        if (holiday) return 'holiday';
-        if (weekOffs.includes(dayName)) return 'weekend';
-        if (dateObj > today) return 'future';
-
-        // 3. Check Leaves
+        // 3. Check Approved Leaves (Takes priority over future date status so approved ranges display on calendar)
         let approvedLeave = null;
         if (type === 'individual') {
             approvedLeave = leaves.find(l => {
-                const lStart = String(l.start_date || l.from_date || '').substring(0, 10);
-                const lEnd = String(l.end_date || l.to_date || '').substring(0, 10);
+                const lStart = String(l.start_date || l.startDate || l.from_date || l.fromDate || '').substring(0, 10);
+                const lEnd = String(l.end_date || l.endDate || l.to_date || l.toDate || '').substring(0, 10);
                 return (((employeeId && String(l.employee_id) === String(employeeId)) || String(l.employee_id) === String(userId)) && l.status?.toLowerCase() === 'approved' && dateStr >= lStart && dateStr <= lEnd);
             });
         } else {
@@ -176,15 +172,19 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                 .map((e: any) => String(e.employee_id || e.id));
 
             approvedLeave = leaves.find(l => {
-                const lStart = String(l.start_date || l.from_date || '').substring(0, 10);
-                const lEnd = String(l.end_date || l.to_date || '').substring(0, 10);
+                const lStart = String(l.start_date || l.startDate || l.from_date || l.fromDate || '').substring(0, 10);
+                const lEnd = String(l.end_date || l.endDate || l.to_date || l.toDate || '').substring(0, 10);
                 const isTeamMember = myTeam.includes(String(l.employee_id));
                 const isDirectlyManaged = (employeeId && (String(l.manager_id) === String(employeeId) || String(l.team_leader_id) === String(employeeId))) || (String(l.manager_id) === String(userId) || String(l.team_leader_id) === String(userId));
                 return ((isTeamMember || isDirectlyManaged) && l.status?.toLowerCase() === 'approved' && dateStr >= lStart && dateStr <= lEnd);
             });
         }
 
-        if (approvedLeave) return 'leave';
+        if (approvedLeave || workedRecordStatus === 'leave') return 'leave';
+
+        if (holiday) return 'holiday';
+        if (weekOffs.includes(dayName)) return 'weekend';
+        if (dateObj > today) return 'future';
         
         // 4. Default to absent if past date with no work record
         return 'absent';

@@ -5,31 +5,26 @@ import GlassCard from "../../components/GlassCard";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
 import { getDashboard } from "../../services/managerService";
 import webSocketService from "../../services/websocketService";
-import api from "../../api/apiClient";
+
 import AnnouncementWidget from "../../components/AnnouncementWidget";
 import {
   FaSync, FaBullhorn,
-  FaUserPlus, FaUserMinus, FaClipboardList,
+  FaClipboardList,
   FaChartBar, FaCalendarCheck, FaUserShield, FaBuilding,
-  FaKey, FaProjectDiagram, FaUserCheck, FaCogs, FaWrench, FaSearch, FaClock, FaUser,
+  FaKey, FaProjectDiagram, FaUserCheck, FaCogs, FaWrench, FaSearch, FaClock,
   FaGlobe, FaShieldAlt, FaTimes, FaUserTie, FaUsers
 } from "react-icons/fa";
 import { syncCompanyProfile } from "../../utils/companyUtils";
 
 
-
-
-
-
 import ShiftActivityWidget from "../../components/ShiftActivityWidget";
 
 import WelcomeBanner from "../../components/WelcomeBanner";
+import NoticePeriodBanner from "../../components/NoticePeriodBanner";
 
 export default function ManagerDashboard() {
   const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<any>(null);
-  const [todayActive, setTodayActive] = useState<any[]>([]);
-  const [todayOnBreak, setTodayOnBreak] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
@@ -46,11 +41,6 @@ export default function ManagerDashboard() {
         sessionStorage.setItem("reportingTo", data.employee_profile.reporting_to);
       }
 
-      // Fetch live shift snapshot
-      const res = await api.get("manager/staff-timesheet");
-      const staffSessions = (res.data || []).filter((s: any) => (s.role || '').toLowerCase() !== 'employee');
-      setTodayActive(staffSessions.filter((s: any) => !s.logout_time));
-      setTodayOnBreak(staffSessions.filter((s: any) => !s.logout_time && s.on_break));
 
       setLoading(false);
     } catch (error) {
@@ -58,6 +48,7 @@ export default function ManagerDashboard() {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadData();
@@ -125,6 +116,8 @@ export default function ManagerDashboard() {
       {/* Shift Activity System */}
       <ShiftActivityWidget />
 
+      <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
+
       {/* Hero Stats & Intelligence */}
       <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "20px", marginBottom: "40px" }}>
         {/* Main Stats */}
@@ -169,38 +162,6 @@ export default function ManagerDashboard() {
                 ))}
               </div>
             </div>
-          )}
-
-          {/* Live Shift Activity Panel */}
-          {todayActive.length > 0 && (
-            <GlassCard
-              title="Live Shift Activity"
-              subtitle={`${todayActive.length} staff currently on shift`}
-              headerAction={
-                <button className="apple-btn" onClick={() => navigate('/manager/staff-timesheet')}
-                  style={{ background: 'rgba(48,209,88,0.12)', color: '#30d158', border: '1px solid rgba(48,209,88,0.2)', fontSize: '12px' }}>
-                  <FaClock style={{ marginRight: '6px' }} />View
-                </button>
-              }
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-                {todayActive.slice(0, 5).map((s: any) => {
-                  let r = (s.role || '').toLowerCase().replace(/[\s_]+/g, '');
-                  if (r === 'itdepartment') r = 'it';
-                  const roleColors: Record<string, string> = {
-                    employee: '#30d158', hr: '#0a84ff', teamleader: '#ff9f0a',
-                    recruiter: '#bf5af2', it: '#64d2ff'
-                  };
-                  const c = roleColors[r] || '#fff';
-                  return (
-                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: s.on_break ? '#ff9f0a' : '#30d158' }} />
-                      <div style={{ fontSize: '12px', fontWeight: '500' }}>{s.employee_name}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </GlassCard>
           )}
         </div>
       </div>
@@ -386,21 +347,6 @@ export default function ManagerDashboard() {
               </div>
               );
 
-              // Strategic Command Styles
-              const controlWidgetStyle: React.CSSProperties = {
-                flex: 1,
-              padding: '16px 20px',
-              background: 'var(--glass-bg)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid var(--border-light)',
-              borderRadius: '20px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.2)'
-};
 
               const iconCircleStyle: React.CSSProperties = {
                 width: '45px',

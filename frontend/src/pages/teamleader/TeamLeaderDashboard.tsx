@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
-import { getDashboard, handleEarlyLogin } from "../../services/teamleaderService";
+import { getDashboard } from "../../services/teamleaderService";
 import webSocketService from "../../services/websocketService";
 import api from "../../api/apiClient";
 import {
@@ -19,12 +19,12 @@ import AnnouncementWidget from "../../components/AnnouncementWidget";
 import ShiftActivityWidget from "../../components/ShiftActivityWidget";
 import WelcomeBanner from "../../components/WelcomeBanner";
 import { syncCompanyProfile } from "../../utils/companyUtils";
+import NoticePeriodBanner from "../../components/NoticePeriodBanner";
 
 export default function TeamLeaderDashboard() {
     const navigate = useNavigate();
     const [dashboardData, setDashboardData] = useState<any>(null);
     const [teamSessions, setTeamSessions] = useState<any[]>([]);
-    const [earlyLoginRequests, setEarlyLoginRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
 
     const loadData = async () => {
@@ -43,11 +43,9 @@ export default function TeamLeaderDashboard() {
             
             // Also fetch the live team shift snapshot
             const res = await api.get("teamleader/attendance");
-            setTeamSessions(res.data || []);
-
-            // Early login requests
-            const elRes = await api.get("teamleader/early-login");
-            setEarlyLoginRequests(elRes.data || []);
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todaySessions = (res.data || []).filter((s: any) => s.date === todayStr);
+            setTeamSessions(todaySessions);
 
         } catch (error) {
             console.error("Error loading dashboard data:", error);
@@ -66,10 +64,6 @@ export default function TeamLeaderDashboard() {
             webSocketService.off("data_updated", handleUpdate);
         };
     }, []);
-
-    const approveEarlyLogin = async (id: number, action: string) => {
-        try { await handleEarlyLogin(id, action); loadData(); } catch (e) { alert("Failed"); }
-    };
 
     const onLeaveToday = dashboardData?.on_leave_today || 0;
     const activeOnShift = teamSessions.filter(s => !s.logout_time).length;
@@ -114,6 +108,8 @@ export default function TeamLeaderDashboard() {
 
             {/* ── Own Shift Activity Widget ── */}
             <ShiftActivityWidget />
+
+            <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
 
             {/* Hero Stats */}
             <div className="grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px", marginBottom: "40px" }}>
@@ -263,16 +259,6 @@ export default function TeamLeaderDashboard() {
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px", marginBottom: "40px" }}>
                 {/* Main Content */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    <GlassCard title="Assigned Interviews" subtitle="Technical evaluation pipeline">
-                        <div style={{ marginTop: "15px", display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <p style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>You have technical rounds assigned for this week.</p>
-                            <button className="apple-btn" onClick={() => navigate('/teamleader/interviews')}
-                                style={{ width: '100%', background: 'rgba(52, 199, 89, 0.1)', color: '#34c759' }}>
-                                Open Interview Panel
-                            </button>
-                        </div>
-                    </GlassCard>
-
                     <GlassCard title="Team Attendance" subtitle="Real-time availability map">
                         <div style={{ marginTop: "15px" }}>
                             <AttendanceCalendar type="team" />
@@ -284,48 +270,6 @@ export default function TeamLeaderDashboard() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <AnnouncementWidget />
                     <CompanyInfoWidget />
-
-                    {/* Early Login Approvals Widget */}
-                    {earlyLoginRequests.length > 0 && (
-                        <GlassCard
-                            title="Early Login Requests"
-                            subtitle="Action required for shift starts"
-                            style={{ borderLeft: '3px solid #ff9f0a' }}
-                        >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
-                                {earlyLoginRequests.map((req: any) => (
-                                    <div key={req.id} style={{
-                                        padding: '12px', borderRadius: '14px',
-                                        background: 'rgba(255,159,10,0.05)', border: '1px solid rgba(255,159,10,0.1)'
-                                    }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                            <div>
-                                                <div style={{ fontSize: '13px', fontWeight: '700' }}>{req.employee_name}</div>
-                                                <div style={{ fontSize: '11px', color: '#ff9f0a', fontWeight: '600', marginTop: '2px' }}>
-                                                    {req.date} @ {req.requested_start_time}
-                                                </div>
-                                            </div>
-                                            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{req.created_at ? new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button
-                                                onClick={() => approveEarlyLogin(req.id, 'approved')}
-                                                style={{ flex: 1, padding: '6px', borderRadius: '8px', background: '#30d158', color: '#fff', border: 'none', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
-                                            >
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => approveEarlyLogin(req.id, 'rejected')}
-                                                style={{ flex: 1, padding: '6px', borderRadius: '8px', background: 'rgba(255,69,58,0.2)', color: '#ff453a', border: 'none', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
-                                            >
-                                                Reject
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </GlassCard>
-                    )}
 
                     <GlassCard title="Team Status" subtitle="Daily overview" style={{ cursor: 'pointer' }} onClick={() => navigate("/teamleader/attendance")}>
                         <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px", color: 'var(--text-secondary)', fontSize: '14px' }}>

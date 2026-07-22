@@ -157,7 +157,24 @@ export default function ShiftTimesheetPage() {
 
     // ── Monthly Summary: per employee, calculate expected vs actual working days ──
     // Build unique employee list: for HR/TL/Manager, use the full list of relevant employees
-    const allRelevantEmployees = showOthers ? getEmployees() : [];
+    const myEmpId = me?.employee_id || employeeId || "";
+    const myUserId = String(userId);
+
+    const allRelevantEmployees = showOthers
+        ? (isTL
+            ? getEmployees().filter((e: any) => {
+                const tlId = String(e.team_leader_id || '');
+                const repId = String(e.reporting_to_id || '');
+                const mgrId = String(e.manager_id || '');
+                const repMgrId = String(e.reporting_manager_id || '');
+
+                return (myEmpId && tlId === myEmpId) || (myUserId && tlId === myUserId) ||
+                       (myEmpId && repId === myEmpId) || (myUserId && repId === myUserId) ||
+                       (myEmpId && mgrId === myEmpId) || (myUserId && mgrId === myUserId) ||
+                       (myEmpId && repMgrId === myEmpId) || (myUserId && repMgrId === myUserId);
+            })
+            : getEmployees())
+        : [];
     const uniqueEmps = showOthers
         ? allRelevantEmployees.map(e => ({ id: e.employee_id || String(e.id), name: e.name || `${e.first_name} ${e.last_name || ''}`.trim(), role: e.role }))
         : [];

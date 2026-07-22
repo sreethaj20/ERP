@@ -10,6 +10,7 @@ import {
   FaIdCard, FaLaptop
 } from "react-icons/fa";
 import { getFileUrl, getEmployeeDocuments } from "../../utils/storage";
+import api from "../../api/apiClient";
 
 export default function EmployeeDocuments() {
   const userId = sessionStorage.getItem("userId") || "";
@@ -35,6 +36,24 @@ export default function EmployeeDocuments() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleBlobDownload = async (docId: any, filename: string) => {
+    try {
+      const res = await api.get(`documents/${docId}/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.warn('[DOCS] Blob download failed, falling back:', e);
+      // Fallback to static URL if blob fails
+      handleDownload(filename, filename);
+    }
   };
 
   const getDocStatus = () => {
@@ -102,7 +121,7 @@ export default function EmployeeDocuments() {
               icon={<FaFileAlt color="#0a84ff" />} 
               size="Dynamic" 
               status={{ label: 'UPLOADED', color: '#30d158', bg: 'rgba(48,209,88,0.1)', icon: <FaCheckCircle size={8} /> }}
-              onDownload={() => handleDownload(doc.file_path, doc.name)}
+              onDownload={() => doc.id ? handleBlobDownload(doc.id, doc.name) : handleDownload(doc.file_path, doc.name)}
             />
           ))}
           {personalDocs.length === 0 && dynamicDocs.length === 0 && (

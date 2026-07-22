@@ -11,9 +11,17 @@ import json
 class RoleService:
     def get_all(self, db: Session, skip: int = 0, limit: int = 100, manager_id: Optional[str] = None):
         from app.models.employee import Employee
+        import datetime as dt
         
         # Base query joining RoleAssignment with Employee
-        query = db.query(role_repo.model, Employee.name, Employee.email, Employee.performance_score).join(
+        query = db.query(
+            role_repo.model, 
+            Employee.name, 
+            Employee.email, 
+            Employee.performance_score,
+            Employee.joining_date,
+            Employee.probation_period_days
+        ).join(
             Employee, Employee.employee_id == role_repo.model.employee_id
         )
         
@@ -24,11 +32,50 @@ class RoleService:
         
         # Flatten and attach data
         final_results = []
-        for role, name, email, score in results:
+        need_commit = False
+        for role, name, email, score, join_date, probation_days in results:
             role.employee_name = name
             role.employee_email = email
             role.performance_score = float(score) if score is not None else None
+            
+            # Check if probation/provision period is over
+            is_probation_over = False
+            if join_date:
+                if isinstance(join_date, dt.datetime):
+                    join_date = join_date.date()
+                prob_days = probation_days if probation_days is not None else 90
+                probation_end_date = join_date + dt.timedelta(days=prob_days)
+                if dt.date.today() > probation_end_date:
+                    is_probation_over = True
+            
+            # If probation is over, deactivate role and block login
+            if is_probation_over:
+                if role.is_active:
+                    role.is_active = False
+                    need_commit = True
+                    
+            # If role is inactive, remove login access AND deactivate user account
+            if not role.is_active:
+                if role.login_enabled:
+                    role.login_enabled = False
+                    need_commit = True
+                # Also deactivate the user account so auth router blocks login
+                emp_record = db.query(Employee).filter(Employee.employee_id == role.employee_id).first()
+                if emp_record and emp_record.user_id:
+                    user_record = db.query(User).filter(User.id == emp_record.user_id).first()
+                    if user_record and user_record.is_active:
+                        user_record.is_active = False
+                        db.add(user_record)
+                        need_commit = True
+                    
             final_results.append(role)
+            
+        if need_commit:
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"[ROLE SERVICE ERROR] Auto-deactivation commit failed: {e}")
             
         return final_results
 
@@ -82,9 +129,18 @@ class RoleService:
         if not db_obj:
             return None
         
+        # Enforce that if deactivating the assignment, we remove login access
+        if obj_in.is_active is False:
+            obj_in.login_enabled = False
+            
         old_val = {c.key: getattr(db_obj, c.key, None) for c in db_obj.__table__.columns}
         res = role_repo.update(db, db_obj, obj_in)
         
+        # Also force check if res is inactive to disable login access
+        if res and not res.is_active:
+            res.login_enabled = False
+            db.add(res)
+            
         # Audit Log
         changer = db.query(User).filter(User.username == assigned_by).first()
         audit = AuditLog(

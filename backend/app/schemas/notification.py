@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List, Any
 from datetime import datetime
 
@@ -88,5 +88,13 @@ class AuditLogOut(AuditLogBase):
     changed_by: Optional[str] = None
     created_at: datetime
 
+    @field_validator('changed_by', mode='before')
+    @classmethod
+    def coerce_changed_by_to_str(cls, v):
+        if v is None:
+            return None
+        return str(v)
+
     class Config:
         from_attributes = True
+

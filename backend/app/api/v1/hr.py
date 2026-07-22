@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Body
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import date, datetime
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, get_current_user_with_role
@@ -57,6 +57,8 @@ def get_all_employees(skip: int = 0, limit: int = 100, db: Session = Depends(get
     HR Master List: Restricted to HR/Admin.
     Returns safe summary data to prevent PII leakage.
     """
+    from app.services.offboarding_service import offboarding_service
+    offboarding_service.check_and_deactivate_expired_offboardings(db)
     # Optimized fetch for list view
     # Optimized fetch for list view - Include all hierarchy fields for proper frontend grouping
     columns = [
@@ -150,11 +152,13 @@ async def update_preboarding_v2(preboard_id: str, obj_in: PreboardingUpdateByHR,
 # --- HR Offboarding ---
 
 @router.get("/offboarding", response_model=List[OffboardingOut])
-def get_hr_offboarding_requests(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):
-    return offboarding_service.get_multi(db, skip, limit)
+def get_hr_offboarding_requests(skip: int = 0, limit: int = 100, offboarding_type: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):
+    return offboarding_service.get_multi(db, skip, limit, offboarding_type=offboarding_type)
 
 @router.post("/offboarding", response_model=OffboardingOut)
 def initiate_offboarding_by_hr(obj_in: OffboardingCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
+    if not obj_in.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id is required")
     return offboarding_service.initiate_offboarding(db, obj_in)
 
 @router.post("/offboarding/{offboard_id}/complete", response_model=OffboardingOut)
@@ -175,7 +179,7 @@ def create_hr_role_assignment(obj_in: RoleAssignmentCreate, db: Session = Depend
     return role_service.assign_role(db, obj_in, current_user.username)
 
 @router.put("/roles/{id}", response_model=RoleAssignmentOut)
-def update_hr_role_assignment(id: int, obj_in: RoleAssignmentUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
+def update_hr_role_assignment(id: str, obj_in: RoleAssignmentUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
     res = role_service.update_assignment(db, id, obj_in)
     if not res:
         raise HTTPException(status_code=404, detail="Role assignment not found")
@@ -356,7 +360,7 @@ async def hr_handle_leave_status(leave_id: str, status: str, rejection_reason: O
 # --- HR Attendance Oversight ---
 
 @router.get("/attendance/corrections", response_model=List[AttendanceCorrectionOut])
-def get_hr_attendance_corrections(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):
+def get_hr_attendance_corrections(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager", "teamleader"]))):
     return attendance_service.get_all_corrections(db, skip, limit, user_role=current_user.role, user_id=current_user.id)
 
 @router.get("/attendance/presence")
@@ -403,9 +407,27 @@ def hr_attendance_checkout(payload: dict, db: Session = Depends(get_db), current
         return {"status": "skipped", "detail": str(e)}
 
 @router.get("/attendance", response_model=List[AttendanceOut])
-def get_all_attendance(date: Optional[date] = None, skip: int = 0, limit: int = 2000, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):
+def get_all_attendance(
+    date: Optional[date] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    skip: int = 0,
+    limit: int = 2000,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))
+):
     """HR: all attendance. Manager: scoped to their team."""
-    return attendance_service.get_my_attendance(db, None, skip, limit, viewer_role=current_user.role, viewer_id=current_user.id, date_filter=date)
+    return attendance_service.get_my_attendance(
+        db,
+        None,
+        skip,
+        limit,
+        viewer_role=current_user.role,
+        viewer_id=current_user.id,
+        date_filter=date,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 @router.patch("/attendance/corrections/{id}", response_model=AttendanceCorrectionOut)
 def handle_attendance_correction(id: int, obj_in: AttendanceCorrectionUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
@@ -514,6 +536,8 @@ def delete_shift(id: int, db: Session = Depends(get_db), current_user: User = De
 
 @router.get("/dashboard")
 def get_hr_dashboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):
+    from app.services.offboarding_service import offboarding_service
+    offboarding_service.check_and_deactivate_expired_offboardings(db)
     from app.services.dashboard_service import dashboard_service
     return dashboard_service.get_hr_dashboard(db, current_user.id)
 
@@ -576,10 +600,59 @@ def get_onboarding_documents(id: str, db: Session = Depends(get_db), current_use
 from app.schemas.job import InterviewOut, OfferOut
 from app.services.job_service import recruitment_service
 
+
 @router.get("/interviews", response_model=List[InterviewOut])
-def get_hr_interviews(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
-    """HR gets a full view of all scheduled interviews."""
+def get_hr_interviews(
+    my_panel: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_role("hr"))
+):
+    """HR gets a full view of all scheduled interviews, or filtered by my-panel."""
+    if my_panel:
+        from app.repositories.employee_repo import employee_repo
+        emp = employee_repo.get_by_user_id(db, current_user.id)
+        emp_id = emp.employee_id if emp else None
+        return recruitment_service.get_interviews(db, tl_id=emp_id)
     return recruitment_service.get_interviews(db)
+
+@router.get("/interviews/my-panel", response_model=List[InterviewOut])
+def get_hr_my_panel_interviews(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
+    """HR panelist: only interviews where this HR user is the assigned interviewer."""
+    from app.repositories.employee_repo import employee_repo
+    emp = employee_repo.get_by_user_id(db, current_user.id)
+    emp_id = emp.employee_id if emp else None
+    return recruitment_service.get_interviews(db, tl_id=emp_id)
+
+@router.patch("/interviews/{interview_id}/feedback", response_model=InterviewOut)
+def hr_submit_interview_feedback(
+    interview_id: int,
+    obj_in: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_role("hr"))
+):
+    """HR panelist: Submit scorecard and feedback for an assigned interview round."""
+    feedback = obj_in.get("feedback", "")
+    rating = obj_in.get("overall_rating")
+    status = obj_in.get("status", "Completed")
+    result = obj_in.get("result")
+    
+    tech_score = obj_in.get("technical_score")
+    comm_score = obj_in.get("communication_score")
+    prob_score = obj_in.get("problem_solving_score")
+    cult_score = obj_in.get("culture_fit_score")
+    rec_url = obj_in.get("recording_url")
+    rev = obj_in.get("recruiter_reviewed")
+    
+    res = recruitment_service.update_interview_feedback(
+        db, interview_id, feedback, rating, status=status, result=result,
+        technical_score=tech_score, communication_score=comm_score,
+        problem_solving_score=prob_score, culture_fit_score=cult_score,
+        recording_url=rec_url, recruiter_reviewed=rev
+    )
+    if not res:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    return res
+
 @router.get("/offers", response_model=List[OfferOut])
 def get_hr_offers(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
     """HR gets a full view of all outstanding offers."""
@@ -588,11 +661,13 @@ def get_hr_offers(db: Session = Depends(get_db), current_user: User = Depends(ge
 # --- HR Offboarding Oversight ---
 
 @router.get("/offboarding", response_model=List[OffboardingOut])
-def get_hr_offboarding_requests(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
-    return offboarding_service.get_multi(db, skip, limit)
+def get_hr_offboarding_requests(skip: int = 0, limit: int = 100, offboarding_type: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
+    return offboarding_service.get_multi(db, skip, limit, offboarding_type=offboarding_type)
 
 @router.post("/offboarding", response_model=OffboardingOut)
 def initiate_offboarding_by_hr(obj_in: OffboardingCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("hr"))):
+    if not obj_in.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id is required")
     return offboarding_service.initiate_offboarding(db, obj_in)
 
 @router.put("/offboarding/{offboard_id}", response_model=OffboardingOut)

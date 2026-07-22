@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { 
-  getEmployees, 
-  getVisibleAttendance, 
-  getEarlyLoginRequests, 
+import {
+  getVisibleAttendance,
+  getEarlyLoginRequests,
   approveEarlyLogin,
   getPendingLeavesForTL
 } from "../../utils/storage";
+import { getTeamMembers } from "../../services/teamleaderService";
 import { downloadCSV } from "../../utils/formatters";
+import api from "../../api/apiClient";
 import {
   HiArrowDownTray, HiAdjustmentsHorizontal, HiUsers,
   HiCalendarDays, HiTableCells
@@ -21,6 +22,7 @@ export default function TeamLeaderReports() {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [earlyRequests, setEarlyRequests] = useState<any[]>([]);
   const [pendingLeaves, setPendingLeaves] = useState<any[]>([]);
+  const [reportStats, setReportStats] = useState<any>(null);
   // Filter state
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -29,20 +31,12 @@ export default function TeamLeaderReports() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const empId = sessionStorage.getItem("employeeId") || "";
-        const allEmployees = getEmployees();
-        const team = allEmployees.filter((e: any) => {
-            const tlId = String(e.team_leader_id || '');
-            const repId = String(e.reporting_to_id || '');
-            const mgrId = String(e.manager_id || '');
-            const repMgrId = String(e.reporting_manager_id || '');
-
-            return tlId === String(userId) || tlId === String(empId) ||
-                   repId === String(userId) || repId === String(empId) ||
-                   mgrId === String(userId) || mgrId === String(empId) ||
-                   repMgrId === String(userId) || repMgrId === String(empId);
-        });
-        setTeamMembers(team);
+        const team = await getTeamMembers();
+        const normalizedTeam = (team || []).map((e: any) => ({
+          ...e,
+          name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim()
+        }));
+        setTeamMembers(normalizedTeam);
 
         // Fetch team attendance
         const teamAttendance = getVisibleAttendance('teamleader', userId);
@@ -55,6 +49,14 @@ export default function TeamLeaderReports() {
         // 🆕 Load pending leaves for approval
         const tlLeaves = await getPendingLeavesForTL(userId);
         setPendingLeaves(tlLeaves);
+
+        // 🔗 Fetch TL reports summary from backend
+        try {
+          const stats = await api.get('teamleader/reports');
+          setReportStats(stats.data);
+        } catch (e) {
+          console.warn('[TL Reports] Failed to fetch report stats:', e);
+        }
       } catch (error) {
         console.error("Failed to load reports data:", error);
         setEarlyRequests([]);
@@ -136,6 +138,24 @@ export default function TeamLeaderReports() {
         <h1 style={{ fontSize: "32px", fontWeight: "700" }}>Analytical Insights</h1>
         <p className="subtitle">Consolidated performance & attendance metrics for your direct reports</p>
       </div>
+
+      {/* Summary Stats from Backend */}
+      {reportStats && (
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '30px', flexWrap: 'wrap' }}>
+          {[
+            { label: 'Team Size', value: reportStats.total_members || reportStats.team_size || teamMembers.length, color: '#0a84ff', icon: '👥' },
+            { label: 'Attendance Avg', value: `${reportStats.attendance_avg || reportStats.avg_attendance || '—'}%`, color: '#30d158', icon: '📅' },
+            { label: 'Productivity', value: `${reportStats.productivity_score || reportStats.productivity || '—'}%`, color: '#bf5af2', icon: '⚡' },
+            { label: 'Open Tickets', value: reportStats.open_tickets ?? '—', color: '#ff9f0a', icon: '🎫' },
+          ].map(stat => (
+            <GlassCard key={stat.label} style={{ flex: 1, minWidth: '150px', borderLeft: `3px solid ${stat.color}`, padding: '16px' }}>
+              <div style={{ fontSize: '24px', marginBottom: '4px' }}>{stat.icon}</div>
+              <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff' }}>{stat.value}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '700', marginTop: '4px' }}>{stat.label}</div>
+            </GlassCard>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px', marginBottom: '30px' }}>
         {/* Filters */}
@@ -272,7 +292,7 @@ export default function TeamLeaderReports() {
                                 await approveEarlyLogin(req.id, 'approved');
                                 const allReqs = await getEarlyLoginRequests(userId);
                                 setEarlyRequests(allReqs);
-                              } catch(e) {}
+                              } catch (e) { }
                             }}
                             style={{ background: '#30d158', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
                           >
@@ -284,7 +304,7 @@ export default function TeamLeaderReports() {
                                 await approveEarlyLogin(req.id, 'rejected');
                                 const allReqs = await getEarlyLoginRequests(userId);
                                 setEarlyRequests(allReqs);
-                              } catch(e) {}
+                              } catch (e) { }
                             }}
                             style={{ background: 'rgba(255,69,58,0.2)', color: '#ff453a', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
                           >

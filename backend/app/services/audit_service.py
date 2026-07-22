@@ -30,28 +30,34 @@ class AuditService:
             
             # Identity Resolution: AuditLog.changed_by is a FK to users.id (numeric)
             resolved_user_id = None
-            if changed_by:
+            if changed_by and str(changed_by).strip() not in ["0", "None", "null", ""]:
                 try:
-                    if str(changed_by).isdigit():
-                        resolved_user_id = str(changed_by)
+                    c_str = str(changed_by).strip()
+                    from app.models.user import User
+                    if c_str.isdigit() and int(c_str) > 0:
+                        uid = int(c_str)
+                        if db.query(User.id).filter(User.id == uid).first():
+                            resolved_user_id = uid
                     else:
-                        from app.models.user import User
-                        user = db.query(User).filter(User.username == str(changed_by)).first()
+                        user = db.query(User.id).filter(
+                            (User.username == c_str) | (User.employee_id == c_str) | (User.email == c_str)
+                        ).first()
                         if user:
-                            resolved_user_id = str(user.id)
+                            resolved_user_id = user[0]
                 except Exception as ex:
                     print(f"Identity resolution failed: {ex}")
 
-            log = AuditLog(
-                table_name=table_name,
-                record_id=record_id,
-                action=action,
-                old_value=old_str,
-                new_value=new_str,
-                changed_by=resolved_user_id
-            )
-            db.add(log)
-            # Not committing here to ensure it's part of the caller's transaction
+            with db.begin_nested():
+                log = AuditLog(
+                    table_name=table_name,
+                    record_id=record_id,
+                    action=action[:20] if action else "UPDATE",
+                    old_value=old_str,
+                    new_value=new_str,
+                    changed_by=resolved_user_id
+                )
+                db.add(log)
+                db.flush()
         except Exception as e:
             print(f"Failed to log audit action: {e}")
 

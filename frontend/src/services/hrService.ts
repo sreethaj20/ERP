@@ -44,3 +44,19 @@ export const getEmployees = async () => {
     const response = await api.get("hr/employees");
     return response.data;
 };
+
+export const getRoles = async () => {
+  const response = await api.get("hr/roles");
+  return response.data;
+};
+
+export const createRoleAssignment = async (payload: any) => {
+  const response = await api.post("hr/roles", payload);
+  return response.data;
+};
+
+export const updateRoleAssignment = async (id: number | string, payload: any) => {
+  const response = await api.put(`hr/roles/${id}`, payload);
+  return response.data;
+};
+

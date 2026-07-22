@@ -3,12 +3,15 @@ import { useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import Logo from "../../components/Logo";
+import headerLogoImage from "../../assets/mercure-logo.jpeg";
+import watermarkImage from "../../assets/mercure-logo.png";
+import uditSignatureImage from "../../assets/udit-signature.png";
 import {
   getEmployees, refreshEmployees, addEmployee, updateEmployee, DEFAULT_PASSWORD,
-  getOffers, getCandidates, updateOfferStatus,
+  getOffers, refreshOffers, getCandidates, updateOfferStatus,
   getOnboardingRequests, refreshOnboarding, managerUpdateOnboardingRequest as updateOnboardingRequest, initiateManagementBulkOnboarding as initiateBulkOnboarding,
   managerApproveOnboardingRequest as authorizeOnboarding, managerRejectOnboardingRequest, deleteOnboardingRequest,
-  getPreboardingList, refreshPreboarding, updatePreboarding,
+  getPreboardingList, refreshPreboarding, updatePreboarding, completePreboarding,
   getRoleAssignments, refreshRoles, updateRoleAssignment,
   createOffboardingRequest, addOffboardingRequest, getOffboardingRequests, refreshOffboarding, updateOffboardingRequest, deleteOffboardingRequest,
   uploadFile, getFileUrl
@@ -22,6 +25,73 @@ import {
   FaFileSignature, FaThumbsUp, FaThumbsDown, FaCheck, FaTimes
 } from "react-icons/fa";
 
+const formatLetterData = (emp: any, reqRecord: any) => {
+  const toTitleCase = (str: string) => {
+    if (!str) return '';
+    const formatted = str.trim();
+    if (formatted.toUpperCase() === 'TEAMLEADER') return 'Team Leader';
+    return formatted.replace(/\b\w+/g, txt => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
+  };
+
+  const parseDateString = (dateInput: any): Date | null => {
+    if (!dateInput) return null;
+    if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput;
+    
+    const str = String(dateInput).trim();
+    if (!str) return null;
+
+    const isoMatch = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+    if (isoMatch) {
+      const year = parseInt(isoMatch[1], 10);
+      const month = parseInt(isoMatch[2], 10) - 1;
+      const day = parseInt(isoMatch[3], 10);
+      return new Date(year, month, day);
+    }
+
+    const textMonthMatch = str.match(/^(\d{1,2})[-/\s]([A-Za-z]+)[-/\s](\d{4})/);
+    if (textMonthMatch) {
+      const day = parseInt(textMonthMatch[1], 10);
+      const monthStr = textMonthMatch[2].toLowerCase();
+      const year = parseInt(textMonthMatch[3], 10);
+      
+      const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+      const monthIndex = months.findIndex(m => m.startsWith(monthStr));
+      if (monthIndex !== -1) {
+        return new Date(year, monthIndex, day);
+      }
+    }
+
+    const parsed = new Date(str);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  const formatDate = (dateInput: any) => {
+    const parsed = parseDateString(dateInput);
+    if (!parsed) return 'TBD';
+    const day = String(parsed.getDate()).padStart(2, '0');
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return `${day}-${months[parsed.getMonth()]}-${parsed.getFullYear()}`;
+  };
+
+  const resignationDateVal = parseDateString(reqRecord?.created_at || reqRecord?.request_date) || new Date();
+  const noticeDays = reqRecord?.notice_period_days !== undefined ? reqRecord.notice_period_days : 60;
+  const dorVal = (() => {
+    const d = new Date(resignationDateVal);
+    d.setDate(d.getDate() + noticeDays);
+    return d;
+  })();
+
+  return {
+    name: toTitleCase(emp?.name || (emp?.first_name ? `${emp.first_name} ${emp.last_name}` : 'Employee')),
+    id: emp?.employee_id || emp?.id || reqRecord?.employee_id,
+    designation: toTitleCase(emp?.designation || 'Specialist'),
+    doj: formatDate(emp?.joining_date || emp?.doj || '2023-01-01'),
+    dor: formatDate(dorVal),
+    resignationDate: formatDate(resignationDateVal),
+    issueDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  };
+};
+
 export default function LifecycleControl() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'onboarding' | 'preboarding' | 'role_assignments' | 'offboarding' | 'workforce' | 'offers'>('workforce');
@@ -32,23 +102,39 @@ export default function LifecycleControl() {
     onboarding: [],
     preboarding: [],
     roleAssignments: [],
-    offboarding: []
+    offboarding: [],
+    offers: []
   });
 
   // Relieving Letter State
   const [showLetter, setShowLetter] = useState(false);
   const [letterData, setLetterData] = useState<any>(null);
 
+  const handlePrintRelievingLetter = () => {
+    if (!letterData) return;
+    const empName = (letterData.name || 'Employee').replace(/[^a-zA-Z0-9]/g, '_');
+    const pdfName = `Relieving_Letter_${empName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const originalTitle = document.title;
+    document.title = pdfName;
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
+    }, 300);
+  };
+
   const refresh = async () => {
     setLoading(true);
     try {
       // Fetch all data for all tabs
-      const [employeeData, onboardingData, preboardingData, roleAssignmentsData, offboardingData] = await Promise.all([
+      const [employeeData, onboardingData, preboardingData, roleAssignmentsData, offboardingData, offersData] = await Promise.all([
         refreshEmployees(),
         refreshOnboarding(),
         refreshPreboarding(),
         refreshRoles(),
-        refreshOffboarding()
+        refreshOffboarding(),
+        refreshOffers()
       ]);
 
       setEmployeesState(Array.isArray(employeeData) ? employeeData : []);
@@ -58,7 +144,8 @@ export default function LifecycleControl() {
         onboarding: Array.isArray(onboardingData) ? onboardingData : [],
         preboarding: Array.isArray(preboardingData) ? preboardingData : [],
         roleAssignments: Array.isArray(roleAssignmentsData) ? roleAssignmentsData : [],
-        offboarding: Array.isArray(offboardingData) ? offboardingData : []
+        offboarding: Array.isArray(offboardingData) ? offboardingData : [],
+        offers: Array.isArray(offersData) ? offersData : []
       });
 
       // Increment refresh key to trigger re-renders
@@ -69,7 +156,8 @@ export default function LifecycleControl() {
         onboarding: onboardingData?.length || 0,
         preboarding: preboardingData?.length || 0,
         roleAssignments: roleAssignmentsData?.length || 0,
-        offboarding: offboardingData?.length || 0
+        offboarding: offboardingData?.length || 0,
+        offers: offersData?.length || 0
       });
     } catch (error) {
       console.error('Error refreshing data:', error);
@@ -98,8 +186,11 @@ export default function LifecycleControl() {
     offers: any[];
   }) => {
     const currentManagerId = sessionStorage.getItem('employeeId') || sessionStorage.getItem('userId') || '';
+    const normalizeId = (id: any) => String(id || '').replace(/[\s_-]+/g, '').toLowerCase();
+    const currentManagerIdNormalized = normalizeId(currentManagerId);
+    
     const managerOffers = offers.filter((offer: any) =>
-      String(offer.reporting_manager_id || '') === String(currentManagerId)
+      normalizeId(offer.reporting_manager_id) === currentManagerIdNormalized
     );
 
     const approveOffer = async (offerId: number) => {
@@ -124,9 +215,12 @@ export default function LifecycleControl() {
       }
     };
 
+    const pendingCount = managerOffers.filter((o: any) => o.offer_status === 'sent').length;
+    const totalCount = managerOffers.length;
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-        <GlassCard title="Offers Pipeline" subtitle={`Recruiter offers pending manager approval (${managerOffers.length})`}>
+        <GlassCard title="Offers Pipeline" subtitle={`Recruiter offers pending approval: ${pendingCount} | Total realized offers: ${totalCount}`}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px', marginTop: '20px' }}>
             {managerOffers.length === 0 ? (
               <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: 'var(--text-tertiary)' }}>
@@ -197,7 +291,8 @@ export default function LifecycleControl() {
 
   return (
     <div className="dashboard-container">
-      <Header role="Manager" title="Global Executive Lifecycle" />
+      <div className="no-print">
+        <Header role="Manager" title="Global Executive Lifecycle" />
 
 
       <div style={{ marginBottom: "30px", display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -224,7 +319,7 @@ export default function LifecycleControl() {
       {activeTab === 'onboarding' && <OnboardingTab refresh={refresh} employees={employees} onboardingRequests={tabData.onboarding} key={refreshKey} />}
       {activeTab === 'preboarding' && <PreboardingTab refresh={refresh} employees={employees} preboardingData={tabData.preboarding} key={refreshKey} />}
       {activeTab === 'role_assignments' && <RoleAssignmentsTab refresh={refresh} employees={employees} roleAssignmentsData={tabData.roleAssignments} key={refreshKey} />}
-      {activeTab === 'offers' && <OffersPipelineTab refresh={refresh} employees={employees} offers={getOffers()} key={refreshKey} />}
+      {activeTab === 'offers' && <OffersPipelineTab refresh={refresh} employees={employees} offers={tabData.offers || []} key={refreshKey} />}
 
       {activeTab === 'offboarding' && (
         <OffboardingTab
@@ -238,16 +333,112 @@ export default function LifecycleControl() {
           }}
         />
       )}
+      </div>
 
       {/* Relieving Letter Modal */}
       {showLetter && letterData && (
-        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(15px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '60px 20px', overflowY: 'auto' }}>
+        <div className="relieving-letter-modal-wrapper" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(15px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '60px 20px', overflowY: 'auto' }}>
           <style>{`
             @media print {
-              body * { visibility: hidden; }
-              .relieving-letter, .relieving-letter * { visibility: visible; }
-              .relieving-letter { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
-              .no-print { display: none !important; }
+              @page {
+                size: A4;
+                margin: 0 !important;
+              }
+              
+              header, footer, nav, .top-header, .bottom-dock-container, .announcement-banner, .no-print, .no-print * {
+                display: none !important;
+                visibility: hidden !important;
+              }
+              
+              html, body, #root, .layout-root, .dashboard-container {
+                display: block !important;
+                visibility: visible !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: none !important;
+              }
+              
+              .dashboard-container::before,
+              .dashboard-container::after {
+                display: none !important;
+                content: none !important;
+              }
+              
+              .relieving-letter-modal-wrapper {
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+                z-index: auto !important;
+                backdrop-filter: none !important;
+              }
+              
+              .relieving-letter-modal-wrapper > div {
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                width: 210mm !important;
+                max-width: none !important;
+                height: auto !important;
+                min-height: 0 !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+              }
+              
+              .relieving-letter {
+                display: flex !important;
+                flex-direction: column !important;
+                position: relative !important;
+                width: 210mm !important;
+                height: 268mm !important;
+                min-height: 268mm !important;
+                box-sizing: border-box !important;
+                padding: 15mm 20mm !important;
+                margin: 0 auto !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                color: black !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                break-after: avoid !important;
+                overflow: hidden !important;
+              }
+              
+              .relieving-letter-footer {
+                position: absolute !important;
+                bottom: 10mm !important;
+                left: 20mm !important;
+                right: 20mm !important;
+                padding-top: 10px !important;
+                border-top: 1.5px solid #2b6cb0 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: flex-start !important;
+              }
+              
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
             }
           `}</style>
           <div style={{ position: 'relative', width: '100%', maxWidth: '850px', marginBottom: '60px' }}>
@@ -255,63 +446,132 @@ export default function LifecycleControl() {
               <FaTimesCircle size={20} /> Close Preview
             </button>
 
-            <div className="relieving-letter" style={{ background: 'white', color: '#333', padding: '80px', borderRadius: '4px', boxShadow: '0 30px 60px rgba(0,0,0,0.6)', fontFamily: '"Times New Roman", Times, serif', minHeight: '1050px', position: 'relative' }}>
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #333', paddingBottom: '20px', marginBottom: '40px' }}>
-                <img src="/logo.png" alt="Mercure Logo" style={{ height: '80px', width: 'auto', marginBottom: '10px' }} />
-                <div style={{ fontSize: '28px', fontWeight: '900', marginBottom: '8px', color: '#000', letterSpacing: '1px' }}>{letterData.company}</div>
-                <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.4' }}>
-                  {letterData.address || 'Corporate Headquarters, Bangalore - 560001'}<br />
-                  CIN: U72200KA2023PTC178901 | GST: 29ABCDE1234F1Z5 | Email: hr@mercuresolutions.com
+            <div className="relieving-letter" style={{ 
+                background: 'white', 
+                color: '#333', 
+                padding: '60px 80px', 
+                borderRadius: '4px', 
+                boxShadow: '0 30px 60px rgba(0,0,0,0.6)', 
+                fontFamily: "'Aptos', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
+                minHeight: '1050px', 
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box'
+            }}>
+              {/* Watermark Background Layer */}
+              <div className="watermark-layer" style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '550px',
+                  opacity: 0.12,
+                  zIndex: 0,
+                  pointerEvents: 'none',
+                  WebkitPrintColorAdjust: 'exact',
+                  printColorAdjust: 'exact',
+                  userSelect: 'none',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+              }}>
+                  <img src={watermarkImage} alt="Watermark" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }} />
+              </div>
+
+
+                {/* Company Header */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingBottom: '8px',
+                    marginBottom: '30px',
+                    borderBottom: '1.5px solid #2b6cb0'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', height: '60px', overflow: 'hidden' }}>
+                        <img
+                            src={headerLogoImage}
+                            alt="Mercure Solutions"
+                            style={{ width: '200px', height: '60px', objectFit: 'contain', margin: '0', imageRendering: 'crisp-edges' }}
+                        />
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ margin: '0', fontSize: '15px', color: '#000000', fontWeight: 'normal' }}>www.mercuresolution.com</p>
+                    </div>
                 </div>
-              </div>
 
-              <div style={{ textAlign: 'right', marginBottom: '40px', fontSize: '14px' }}>
-                <b>Date:</b> {letterData.issueDate}
-              </div>
-
-              <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-                <h2 style={{ fontSize: '22px', textDecoration: 'underline', fontWeight: 'bold' }}>RELIEVING CUM EXPERIENCE LETTER</h2>
-              </div>
-
-              <div style={{ fontSize: '16px', lineHeight: '1.8', textAlign: 'justify' }}>
-                <p><b>TO WHOMSOEVER IT MAY CONCERN</b></p>
-                <br />
-                <p>
-                  This is to certify that <b>Mr./Ms. {letterData.name}</b> (Employee ID: <b>{letterData.id}</b>) was employed
-                  with Mercure Solutions Private Limited as a <b>{letterData.designation}</b> from <b>{letterData.doj}</b> to <b>{letterData.dor}</b>.
-                </p>
-                <p>
-                  During {letterData.name}'s tenure with us, they have displayed high levels of professional competence and dedication.
-                  The conduct and performance during the employment period were found to be satisfactory.
-                </p>
-                <p>
-                  We confirm that all dues have been cleared and {letterData.name} has been relieved of all responsibilities
-                  and duties from the close of business hours on <b>{letterData.dor}</b>.
-                </p>
-                <p>
-                  We wish <b>{letterData.name}</b> the very best for all future endeavors.
-                </p>
-              </div>
-
-              <div style={{ marginTop: '120px', textAlign: 'right' }}>
-                <p style={{ marginBottom: '40px', fontSize: '14px' }}>For <b>{letterData.company}</b>,</p>
-                <div style={{ marginTop: '60px' }}>
-                  <div style={{ borderTop: '2px solid #333', width: '250px', paddingTop: '12px', fontSize: '14px' }}>
-                    <b>Authorized Signatory</b><br />
-                    <span style={{ fontSize: '13px', color: '#666' }}>Head - Human Resources</span><br />
-                    <span style={{ fontSize: '12px', color: '#888' }}>Date: {letterData.issueDate}</span>
-                  </div>
+                <div style={{ textAlign: 'right', marginBottom: '30px', fontSize: '13px' }}>
+                  <b>Date:</b> {letterData.issueDate}
                 </div>
-              </div>
 
-              <div style={{ position: 'absolute', bottom: '80px', right: '80px', width: '100px', height: '100px', border: '5px double #1a3a5f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', transform: 'rotate(-15deg)', opacity: 0.15 }}>
-                <div style={{ textAlign: 'center', color: '#1a3a5f', fontSize: '10px', fontWeight: 'bold' }}>MERCURE<br />CORPORATE<br />SEAL</div>
-              </div>
+                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                  <h2 style={{ fontSize: '20px', textDecoration: 'underline', fontWeight: 'bold', margin: 0 }}>RELIEVING LETTER</h2>
+                </div>
+
+                <div style={{ fontSize: '14px', lineHeight: '1.8', textAlign: 'justify', color: '#000' }}>
+                  <p>Dear <b>{letterData.name}</b>,</p>
+                  <br />
+                  <p>
+                    With reference to your resignation email dated <b>{letterData.resignationDate}</b>, you are hereby relieved from your duties as of <b>{letterData.dor}</b>.
+                    We confirm that you have been working with Mercure Solutions as <b>{letterData.designation}</b> from <b>{letterData.doj}</b> to <b>{letterData.dor}</b>.
+                  </p>
+                  <p>
+                    We would like to thank you for your service with Mercure Solutions and wish you the best in your future endeavors.
+                  </p>
+                  <p style={{ marginTop: '16px', fontSize: '13px' }}>
+                    <b>Note:</b> It is recommended to keep your current salaried bank account active for a minimum of 1 year from your date of relieving to ensure fast and hassle-free transactions by the company.
+                  </p>
+                </div>
+
+                 <div style={{ marginTop: '60px' }}>
+                   <p style={{ margin: 0 }}>Yours sincerely,</p>
+                   <p style={{ margin: '2px 0 0 0' }}>For and on behalf of <b>Mercure Solutions</b></p>
+                   <div style={{ height: '65px', display: 'flex', alignItems: 'center', margin: '3px 0 0 0' }}>
+                     <img 
+                       src={uditSignatureImage} 
+                       alt="Udit Rao Signature" 
+                       style={{ height: '60px', objectFit: 'contain', display: 'block' }} 
+                     />
+                   </div>
+                   <div style={{ fontSize: '13px' }}>
+                     <b>Udit Rao</b>
+                     <div style={{ fontSize: '11px', color: '#666' }}>HR Department</div>
+                   </div>
+                 </div>
+
+
+                {/* Footer Section */}
+                <div className="relieving-letter-footer" style={{
+                    position: 'absolute',
+                    bottom: '60px',
+                    left: '80px',
+                    right: '80px',
+                    paddingTop: '10px',
+                    borderTop: '1.5px solid #2b6cb0',
+                    fontSize: '9px',
+                    color: '#333333',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                }}>
+                    <div style={{ paddingRight: '20px', textAlign: 'left' }}>
+                        <strong style={{ color: '#2b6cb0' }}>Regd. Office:</strong> Mercure Solutions Private Limited<br />
+                        M Floor, Mahaveer Waterpark, Kondapur,<br />
+                        Hitec City, Hyderabad, Telangana - 500084
+                    </div>
+                    <div style={{ marginLeft: 'auto', textAlign: 'left' }}>
+                        <strong style={{ color: '#2b6cb0' }}>CIN:</strong> U62013TS2025PTC196108<br />
+                        <strong style={{ color: '#2b6cb0' }}>GSTIN:</strong> 36AATCM1458J1ZX<br />
+                        <strong style={{ color: '#2b6cb0' }}>E:</strong> <a href="mailto:info@mercuresolution.com" style={{ color: '#2b6cb0', textDecoration: 'underline' }}>info@mercuresolution.com</a>
+                    </div>
+                </div>
             </div>
 
             <div className="no-print" style={{ marginTop: '30px', display: 'flex', justifyContent: 'center' }}>
               <button
-                onClick={() => window.print()}
+                onClick={handlePrintRelievingLetter}
                 className="apple-btn"
                 style={{
                   background: '#30d158',
@@ -483,7 +743,7 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
       const isStaff = ['hr', 'recruiter', 'teamleader', 'it', 'manager'].some(r => role.includes(r));
 
       if (isStaff) {
-        alert(`✅ Staff Lifecycle Authorized for ${fullName}\n\n🔐 Login: ${newHire.email}\n🔑 Password: ${DEFAULT_PASSWORD}\n📋 Role: ${role.toUpperCase()}\n\nNote: This staff member is directly provisioned in your workforce.`);
+        alert(`✅ Staff Lifecycle Authorized for ${fullName}\n\n🔐 Username: ${newHire.email.split('@')[0]}\n🔑 Password: ${DEFAULT_PASSWORD}\n📋 Role: ${role.toUpperCase()}\n\nNote: This staff member is directly provisioned in your workforce.`);
       } else {
         alert(`📩 Request Forwarded to HR\n\nOnboarding for ${fullName} has been sent to the HR Portal for centralized provisioning.\n\nYou can track their status in the Workforce dashboard once completed.`);
       }
@@ -959,7 +1219,8 @@ function PreboardingTab({ refresh, employees, preboardingData }: any) {
     emergency_contact_name: '', emergency_contact_phone: '', emergency_contact_relation: '',
     bank_name: '', bank_account_number: '', bank_ifsc_code: '',
     policy_acknowledged: false, training_completed: false,
-    thirty_day_goals: '', manager_notes: '', documents_verified_by_hr: false
+    thirty_day_goals: '', manager_notes: '', documents_verified_by_hr: false,
+    permanent_address: '', current_address: '', city: '', state: '', pincode: '', country: ''
   });
 
   useEffect(() => {
@@ -993,7 +1254,13 @@ function PreboardingTab({ refresh, employees, preboardingData }: any) {
         training_completed: selected.training_completed || false,
         thirty_day_goals: selected.thirty_day_goals || '',
         manager_notes: selected.manager_notes || '',
-        documents_verified_by_hr: selected.documents_verified_by_hr || false
+        documents_verified_by_hr: selected.documents_verified_by_hr || false,
+        permanent_address: selected.permanent_address || '',
+        current_address: selected.current_address || '',
+        city: selected.city || '',
+        state: selected.state || '',
+        pincode: selected.pincode || '',
+        country: selected.country || ''
       });
     }
   }, [selected]);
@@ -1020,7 +1287,13 @@ function PreboardingTab({ refresh, employees, preboardingData }: any) {
         emergency_contact_relation: form.emergency_contact_relation,
         policy_acknowledged: form.policy_acknowledged,
         training_completed: form.training_completed,
-        documents_verified_by_hr: form.documents_verified_by_hr
+        documents_verified_by_hr: form.documents_verified_by_hr,
+        permanent_address: form.permanent_address,
+        current_address: form.current_address,
+        city: form.city,
+        state: form.state,
+        pincode: form.pincode,
+        country: form.country
       });
       alert('Preboarding data updated!');
       refresh();
@@ -1037,18 +1310,14 @@ function PreboardingTab({ refresh, employees, preboardingData }: any) {
     if (!id) return;
 
     try {
-      await updatePreboarding(id, {
-        ...form,
-        self_onboarding_status: 'completed',
-        manager_review_status: 'approved'
-      });
+      await completePreboarding(id);
       setSelected(null);
 
       alert('Preboarding marked as completed!');
       refresh();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing preboarding:', error);
-      alert('Error marking preboarding as completed');
+      alert('Error marking preboarding as completed: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -1056,8 +1325,16 @@ function PreboardingTab({ refresh, employees, preboardingData }: any) {
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
       <GlassCard title="Preboarding Queue" subtitle="Pending pre-joining clearance">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
-          {(list || []).map((pb: any) => {
-            const emp = (employees || []).find((e: any) => e.employee_id === pb.employee_id);
+          {(list || [])
+            .filter((pb: any) => {
+              const emp = (employees || []).find((e: any) => e.employee_id === pb.employee_id);
+              if (!emp) return false;
+              const role = (emp.role || '').toLowerCase().replace(/[\s_]+/g, '');
+              const staffRoles = ['hr', 'it', 'recruiter', 'requiter', 'teamleader', 'tl', 'manager', 'admin', 'itdepartment'];
+              return staffRoles.includes(role) || staffRoles.some(r => role.includes(r));
+            })
+            .map((pb: any) => {
+              const emp = (employees || []).find((e: any) => e.employee_id === pb.employee_id);
             return (
               <div key={pb.preboard_id} onClick={() => setSelected(pb)} style={{ ...empListItem, border: selected?.preboard_id === pb.preboard_id ? '1px solid var(--accent-blue)' : '1px solid var(--border-light)', background: selected?.preboard_id === pb.preboard_id ? 'rgba(10,132,255,0.1)' : 'rgba(255,255,255,0.02)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1106,6 +1383,56 @@ function PreboardingTab({ refresh, employees, preboardingData }: any) {
               <FormGroup label="Bank Name"><input className="apple-input" value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} /></FormGroup>
               <FormGroup label="Account Number"><input className="apple-input" value={form.bank_account_number} onChange={e => setForm({ ...form, bank_account_number: e.target.value })} /></FormGroup>
               <FormGroup label="IFSC Code"><input className="apple-input" value={form.bank_ifsc_code} onChange={e => setForm({ ...form, bank_ifsc_code: e.target.value })} /></FormGroup>
+            </div>
+
+            <div style={sectionDivider}>Address & Location</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <FormGroup label="Permanent Address">
+                <input 
+                  className="apple-input" 
+                  value={form.permanent_address} 
+                  onChange={e => setForm({ ...form, permanent_address: e.target.value })} 
+                />
+              </FormGroup>
+              <FormGroup label="Current Address">
+                <input 
+                  className="apple-input" 
+                  value={form.current_address} 
+                  onChange={e => setForm({ ...form, current_address: e.target.value })} 
+                />
+              </FormGroup>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <FormGroup label="City">
+                <input 
+                  className="apple-input" 
+                  value={form.city} 
+                  onChange={e => setForm({ ...form, city: e.target.value })} 
+                />
+              </FormGroup>
+              <FormGroup label="State">
+                <input 
+                  className="apple-input" 
+                  value={form.state} 
+                  onChange={e => setForm({ ...form, state: e.target.value })} 
+                />
+              </FormGroup>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <FormGroup label="Postal Code">
+                <input 
+                  className="apple-input" 
+                  value={form.pincode} 
+                  onChange={e => setForm({ ...form, pincode: e.target.value })} 
+                />
+              </FormGroup>
+              <FormGroup label="Country">
+                <input 
+                  className="apple-input" 
+                  value={form.country} 
+                  onChange={e => setForm({ ...form, country: e.target.value })} 
+                />
+              </FormGroup>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
@@ -1235,23 +1562,49 @@ function RoleAssignmentsTab({ refresh, employees, roleAssignmentsData }: any) {
                 const displayEmail = a.employee_email || (emp?.work_email || emp?.official_email || emp?.email || emp?.personal_email || 'N/A');
                 const displayScore = a.performance_score !== null && a.performance_score !== undefined ? a.performance_score : (emp?.performance_score || '—');
 
+                // Check if probation period is over
+                let isProbationOver = false;
+                if (emp && emp.joining_date) {
+                  const joinDate = new Date(emp.joining_date);
+                  const probationDays = emp.probation_period_days || 90;
+                  const probationEndDate = new Date(joinDate.getTime() + probationDays * 24 * 60 * 60 * 1000);
+                  isProbationOver = new Date() > probationEndDate;
+                }
+
+                const isInactive = isProbationOver || !a.is_active;
+                const displayLoginEnabled = isInactive ? false : a.login_enabled;
+
+                let statusLabel = 'ACTIVE';
+                let statusBg = 'rgba(48,209,88,0.1)';
+                let statusColor = '#30d158';
+
+                if (isProbationOver) {
+                  statusLabel = 'INACTIVE (PROBATION OVER)';
+                  statusBg = 'rgba(255,69,58,0.1)';
+                  statusColor = '#ff453a';
+                } else if (!a.is_active) {
+                  statusLabel = 'REVOKED';
+                  statusBg = 'rgba(255,69,58,0.1)';
+                  statusColor = '#ff453a';
+                }
+
                 return (
-                  <tr key={a.assignment_id || a.id} style={{ borderBottom: '1px solid var(--border-light)', fontSize: '13px', opacity: a.is_active ? 1 : 0.5 }}>
+                  <tr key={a.assignment_id || a.id} style={{ borderBottom: '1px solid var(--border-light)', fontSize: '13px', opacity: isInactive ? 0.6 : 1 }}>
                     <td style={tdStyle}>
                       <div style={{ fontWeight: '700' }}>{displayName}</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>{(a.role_name || 'STAFF').toUpperCase()}</div>
                     </td>
                     <td style={tdStyle}><span style={{ fontSize: '12px', color: 'var(--accent-blue)' }}>{displayEmail}</span></td>
                     <td style={tdStyle}>
-                      <span style={{ fontSize: '10px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', background: a.is_active ? 'rgba(48,209,88,0.1)' : 'rgba(255,69,58,0.1)', color: a.is_active ? '#30d158' : '#ff453a' }}>
-                        {(a.is_active ? 'ACTIVE' : 'REVOKED')}
+                      <span style={{ fontSize: '10px', fontWeight: 'bold', padding: '4px 8px', borderRadius: '4px', background: statusBg, color: statusColor }}>
+                        {statusLabel}
                       </span>
                     </td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: a.login_enabled ? '#30d158' : '#ff453a' }} />
-                        <span style={{ color: a.login_enabled ? '#30d158' : '#ff453a', fontWeight: 'bold', fontSize: '11px' }}>
-                          {a.login_enabled ? 'ENABLED' : 'DISABLED'}
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: displayLoginEnabled ? '#30d158' : '#ff453a' }} />
+                        <span style={{ color: displayLoginEnabled ? '#30d158' : '#ff453a', fontWeight: 'bold', fontSize: '11px' }}>
+                          {displayLoginEnabled ? 'ENABLED' : 'DISABLED'}
                         </span>
                       </div>
                     </td>
@@ -1261,15 +1614,39 @@ function RoleAssignmentsTab({ refresh, employees, roleAssignmentsData }: any) {
                     <td style={tdStyle}><span style={{ fontWeight: '700' }}>{displayScore !== '—' ? `${displayScore}/5.0` : '—'}</span></td>
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => toggleLogin(a.assignment_id, a.login_enabled)} className="apple-btn" style={{ padding: '6px 10px', fontSize: '10px', background: a.login_enabled ? 'rgba(255,69,58,0.1)' : 'rgba(48,209,88,0.1)', color: a.login_enabled ? '#ff453a' : '#30d158' }}>
-                          {a.login_enabled ? <><FaToggleOff /> Lock</> : <><FaToggleOn /> Grant</>}
+                        <button 
+                          onClick={() => !isInactive && toggleLogin(a.assignment_id, displayLoginEnabled)} 
+                          className="apple-btn" 
+                          disabled={isInactive}
+                          style={{ 
+                            padding: '6px 10px', 
+                            fontSize: '10px', 
+                            background: displayLoginEnabled ? 'rgba(255,69,58,0.1)' : 'rgba(48,209,88,0.1)', 
+                            color: displayLoginEnabled ? '#ff453a' : '#30d158',
+                            opacity: isInactive ? 0.5 : 1,
+                            cursor: isInactive ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {displayLoginEnabled ? <><FaToggleOff /> Lock</> : <><FaToggleOn /> Grant</>}
                         </button>
-                        {a.is_active ? (
+                        {a.is_active && !isProbationOver ? (
                           <button onClick={() => revokeAccess(a.assignment_id)} className="apple-btn" style={{ padding: '6px 10px', fontSize: '10px', background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
                             <FaBan /> Revoke
                           </button>
                         ) : (
-                          <button onClick={() => reinstateAccess(a.assignment_id)} className="apple-btn" style={{ padding: '6px 10px', fontSize: '10px', background: 'rgba(48,209,88,0.1)', color: '#30d158' }}>
+                          <button 
+                            onClick={() => !isProbationOver && reinstateAccess(a.assignment_id)} 
+                            className="apple-btn" 
+                            disabled={isProbationOver}
+                            style={{ 
+                              padding: '6px 10px', 
+                              fontSize: '10px', 
+                              background: 'rgba(48,209,88,0.1)', 
+                              color: '#30d158',
+                              opacity: isProbationOver ? 0.5 : 1,
+                              cursor: isProbationOver ? 'not-allowed' : 'pointer'
+                            }}
+                          >
                             <FaCheckCircle /> Reinstate
                           </button>
                         )}
@@ -1363,24 +1740,23 @@ function OffboardingTab({ refresh, employees, offboardingData, onViewLetter }: a
   };
 
   const completeOffboard = async (offboard_id: number, employee_id: string) => {
+    const req = (offboardingData || []).find((r: any) => r.offboard_id === offboard_id);
+    const exitDate = req?.exit_date || req?.last_working_day;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const isFuture = exitDate && exitDate > todayStr;
+
     await updateOffboardingRequest(offboard_id, { completed: true, manager_approved: true });
-    await updateEmployee(employee_id, { status: 'Inactive' });
+    if (isFuture) {
+      await updateEmployee(employee_id, { status: 'On Notice' });
+    } else {
+      await updateEmployee(employee_id, { status: 'Inactive' });
+    }
 
     // Simulations: Email notification
     const emp = (employees || []).find((e: any) => e.employee_id === employee_id);
-    const req = (offboardingData || []).find((r: any) => r.offboard_id === offboard_id);
 
     // Prepare Letter Data for auto-preview
-    const letterData = {
-      name: emp?.first_name ? `${emp.first_name} ${emp.last_name}` : emp?.name || 'Employee',
-      id: employee_id,
-      designation: emp?.designation || 'Position',
-      doj: emp?.joining_date ? emp.joining_date.split('T')[0] : 'Join Date',
-      dor: req?.exit_date || new Date().toISOString().split('T')[0],
-      issueDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-      company: 'Mercure Solutions',
-      address: 'Bangalore HQ'
-    };
+    const letterData = formatLetterData(emp, req);
 
     alert(`✅ Settlement Authorized.\n📧 Relieving letter has been dispatched to ${emp?.email || 'employee'}.`);
 
@@ -1455,14 +1831,7 @@ function OffboardingTab({ refresh, employees, offboardingData, onViewLetter }: a
                     {r.completed && (
                       <button
                         onClick={() => {
-                          onViewLetter({
-                            name: emp?.name || 'Employee',
-                            id: r.employee_id,
-                            designation: emp?.designation || 'Specialist',
-                            doj: emp?.doj || '2023-01-01',
-                            dor: r.exit_date || new Date().toISOString().split('T')[0],
-                            issueDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-                          });
+                          onViewLetter(formatLetterData(emp, r));
                         }}
                         className="apple-btn"
                         style={{ padding: '6px 10px', fontSize: '10px', background: 'rgba(10,132,255,0.1)', color: '#0a84ff', border: '1px solid rgba(10,132,255,0.2)' }}
@@ -1678,7 +2047,10 @@ function WorkforceTab({ employees }: any) {
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '8px' }}>
               <span style={{ color: 'var(--text-tertiary)' }}>Status:</span>
               <span style={{
-                color: (emp.status || '').toLowerCase() === 'active' ? '#30d158' : '#ff9f0a',
+                color: (emp.status || '').toLowerCase() === 'active' ? '#30d158' : 
+                       (emp.status || '').toLowerCase() === 'inactive' ? '#ff453a' :
+                       (emp.status || '').toLowerCase() === 'on notice' ? '#ff9f0a' :
+                       '#ff9f0a',
                 fontWeight: 'bold',
                 textTransform: 'uppercase'
               }}>{emp.status || 'Unknown'}</span>

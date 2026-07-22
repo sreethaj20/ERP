@@ -103,11 +103,21 @@ class Interview(Base):
     interview_round = Column(String(50))
     interviewer_names = Column(Text)
     interviewer_id = Column(String(30)) # employee_id
+    candidate_name = Column(String(150))
+    
+    technical_score = Column(Integer)
+    communication_score = Column(Integer)
+    problem_solving_score = Column(Integer)
+    culture_fit_score = Column(Integer)
+    
     feedback = Column(Text)
     overall_rating = Column(Numeric(3, 1))
+    rating = Column(Numeric(3, 1))
     
     status = Column(String(30), default="Scheduled") # Scheduled, Completed, Cancelled
     result = Column(String(30)) # pass, fail
+    recording_url = Column(String(255))
+    recruiter_reviewed = Column(Boolean, default=False)
     
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

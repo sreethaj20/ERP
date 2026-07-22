@@ -488,29 +488,37 @@ class EmployeeService:
         
         # Explicitly preserve/sync hierarchy fields if present in update
         obj_data = obj_in.dict(exclude_unset=True)
-        if 'team_leader_id' in obj_data:
-            db_obj.team_leader_id = str(obj_data['team_leader_id'])
         
-        # Consolidate reporting hierarchy mapping (Prioritize TL for 'Reports To')
-        if any(f in obj_data for f in ['team_leader_id', 'reporting_manager_id', 'manager_id', 'reporting_to_id']):
-            # Prefer TL if present
-            mid = obj_data.get('team_leader_id') or obj_data.get('reporting_manager_id') or obj_data.get('manager_id') or obj_data.get('reporting_to_id')
+        # Update team leader separately
+        if 'team_leader_id' in obj_data:
+            db_obj.team_leader_id = str(obj_data['team_leader_id']) if obj_data['team_leader_id'] is not None else None
             
-            # Sync all redundant ID fields for consistency
-            if 'team_leader_id' in obj_data:
-                 db_obj.team_leader_id = str(obj_data['team_leader_id'])
+        # Update manager details (reporting_manager_id, manager_id, reporting_to_id)
+        mgr_id = obj_data.get('reporting_manager_id') or obj_data.get('manager_id') or obj_data.get('reporting_to_id')
+        if mgr_id:
+            db_obj.reporting_manager_id = str(mgr_id)
+            db_obj.manager_id = str(mgr_id)
+            db_obj.reporting_to_id = str(mgr_id)
             
-            # Update others if missing but we have a source ID
-            if mid:
-                db_obj.reporting_manager_id = str(mid)
-                db_obj.manager_id = str(mid)
-                db_obj.reporting_to_id = str(mid)
+            # Auto-sync the name string if missing or empty in payload
+            if not obj_data.get('reporting_to'):
+                mgr = employee_repo.get(db, str(mgr_id))
+                if mgr:
+                    name_str = mgr.name or f"{mgr.first_name} {mgr.last_name or ''}".strip()
+                    db_obj.reporting_to = name_str
+                    db_obj.reporting_manager = name_str
+        elif 'team_leader_id' in obj_data and obj_data['team_leader_id'] is not None:
+            # Fallback: if no manager is assigned and we have a team leader, use team leader as reporting_to
+            if not getattr(db_obj, 'manager_id', None):
+                tl_id = obj_data['team_leader_id']
+                db_obj.reporting_manager_id = str(tl_id)
+                db_obj.manager_id = str(tl_id)
+                db_obj.reporting_to_id = str(tl_id)
                 
-                # Auto-sync the name string if missing in update payload
                 if not obj_data.get('reporting_to'):
-                    mgr = employee_repo.get(db, str(mid))
-                    if mgr:
-                        name_str = mgr.name or f"{mgr.first_name} {mgr.last_name or ''}".strip()
+                    tl_emp = employee_repo.get(db, str(tl_id))
+                    if tl_emp:
+                        name_str = tl_emp.name or f"{tl_emp.first_name} {tl_emp.last_name or ''}".strip()
                         db_obj.reporting_to = name_str
                         db_obj.reporting_manager = name_str
         
@@ -725,9 +733,30 @@ class EmployeeService:
                 str(employee_target.reporting_manager_id) if employee_target.reporting_manager_id else None
             }
             
-            # Match identities
-            return any(identity in supervisors for identity in approver_identities if identity)
-        
+            # Match identities (direct supervisor match)
+            if any(identity in supervisors for identity in approver_identities if identity):
+                return True
+                
+            # Recursive team context lookup for multi-level or indirect team reports
+            try:
+                from app.services.dashboard_service import dashboard_service
+                for appr_id in approver_identities:
+                    if not appr_id: continue
+                    ctx = dashboard_service._get_team_context(db, user_id=int(appr_id) if appr_id.isdigit() else None, manager_id=appr_id)
+                    team_ids = set(ctx.get("team_ids", []))
+                    target_ids = {
+                        str(x).strip() for x in [
+                            target_employee_id,
+                            employee_target.id,
+                            employee_target.employee_id,
+                            employee_target.user_id
+                        ] if x
+                    }
+                    if target_ids.intersection(team_ids):
+                        return True
+            except Exception as ex:
+                print(f"[AUTHORITY CHECK WARNING] Recursive team check error: {ex}")
+
         return False
 
 

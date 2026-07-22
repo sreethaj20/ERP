@@ -9,10 +9,12 @@ import {
 } from 'react-icons/fa';
 import { getTickets, addITTicket, setITTickets, getHRTickets, addHRTicket, getITTickets, deleteTicket, resolveTicket, refreshTickets, updateTicketStatus, uploadFile, getFileUrl } from '../../utils/storage';
 import { downloadCSV } from '../../utils/formatters';
+import api from '../../api/apiClient';
 
 export default function SupportTickets() {
-  const [activeTab, setActiveTab] = useState<'open' | 'it' | 'hr'>('open');
+  const [activeTab, setActiveTab] = useState<'open' | 'it' | 'hr' | 'my'>('open');
   const [tickets, setTickets] = useState<any[]>([]);
+  const [myTickets, setMyTickets] = useState<any[]>([]);
   const [department, setDepartment] = useState<'IT' | 'HR'>('IT');
   const [issue, setIssue] = useState('');
   const [file, setFile] = useState<File | null>(null);
@@ -40,10 +42,23 @@ export default function SupportTickets() {
       data = getHRTickets();
     }
     setTickets(data);
+
+    // Fetch IT personal tickets (for IT admin role)
+    const role = (sessionStorage.getItem('userRole') || '').toLowerCase();
+    if (role === 'it') {
+      try {
+        const res = await api.get('it/my-tickets');
+        setMyTickets(Array.isArray(res.data) ? res.data : []);
+      } catch (e) {
+        console.warn('[IT] my-tickets fetch failed:', e);
+        setMyTickets([]);
+      }
+    }
     setLoading(false);
   };
 
-  const filteredTickets = tickets.filter(t => 
+  const sourceTickets = activeTab === 'my' ? myTickets : tickets;
+  const filteredTickets = sourceTickets.filter(t => 
     (t.issue || t.title || '').toLowerCase().includes(search.toLowerCase()) ||
     (t.employee_name || t.author_name || '').toLowerCase().includes(search.toLowerCase()) ||
     (t.id || '').toString().includes(search)
@@ -267,6 +282,14 @@ export default function SupportTickets() {
               >
                 HR Only
               </button>
+              {(sessionStorage.getItem('userRole') || '').toLowerCase() === 'it' && (
+                <button
+                  onClick={() => setActiveTab('my')}
+                  style={{ ...tabStyle, background: activeTab === 'my' ? 'rgba(255,255,255,0.1)' : 'transparent', color: activeTab === 'my' ? 'white' : 'var(--text-secondary)' }}
+                >
+                  My Submitted
+                </button>
+              )}
             </div>
             <div style={searchBoxStyle}>
               <FaSearch style={searchIconStyle} />

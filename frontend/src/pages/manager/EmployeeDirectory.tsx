@@ -111,9 +111,17 @@ export default function EmployeeDirectory() {
                                             <div style={empName}>{emp.name}</div>
                                             <div style={empId}>{emp.id} • {emp.role?.toUpperCase()}</div>
                                         </div>
-                                        <div style={{ ...statusBadge, background: emp.status === 'Active' ? 'rgba(48,209,88,0.1)' : 'rgba(255,159,10,0.1)', color: emp.status === 'Active' ? '#30d158' : '#ff9f0a' }}>
-                                            {emp.status}
-                                        </div>
+                                         <div style={{ 
+                                             ...statusBadge, 
+                                             background: emp.status === 'Active' ? 'rgba(48,209,88,0.1)' : 
+                                                         emp.status === 'Inactive' ? 'rgba(255,69,58,0.1)' : 
+                                                         'rgba(255,159,10,0.1)', 
+                                             color: emp.status === 'Active' ? '#30d158' : 
+                                                    emp.status === 'Inactive' ? '#ff453a' : 
+                                                    '#ff9f0a' 
+                                         }}>
+                                             {emp.status}
+                                         </div>
                                     </div>
                                 ))}
                             </div>

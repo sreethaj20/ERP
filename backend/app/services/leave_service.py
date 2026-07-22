@@ -162,20 +162,24 @@ class LeaveService:
                         Attendance.date == curr
                     ).first()
                     
-                    status_str = f"Leave/{db_obj.leave_type}"
+                    status_str = f"Leave/{db_obj.leave_type}"[:30]
                     if not existing:
                         new_att = Attendance(
                             employee_id=db_obj.employee_id,
                             date=curr,
+                            month=curr.month,
+                            year=curr.year,
                             status=status_str,
                             remarks=f"Auto-mirrored from Leave Approval: {db_obj.reason[:50]}"
                         )
                         db.add(new_att)
                     else:
-                        # Override status if it was previously 'Absent' or empty
-                        if not existing.status or "absent" in existing.status.lower():
-                            existing.status = status_str
-                            db.add(existing)
+                        # Always override attendance status when leave is approved
+                        existing.status = status_str
+                        if not existing.month: existing.month = curr.month
+                        if not existing.year: existing.year = curr.year
+                        existing.remarks = f"Auto-mirrored from Leave Approval: {db_obj.reason[:50]}"
+                        db.add(existing)
                 curr += timedelta(days=1)
         
         db.commit()
@@ -193,16 +197,49 @@ class LeaveService:
                     "employee_id": db_obj.employee_id
                 }
             })
+            await websocket_manager.broadcast({
+                "event": "data_updated",
+                "data": {
+                    "type": "attendance",
+                    "action": "leave_approved",
+                    "employee_id": db_obj.employee_id
+                }
+            })
         except Exception:
             pass # Silently handle websocket failures
         
         # Log to Activity and Audit tables
         try:
-            from app.services.notification_service import activity_service, audit_service
-            activity_service.log_activity(db, 0, f"Approver ({approver_role})", "LEAVE_STATUS_CHANGED", "Leave", db_obj.leave_id, f"Leave {db_obj.leave_id} status updated to {db_obj.status}")
-            audit_service.log_audit(db, "leaves", db_obj.leave_id, f"status -> {db_obj.status}", 0)
-        except Exception:
-            pass
+            from app.services.notification_service import activity_service, audit_service, notification_service
+            from app.models.employee import Employee
+            from app.models.user import User
+            from sqlalchemy import or_
+
+            approver_user = db.query(User).filter(
+                or_(
+                    User.employee_id == approver_employee_id,
+                    User.id == int(approver_employee_id) if str(approver_employee_id).isdigit() else False
+                )
+            ).first()
+            appr_uid = approver_user.id if approver_user else None
+            appr_name = approver_user.full_name if approver_user else f"Approver ({approver_role})"
+
+            activity_service.log_activity(db, appr_uid, appr_name, "LEAVE_STATUS_CHANGED", "Leave", db_obj.leave_id, f"Leave {db_obj.leave_id} status updated to {db_obj.status}")
+            audit_service.log_audit(db, "leaves", db_obj.leave_id, f"status -> {db_obj.status}", appr_uid)
+            
+            # Push real-time notification to the employee
+            emp_user = db.query(Employee).filter(Employee.employee_id == db_obj.employee_id).first()
+            if emp_user and emp_user.user_id:
+                await notification_service.push_notification(
+                    db,
+                    user_id=emp_user.user_id,
+                    employee_id=db_obj.employee_id,
+                    title="Leave Request Updated",
+                    message=f"Your leave request ({db_obj.leave_id}) has been {db_obj.status}.",
+                    category="Leave"
+                )
+        except Exception as e:
+            print(f"[LEAVE SERVICE NOTIFICATION ERROR] {e}")
             
         return db_obj
 
@@ -221,12 +258,33 @@ class LeaveService:
         elif user_role_lower in ["manager", "teamleader", "tl"]:
             # Scoped View: Managers and TLs see their recursive team + their own history
             from app.services.dashboard_service import dashboard_service
+            from sqlalchemy import or_
             team_ids = dashboard_service._get_recursive_team_ids(db, employee_id)
             team_ids.append(employee_id)
             
+            tl_identities = {str(employee_id)}
+            tl_emp = db.query(Employee).filter(
+                or_(
+                    Employee.employee_id == employee_id,
+                    Employee.id == int(employee_id) if str(employee_id).isdigit() else False,
+                    Employee.user_id == int(employee_id) if str(employee_id).isdigit() else False
+                )
+            ).first()
+            if tl_emp:
+                if tl_emp.employee_id: tl_identities.add(str(tl_emp.employee_id))
+                if tl_emp.id: tl_identities.add(str(tl_emp.id))
+                if tl_emp.user_id: tl_identities.add(str(tl_emp.user_id))
+            
             query = db.query(LeaveRequest, Employee.first_name, Employee.last_name, Employee.role, Employee.department)\
                 .join(Employee, LeaveRequest.employee_id == Employee.employee_id)\
-                .filter(LeaveRequest.employee_id.in_(team_ids), LeaveRequest.deleted_at == None)
+                .filter(
+                    or_(
+                        LeaveRequest.employee_id.in_(team_ids),
+                        LeaveRequest.team_leader_id.in_(tl_identities),
+                        LeaveRequest.manager_id.in_(tl_identities)
+                    ),
+                    LeaveRequest.deleted_at == None
+                )
         else:
             # Personal View: Standard employees see only their own history
             query = db.query(LeaveRequest, Employee.first_name, Employee.last_name, Employee.role, Employee.department)\
@@ -244,6 +302,7 @@ class LeaveService:
             
             # Attach extra data for manual serialization in API layers
             leave.name = f"{fn or ''} {ln or ''}".strip()
+            leave.employee_name = leave.name
             leave.role = role
             leave.department = dept
             final_objects.append(leave)

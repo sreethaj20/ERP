@@ -86,6 +86,55 @@ def get_current_user(
         )
     
     print(f"[AUTH] Authenticated: {user.email} (Role: {user.role})")
+    
+    if user and user.is_active:
+        from app.models.employee import Employee
+        from app.models.offboarding import OffboardingRequest
+        from datetime import date, datetime, timedelta
+        
+        emp = db.query(Employee).filter(Employee.user_id == user.id, Employee.deleted_at == None).first()
+        if emp and emp.status != "Inactive":
+            offboard_req = db.query(OffboardingRequest).filter(
+                OffboardingRequest.employee_id == emp.employee_id,
+                OffboardingRequest.deleted_at == None
+            ).order_by(OffboardingRequest.id.desc()).first()
+            if offboard_req:
+                request_date = offboard_req.request_date or offboard_req.created_at
+                notice_days = offboard_req.notice_period_days or 0
+                notice_end_date = None
+                if request_date:
+                    req_date_val = request_date.date() if isinstance(request_date, datetime) else request_date
+                    notice_end_date = req_date_val + timedelta(days=notice_days)
+                
+                exit_date = offboard_req.exit_date or offboard_req.last_working_day
+                exit_date_val = None
+                if exit_date:
+                    if isinstance(exit_date, str):
+                        try:
+                            exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
+                        except Exception:
+                            pass
+                    elif isinstance(exit_date, datetime):
+                        exit_date_val = exit_date.date()
+                    else:
+                        exit_date_val = exit_date
+                
+                deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
+                if deactivate_date and (deactivate_date - date.today()).days < 0:
+                    emp.status = "Inactive"
+                    user.is_active = False
+                    offboard_req.status = "Completed"
+                    offboard_req.completed = True
+                    db.add(emp)
+                    db.add(user)
+                    db.add(offboard_req)
+                    try:
+                        db.commit()
+                        print(f"[OFFBOARDING] User '{user.username}' (employee_id={emp.employee_id}) has been DEACTIVATED dynamically via dependency check.")
+                    except Exception as e:
+                        db.rollback()
+                        print(f"[OFFBOARDING ERROR] Dynamic deactivation failed: {e}")
+                        
     return user
 
 def get_current_active_user(
@@ -124,6 +173,10 @@ def get_current_user_with_role(required_roles: str | list[str]):
         # If admin is allowed, it's implicitly allowed for manager too (acting admin)
         if "admin" in allowed_roles and "manager" not in allowed_roles:
             allowed_roles.append("manager")
+            
+        # If recruiter is allowed, it's implicitly allowed for hr too (acting recruiter)
+        if "recruiter" in allowed_roles and "hr" not in allowed_roles:
+            allowed_roles.append("hr")
             
         print(f"[AUTH] Role Check | User: {current_user.email} | User Role: {user_role} (Effective: {check_role}) | Allowed Roles: {allowed_roles}")
             

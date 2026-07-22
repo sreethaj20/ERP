@@ -67,10 +67,7 @@ class RecruitmentService:
 
     def create_job(self, db: Session, obj_in: JobCreate, creator: Optional[str] = None) -> Job:
         from app.core.security import sanitize_html
-        
-        # Better ID generation: Max(id) instead of count to prevent collisions
-        max_id = db.query(func.max(Job.id)).scalar() or 0
-        job_id = f"JOB-{str(max_id + 1).zfill(3)}"
+        from sqlalchemy.exc import IntegrityError
         
         data = obj_in.dict(exclude={"job_id"})
         
@@ -90,15 +87,29 @@ class RecruitmentService:
         allowed_cols = Job.__table__.columns.keys()
         filtered_data = {k: v for k, v in data.items() if k in allowed_cols}
 
-        db_obj = Job(
-            **filtered_data,
-            job_id=job_id,
-            created_by=creator
-        )
-        db.add(db_obj)
-        db.commit()
+        for attempt in range(5):
+            db.begin_nested()
+            try:
+                max_id = db.query(func.max(Job.id)).scalar() or 0
+                job_id = f"JOB-{str(max_id + 1).zfill(3)}"
+                
+                db_obj = Job(
+                    **filtered_data,
+                    job_id=job_id,
+                    created_by=creator
+                )
+                db.add(db_obj)
+                db.commit()
+                break
+            except IntegrityError:
+                db.rollback()
+                if attempt == 4:
+                    raise
+            except Exception:
+                db.rollback()
+                raise
+
         db.refresh(db_obj)
-        
         self._log_activity(db, "CREATE_JOB", "Recruitment", job_id, f"Created new job requisition: {db_obj.title}")
         db.commit()
         return self._normalize_job(db_obj)
@@ -143,8 +154,18 @@ class RecruitmentService:
         return False
 
     # --- Candidates ---
-    def get_candidates(self, db: Session, skip: int = 0, limit: int = 100) -> List[Candidate]:
-        candidates = db.query(Candidate).filter(Candidate.deleted_at == None).offset(skip).limit(limit).all()
+    def get_candidates(self, db: Session, skip: int = 0, limit: int = 100, recruiter_id: Optional[str] = None, exclude_offered: bool = False) -> List[Candidate]:
+        query = db.query(Candidate).filter(Candidate.deleted_at == None)
+        if recruiter_id:
+            query = query.filter((Candidate.created_by == recruiter_id) | (Candidate.created_by == None))
+        if exclude_offered:
+            from app.models.job import Offer
+            offered_cand_ids = db.query(Offer.candidate_id).filter(
+                Offer.status.in_(["sent", "accepted"]),
+                Offer.deleted_at == None
+            )
+            query = query.filter(~Candidate.candidate_id.in_(offered_cand_ids))
+        candidates = query.offset(skip).limit(limit).all()
         for c in candidates:
             c.name = f"{c.first_name} {c.last_name or ''}".strip()
             if c.resume_url:
@@ -158,24 +179,36 @@ class RecruitmentService:
             from fastapi import HTTPException
             raise HTTPException(status_code=400, detail=f"Candidate with email {obj_in.email} is already registered in the pipeline.")
 
-        # Scalable ID Generation for large intakes (e.g. 300+ students)
-        max_id = db.query(func.max(Candidate.id)).scalar() or 0
-        candidate_id = f"CND-{str(max_id + 1).zfill(5)}"
-        
         data = obj_in.dict(exclude={"candidate_id", "name", "created_by"})
         
         allowed_cols = Candidate.__table__.columns.keys()
         filtered_data = {k: v for k, v in data.items() if k in allowed_cols}
         
-        db_obj = Candidate(
-            **filtered_data,
-            candidate_id=candidate_id,
-            created_by=creator
-        )
-        db.add(db_obj)
-        db.commit()
-        db.refresh(db_obj)
+        from sqlalchemy.exc import IntegrityError
+        for attempt in range(5):
+            db.begin_nested()
+            try:
+                # Scalable ID Generation for large intakes (e.g. 300+ students)
+                max_id = db.query(func.max(Candidate.id)).scalar() or 0
+                candidate_id = f"CND-{str(max_id + 1).zfill(5)}"
+                
+                db_obj = Candidate(
+                    **filtered_data,
+                    candidate_id=candidate_id,
+                    created_by=creator
+                )
+                db.add(db_obj)
+                db.commit()
+                break
+            except IntegrityError:
+                db.rollback()
+                if attempt == 4:
+                    raise
+            except Exception:
+                db.rollback()
+                raise
         
+        db.refresh(db_obj)
         self._log_activity(db, "ADD_CANDIDATE", "Recruitment", candidate_id, f"Registered candidate: {db_obj.first_name} {db_obj.last_name}")
         db.commit()
         return db_obj
@@ -272,10 +305,11 @@ class RecruitmentService:
             db.query(Interview, Candidate.first_name.label("c_first"), Candidate.last_name.label("c_last"), Job.title.label("j_title"))
             .outerjoin(Candidate, Candidate.candidate_id == Interview.candidate_id)
             .outerjoin(Job, Job.job_id == Interview.job_id)
+            .filter(Interview.deleted_at == None)
         )
         
         if manager_id:
-            results = results.filter(Job.reporting_manager_id == manager_id)
+            results = results.filter((Job.reporting_manager_id == manager_id) | (Interview.interviewer_id == manager_id))
         if tl_id:
             results = results.filter(Interview.interviewer_id == tl_id)
         if recruiter_id:
@@ -327,21 +361,39 @@ class RecruitmentService:
             if interviewer:
                 db_obj.interviewer_names = f"{interviewer.first_name} {interviewer.last_name or ''}".strip() or interviewer.name
 
-        # Senior Audit: Conflict Detection (Interviewer availability)
-        overlap = db.query(Interview).filter(
+        # Senior Audit: Conflict Detection (Interviewer availability with duration overlap)
+        existing_interviews = db.query(Interview).filter(
             Interview.interviewer_id == db_obj.interviewer_id,
             Interview.interview_date == interview_date,
-            Interview.interview_time == time_obj,
             Interview.status != "cancelled",
             Interview.deleted_at == None
-        ).first()
+        ).all()
         
-        if overlap:
-            from fastapi import HTTPException
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Scheduling Conflict: {db_obj.interviewer_names or db_obj.interviewer_id} is already booked for an interview at {interview_time} on {interview_date}."
-            )
+        from datetime import datetime as dt, timedelta
+        new_start = dt.combine(interview_date, time_obj)
+        try:
+            dur = int(db_obj.duration_minutes or 60)
+        except:
+            dur = 60
+        new_end = new_start + timedelta(minutes=dur)
+        
+        for ext in existing_interviews:
+            ext_time = ext.interview_time
+            if ext_time:
+                ext_start = dt.combine(ext.interview_date, ext_time)
+                try:
+                    ext_dur = int(ext.duration_minutes or 60)
+                except:
+                    ext_dur = 60
+                ext_end = ext_start + timedelta(minutes=ext_dur)
+                
+                # Check range overlap: (new_start < ext_end) AND (new_end > ext_start)
+                if new_start < ext_end and new_end > ext_start:
+                    from fastapi import HTTPException
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Scheduling Conflict: {db_obj.interviewer_names or db_obj.interviewer_id} is already booked for an interview from {ext_time.strftime('%H:%M')} to {ext_end.strftime('%H:%M')} on {interview_date}."
+                    )
 
         db.add(db_obj)
         db.commit()
@@ -360,28 +412,35 @@ class RecruitmentService:
         
         return db_obj
 
-    def update_interview_feedback(self, db: Session, interview_id: int, feedback: str, rating: Optional[float] = None, status: str = "Completed", result: Optional[str] = None):
+    def update_interview_feedback(
+        self, db: Session, interview_id: int, feedback: str, rating: Optional[float] = None,
+        status: str = "Completed", result: Optional[str] = None,
+        technical_score: Optional[int] = None, communication_score: Optional[int] = None,
+        problem_solving_score: Optional[int] = None, culture_fit_score: Optional[int] = None,
+        recording_url: Optional[str] = None, recruiter_reviewed: Optional[bool] = None
+    ):
         from app.core.security import sanitize_html
         db_obj = db.query(Interview).filter(Interview.id == interview_id).first()
         if db_obj:
             db_obj.feedback = sanitize_html(feedback) if feedback else None
-            if rating: db_obj.overall_rating = rating
+            if rating is not None:
+                db_obj.overall_rating = rating
+                db_obj.rating = rating
             db_obj.status = status
             if result: db_obj.result = result
+            if technical_score is not None: db_obj.technical_score = technical_score
+            if communication_score is not None: db_obj.communication_score = communication_score
+            if problem_solving_score is not None: db_obj.problem_solving_score = problem_solving_score
+            if culture_fit_score is not None: db_obj.culture_fit_score = culture_fit_score
+            if recording_url is not None: db_obj.recording_url = recording_url
+            if recruiter_reviewed is not None: db_obj.recruiter_reviewed = recruiter_reviewed
+            
+            db_obj.updated_at = datetime.now()
+            db_obj.deleted_at = None
             db.add(db_obj)
             db.commit()
             db.refresh(db_obj)
             
-            # Automated Pipeline Sync: Move candidate based on interview result
-            if result:
-                new_stage = None
-                if result.lower() == "selected": new_stage = "Selected"
-                elif result.lower() == "recommended": new_stage = "Final Round"
-                elif result.lower() == "rejected": new_stage = "Rejected"
-                
-                if new_stage:
-                    self.update_candidate_stage(db, str(db_obj.candidate_id), new_stage)
-
             self._log_activity(db, "UPDATE_INTERVIEW_FEEDBACK", "Recruitment", str(db_obj.candidate_id), f"Interview feedback updated — Result: {result or 'N/A'}")
             db.commit()
         return db_obj
@@ -390,13 +449,22 @@ class RecruitmentService:
         return self.get_interviews(db)
 
     # --- Offers (Feature 24) ---
-    def get_offers(self, db: Session) -> List[Offer]:
-        results = (
+    def get_offers(self, db: Session, recruiter_id: Optional[str] = None, manager_id: Optional[str] = None) -> List[Offer]:
+        query = (
             db.query(Offer, Candidate.first_name.label("c_first"), Candidate.last_name.label("c_last"), Job.title.label("j_title"))
             .outerjoin(Candidate, Candidate.candidate_id == Offer.candidate_id)
             .outerjoin(Job, Job.job_id == Offer.job_id)
-            .all()
         )
+        if recruiter_id:
+            query = query.filter((Candidate.created_by == recruiter_id) | (Candidate.created_by == None))
+        if manager_id:
+            # Normalize: match both MGR001 and MGR-001 formats
+            query = query.filter(
+                (Offer.reporting_manager_id == manager_id) |
+                (Offer.reporting_manager_id == manager_id.replace("-", "")) |
+                (Offer.reporting_manager_id == manager_id.replace("MGR", "MGR-"))
+            )
+        results = query.all()
         
         offers = []
         for row in results:
@@ -410,10 +478,8 @@ class RecruitmentService:
             
         return offers
 
+
     async def create_offer(self, db: Session, obj_in: OfferCreate, changed_by: Optional[str] = None) -> Offer:
-        count = db.query(func.count(Offer.id)).scalar()
-        offer_id = f"OFR-{str(count + 1).zfill(3)}"
-        
         data = obj_in.dict(exclude={"offer_id", "ctc", "salary", "offer_status"})
         data.pop("ctc", None)
         data.pop("salary", None)
@@ -439,29 +505,46 @@ class RecruitmentService:
         allowed_cols = Offer.__table__.columns.keys()
         filtered_data = {k: v for k, v in data.items() if k in allowed_cols}
         
-        db_obj = Offer(
-            **filtered_data,
-            offer_id=offer_id
-        )
-        
-        # 📄 PDF Generation: Auto-create offer letter
-        candidate = db.query(Candidate).filter(Candidate.candidate_id == db_obj.candidate_id).first()
-        if candidate:
-            job_obj = db.query(Job).filter(Job.job_id == db_obj.job_id).first()
-            pdf_data = {
-                "name": f"{candidate.first_name} {candidate.last_name or ''}".strip(),
-                "candidate_id": candidate.candidate_id,
-                "designation": job_obj.title if job_obj else "Associate",
-                "department": job_obj.department if job_obj else "Operations",
-                "joining_date": db_obj.joining_date.strftime('%Y-%m-%d') if db_obj.joining_date else "TBD",
-                "salary": f"{db_obj.offered_ctc or 'As discussed'}"
-            }
-            db_obj.offer_letter_url = await pdf_service.generate_offer_letter(pdf_data)
+        from sqlalchemy.exc import IntegrityError
+        for attempt in range(5):
+            db.begin_nested()
+            try:
+                count = db.query(func.count(Offer.id)).scalar()
+                offer_id = f"OFR-{str(count + 1).zfill(3)}"
+                
+                db_obj = Offer(
+                    **filtered_data,
+                    offer_id=offer_id
+                )
+                
+                # 📄 PDF Generation: Auto-create offer letter
+                candidate = db.query(Candidate).filter(Candidate.candidate_id == db_obj.candidate_id).first()
+                if candidate:
+                    job_obj = db.query(Job).filter(Job.job_id == db_obj.job_id).first()
+                    pdf_data = {
+                        "name": f"{candidate.first_name} {candidate.last_name or ''}".strip(),
+                        "candidate_id": candidate.candidate_id,
+                        "designation": job_obj.title if job_obj else "Associate",
+                        "department": job_obj.department if job_obj else "Operations",
+                        "joining_date": db_obj.joining_date.strftime('%Y-%m-%d') if db_obj.joining_date else "TBD",
+                        "salary": f"{db_obj.offered_ctc or 'As discussed'}",
+                        "fixed": f"{db_obj.fixed_component or 0}",
+                        "variable": f"{db_obj.variable_component or 0}"
+                    }
+                    db_obj.offer_letter_url = await pdf_service.generate_offer_letter(pdf_data)
 
-        db.add(db_obj)
-        db.commit()
+                db.add(db_obj)
+                db.commit()
+                break
+            except IntegrityError:
+                db.rollback()
+                if attempt == 4:
+                    raise
+            except Exception:
+                db.rollback()
+                raise
+
         db.refresh(db_obj)
-        
         self.update_candidate_stage(db, db_obj.candidate_id, "Selected", changed_by=changed_by)
         
         self._log_activity(db, "CREATE_OFFER", "Recruitment", db_obj.candidate_id, f"Offer letter released to candidate {db_obj.candidate_id}", username=changed_by)
@@ -507,7 +590,7 @@ class RecruitmentService:
                     emp_type = update_data.get("employment_type", "Full-time") if update_data else "Full-time"
                     dept = update_data.get("department", "Default") if update_data else "Default"
                     desig = update_data.get("designation", "Employee") if update_data else "Employee"
-                    mgr_id = update_data.get("reporting_manager_id") if update_data else None
+                    mgr_id = (update_data.get("reporting_manager_id") or update_data.get("manager_id")) if update_data else None
                     joindate = update_data.get("joining_date") if update_data else date.today()
 
                     # --- UNIFIED IDENTITY PROVISIONING (Feature 45) ---
@@ -600,9 +683,12 @@ class RecruitmentService:
                         "job_id": db_obj.job_id,
                         "joining_date": joindate.strftime('%Y-%m-%d') if hasattr(joindate, 'strftime') else str(joindate),
                         "ctc": str(db_obj.offered_ctc),
-                        "fixed": str(db_obj.fixed_component)
+                        "fixed": str(db_obj.fixed_component),
+                        "variable": str(db_obj.variable_component or 0),
+                        "designation": desig,
+                        "department": dept
                     }
-                    db_obj.offer_letter_url = pdf_service.generate_offer_letter(offer_data)
+                    db_obj.offer_letter_url = await pdf_service.generate_offer_letter(offer_data)
                     
                     self._log_activity(db, "AUTO_HIRE", "Recruitment", new_emp_id, f"Auto-hired candidate {cand.email}")
                     

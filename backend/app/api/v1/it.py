@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, get_current_user_with_role
 from app.models.user import User
+from app.models.hr_onboarding import HROnboardingRequest
 from app.services.asset_service import asset_service, access_service
 from app.repositories.asset_repo import asset_repo
 from app.services.hr_onboarding_service import hr_onboarding_service
@@ -56,6 +57,27 @@ def allocate_it_asset(obj_in: AssetAllocationCreate, db: Session = Depends(get_d
     try:
         res = asset_service.allocate_asset(db, obj_in)
         print(f"[IT API] Allocation successful: {res.id if hasattr(res, 'id') else 'OK'}")
+        
+        # Trigger E2E real-time notification to the target Employee receiving the asset
+        try:
+            from app.services.notification_service import notification_service
+            from app.models.user import User
+            import asyncio
+            
+            target_user = db.query(User).filter(User.employee_id == obj_in.employee_id).first()
+            if target_user:
+                loop = asyncio.get_event_loop()
+                loop.create_task(notification_service.push_notification(
+                    db,
+                    user_id=target_user.id,
+                    employee_id=obj_in.employee_id,
+                    title="New IT Asset Allocated",
+                    message=f"IT Department has allocated asset {obj_in.asset_id} to you. Please collect it.",
+                    category="IT Assets"
+                ))
+        except Exception as ex:
+            print(f"[IT ALLOCATE NOTIFICATION TRIGGER ERROR] {ex}")
+            
         return res
     except Exception as e:
         print(f"[IT API ERROR] Allocation failed: {str(e)}")
@@ -132,12 +154,14 @@ def revoke_employee_access(employee_id: str, db: Session = Depends(get_db), curr
 @router.get("/onboarding-requests", response_model=List[HROnboardingOut])
 def get_it_onboarding_tasks(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["it", "manager", "hr"]))):
     """IT specific onboarding tasks where asset allocation or identity provisioning is required."""
-    from app.models.hr_onboarding import HROnboardingRequest
-    return db.query(HROnboardingRequest).filter(
+    requests = db.query(HROnboardingRequest).filter(
         HROnboardingRequest.current_approver_stage == "it",
         HROnboardingRequest.status != "completed"
     ).all()
-    # return hr_onboarding_service.get_requests(db) # Standardizing to IT-only view
+    for r in requests:
+        hr_onboarding_service._merge_employee_master_data(db, r)
+        hr_onboarding_service.hydrate_onboarding_request(r)
+    return requests
 
 @router.get("/dashboard")
 def get_it_dashboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["it", "manager", "hr"]))):

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { FaDownload, FaFilter, FaSearch, FaBriefcase, FaUserCheck } from "react-icons/fa";
+import { FaDownload, FaFilter, FaSearch, FaBriefcase, FaUserCheck, FaClock, FaCoffee } from "react-icons/fa";
+import api from "../../api/apiClient";
 import { getJobs, getCandidates, getScreeningLogs, getWorkforce } from "../../services/managerService";
 
 // Sub-components moved to top for better HMR reliability
@@ -77,16 +78,20 @@ export default function RecruiterPipelineView() {
   const [employeeMap, setEmployeeMap] = useState<any>({});
   const [allCandidates, setAllCandidates] = useState<any[]>([]);
   const [allJobs, setAllJobs] = useState<any[]>([]);
+  const [recruiterSessions, setRecruiterSessions] = useState<any[]>([]);
+  const [tickTime, setTickTime] = useState<number>(Date.now());
+  const [pingLoading, setPingLoading] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     try {
         setLoading(true);
-        const [jobsRes, candRes, logsRes, empRes] = await Promise.all([
+        const [jobsRes, candRes, logsRes, empRes, sRes] = await Promise.all([
           getJobs(),
           getCandidates(),
           getScreeningLogs(),
-          getWorkforce()
+          getWorkforce(),
+          api.get("manager/staff-timesheet")
         ]);
         
         const logs = logsRes || [];
@@ -140,6 +145,18 @@ export default function RecruiterPipelineView() {
         setAllCandidates(allCandidates);
         setAllJobs(jobsRes || []);
 
+        // Sync live Recruiters sessions
+        const todayStr = new Date().toISOString().split('T')[0];
+        const activeSessions = (sRes.data || []).filter((s: any) => {
+          if (s.logout_time) return false;
+          const sessDate = s.date ? s.date.split('T')[0] : '';
+          return sessDate === todayStr;
+        });
+        const recruiterActives = activeSessions.filter((s: any) => 
+          (s.role || '').toLowerCase().replace(/[\s_]+/g, '').includes('recruiter')
+        );
+        setRecruiterSessions(recruiterActives);
+
         const recruiters: any = {};
         allCandidates.forEach((c: any) => {
           const name = c.recruiter_name || empMap[c.created_by] || 'Unknown Recruiter';
@@ -176,12 +193,31 @@ export default function RecruiterPipelineView() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000);
+    const interval = setInterval(loadData, 20000);
+    const ticker = setInterval(() => setTickTime(Date.now()), 1000);
     return () => {
-      window.removeEventListener('storage', loadData);
       clearInterval(interval);
+      clearInterval(ticker);
     };
   }, []);
+
+  const handlePing = async (empId: string, empName: string, onBreak: boolean) => {
+    const defaultMsg = onBreak 
+      ? `Active interview schedules or candidate screening rounds are pending. Please end your break and resume active duties immediately.` 
+      : `High-priority recruitment operational alert: Please update screening pipelines and interview logs.`;
+    const message = window.prompt(`Operational Alert to Recruiter ${empName}:`, defaultMsg);
+    if (message === null) return;
+    
+    try {
+      setPingLoading(empId);
+      await api.post(`manager/ping-employee/${empId}`, { message });
+      alert(`🚀 Direct operational alert sent to recruiter ${empName}!`);
+    } catch (e: any) {
+      alert(`❌ Transmission failed: ${e.message}`);
+    } finally {
+      setPingLoading(null);
+    }
+  };
 
   const totalApplied = pipeline.reduce((acc: number, p: any) => acc + p.applied, 0);
   const totalInterviewed = pipeline.reduce((acc: number, p: any) => acc + p.interviewed, 0);
@@ -343,7 +379,7 @@ export default function RecruiterPipelineView() {
               </div>
             </GlassCard>
 
-            {/* Global Stats or Detail */}
+            {/* Global Stats, Detail & Live Recruiter Shifts */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {selectedJob ? (
                 <GlassCard title="Job Deep-Dive" subtitle={selectedJob.job}>
@@ -379,6 +415,104 @@ export default function RecruiterPipelineView() {
                 </GlassCard>
               ) : (
                 <>
+                  {/* Live Recruiter Shift Activity Widget */}
+                  <GlassCard title="Live Recruiter Shift Activity" subtitle="Recruitment team operational sessions">
+                    <style>{`
+                      @keyframes pulseDot {
+                        0% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.4); }
+                        70% { box-shadow: 0 0 0 6px rgba(48, 209, 88, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); }
+                      }
+                      .pulse-green-dot {
+                        animation: pulseDot 2s infinite;
+                      }
+                    `}</style>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
+                      {recruiterSessions.length === 0 ? (
+                        <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>
+                          No recruiters currently active.
+                        </div>
+                      ) : (
+                        recruiterSessions.map((s: any) => {
+                          const startedTime = new Date(s.login_time || s.started_at).getTime();
+                          const elapsedSecs = Math.max(0, Math.floor((tickTime - startedTime) / 1000));
+                          
+                          let breakSec = s.total_break_seconds || 0;
+                          if (s.on_break && s.current_break_start) {
+                            breakSec += Math.floor((tickTime - new Date(s.current_break_start).getTime()) / 1000);
+                          }
+                          
+                          const workSec = Math.max(0, elapsedSecs - breakSec);
+                          
+                          const formatSecs = (secs: number) => {
+                            const h = Math.floor(secs / 3600);
+                            const m = Math.floor((secs % 3600) / 60);
+                            const sec = secs % 60;
+                            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+                          };
+
+                          return (
+                            <div key={s.id || s.session_id} style={{
+                              padding: '12px',
+                              borderRadius: '12px',
+                              background: 'rgba(255,255,255,0.01)',
+                              border: '1px solid rgba(255,255,255,0.04)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <div className={s.on_break ? '' : 'pulse-green-dot'} style={{
+                                    width: '8px',
+                                    height: '8px',
+                                    borderRadius: '50%',
+                                    background: s.on_break ? '#ff9f0a' : '#30d158',
+                                  }} />
+                                  <div>
+                                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>{s.employee_name}</div>
+                                    <div style={{ fontSize: '10px', color: '#bf5af2', fontWeight: '800', textTransform: 'uppercase', marginTop: '2px' }}>
+                                      {s.role} • {s.department}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={() => handlePing(s.employee_id || s.user_id, s.employee_name, s.on_break)}
+                                  disabled={pingLoading === s.employee_id}
+                                  className="apple-btn"
+                                  style={{
+                                    background: s.on_break ? 'rgba(255,159,10,0.12)' : 'rgba(10,132,255,0.12)',
+                                    color: s.on_break ? '#ff9f0a' : '#0a84ff',
+                                    border: 'none',
+                                    padding: '4px 8px',
+                                    fontSize: '9px',
+                                    borderRadius: '6px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  {pingLoading === s.employee_id ? 'Pinging...' : s.on_break ? '🚨 Call back' : '✉️ Ping'}
+                                </button>
+                              </div>
+
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10px', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px' }}>
+                                <div>
+                                  <span style={{ color: 'rgba(255,255,255,0.3)', marginRight: '4px' }}>Work:</span>
+                                  <span style={{ color: '#fff', fontWeight: '700', fontFamily: 'monospace' }}>{formatSecs(workSec)}</span>
+                                </div>
+                                <div>
+                                  <span style={{ color: 'rgba(255,255,255,0.3)', marginRight: '4px' }}>Break:</span>
+                                  <span style={{ color: s.on_break ? '#ff9f0a' : '#fff', fontWeight: '700', fontFamily: 'monospace' }}>{formatSecs(breakSec)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </GlassCard>
+
                   <GlassCard title="Hiring Efficiency" subtitle="Average conversion rate">
                     <div style={{ textAlign: 'center', padding: '10px 0' }}>
                       <div style={{ fontSize: '36px', fontWeight: '700', color: 'var(--accent-blue)' }}>

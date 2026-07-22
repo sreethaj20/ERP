@@ -3,6 +3,7 @@ import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import { getPayrollHistory, refreshPayrollHistory } from "../../utils/storage";
 import { FaMoneyBillWave, FaCheckCircle, FaExclamationTriangle, FaExternalLinkAlt, FaCreditCard } from "react-icons/fa";
+import api from "../../api/apiClient";
 
 export default function PayrollPreparation() {
   const [empId, setEmpId] = useState("");
@@ -28,17 +29,11 @@ export default function PayrollPreparation() {
     if (!empId || !month) return alert("Enter Emp ID and Month (YYYY-MM)");
     setLoading(true);
     try {
-      const response = await fetch(`/api/v1/hr/payroll/calculate?emp_id=${empId}&month=${month}`, {
-        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('token')}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setPayrollResult(data);
-      } else {
-        alert("Employee not found or data missing");
-      }
-    } catch (err) {
+      const response = await api.get(`hr/payroll/calculate?emp_id=${empId}&month=${month}`);
+      setPayrollResult(response.data);
+    } catch (err: any) {
       console.error(err);
+      alert(err.response?.data?.detail || "Employee not found or data missing");
     } finally {
       setLoading(false);
     }
@@ -47,67 +42,38 @@ export default function PayrollPreparation() {
   const handleDisburse = async (payrollId: number) => {
     if (!window.confirm("Authorize instant salary disbursement via Razorpay API?")) return;
     try {
-        const response = await fetch('/api/v1/hr/payroll/disburse', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionStorage.getItem('token')}` 
-            },
-            body: JSON.stringify({ payroll_id: payrollId })
-        });
-        if (response.ok) {
-            const res = await response.json();
-            alert(`🚀 Disbursement Initiated!\nTransaction: ${res.transaction_id}`);
-            loadHistory();
-        } else {
-            const err = await response.json();
-            alert(`Error: ${err.detail || "Disbursement failed"}`);
-        }
-    } catch (err) {
-        alert("Network error");
+        const response = await api.post('hr/payroll/disburse', { payroll_id: payrollId });
+        alert(`🚀 Disbursement Initiated!\nTransaction: ${response.data.transaction_id}`);
+        loadHistory();
+    } catch (err: any) {
+        console.error(err);
+        alert(`Error: ${err.response?.data?.detail || "Disbursement failed"}`);
     }
   };
 
   const handleSubmit = async () => {
     if (!payrollResult) return;
     try {
-      const response = await fetch('/api/v1/hr/payroll/submit', {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionStorage.getItem('token')}` 
-        },
-        body: JSON.stringify(payrollResult)
-      });
-      if (response.ok) {
-        const res = await response.json();
-        alert(`✅ Payroll Record Finalized!\nTransaction ID: ${res.transaction_id}\n\nYou can now initiate disbursement via Razorpay.`);
-        setPayrollResult(null);
-        loadHistory();
-      }
-    } catch (err) {
-      alert("Submission failed");
+      const response = await api.post('hr/payroll/submit', payrollResult);
+      alert(`✅ Payroll Record Finalized!\nTransaction ID: ${response.data.transaction_id}\n\nYou can now initiate disbursement via Razorpay.`);
+      setPayrollResult(null);
+      loadHistory();
+    } catch (err: any) {
+      console.error(err);
+      alert(err.response?.data?.detail || "Submission failed");
     }
   };
 
   const handlePayment = async (amount: number, empId: string) => {
     try {
-      // 1. Create Order on Backend
-      const orderRes = await fetch('/api/v1/payments/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount: amount,
-          currency: 'INR',
-          notes: { employee_id: empId, module: 'payroll' }
-        })
+      // 1. Create Order on Backend via standard Axios
+      const orderRes = await api.post('payments/orders', {
+        amount: amount,
+        currency: 'INR',
+        notes: { employee_id: empId, module: 'payroll' }
       });
 
-      if (!orderRes.ok) throw new Error("Failed to create payment order");
-      const order = await orderRes.json();
+      const order = orderRes.data;
 
       // 2. Open Razorpay Checkout
       const options = {
@@ -119,23 +85,15 @@ export default function PayrollPreparation() {
         order_id: order.id,
         handler: async function (response: any) {
           // 3. Verify Payment on Backend
-          const verifyRes = await fetch('/api/v1/payments/verify', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${sessionStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
+          try {
+            await api.post('payments/verify', {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature
-            })
-          });
-
-          if (verifyRes.ok) {
+            });
             alert("✅ Payment Successful and Verified!");
             loadHistory();
-          } else {
+          } catch (verifyErr) {
             alert("❌ Payment verification failed. Please contact support.");
           }
         },
@@ -151,7 +109,7 @@ export default function PayrollPreparation() {
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
     } catch (err: any) {
-      alert("Payment Initiation Failed: " + err.message);
+      alert("Payment Initiation Failed: " + (err.response?.data?.detail || err.message));
     }
   };
 

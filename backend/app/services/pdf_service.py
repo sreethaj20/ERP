@@ -1,6 +1,6 @@
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 import os
@@ -55,16 +55,60 @@ class PDFService:
             f"<b>Joining Date:</b> {data.get('joining_date')}",
             f"<b>Annual CTC:</b> {data.get('salary', 'As discussed')} L.P.A",
         ]
+        if data.get("fixed"):
+            details.append(f"<b>Fixed Component:</b> ₹{data.get('fixed')}")
+        if data.get("variable"):
+            details.append(f"<b>Variable Component:</b> ₹{data.get('variable')}")
         
         for d in details:
             story.append(Paragraph(d, body_style))
             story.append(Spacer(1, 0.1 * inch))
 
-        story.append(Spacer(1, 0.3 * inch))
-        story.append(Paragraph("Sincerely,", body_style))
-        story.append(Spacer(1, 0.1 * inch))
-        story.append(Paragraph("<b>HR Management Team</b>", body_style))
-        story.append(Paragraph("Antigravity HRMS Portel", body_style))
+        story.append(Spacer(1, 0.4 * inch))
+        
+        candidate_name_text = f"<b>{data.get('name', 'Candidate')}</b>"
+        
+        # Inner table for candidate signature column
+        inner_sig_data = [
+            [Paragraph(candidate_name_text, body_style)],
+            [""], # Signature box cell
+            [Paragraph("Candidate Signature", body_style)]
+        ]
+        inner_sig_table = Table(inner_sig_data, colWidths=[120], rowHeights=[15, 25, 15])
+        inner_sig_table.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('BOX', (0, 1), (0, 1), 1, colors.HexColor('#cbd5e0')),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        
+        # Right side: Sincerely and HR signature
+        hr_sig_data = [
+            [Paragraph("Sincerely,", body_style)],
+            [""], # Spacer
+            [Paragraph("<b>HR Management Team</b><br/>Antigravity HRMS Portel", body_style)]
+        ]
+        hr_sig_table = Table(hr_sig_data, colWidths=[180], rowHeights=[15, 25, 25])
+        hr_sig_table.setStyle(TableStyle([
+            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        
+        # Main signature layout table
+        sig_layout_data = [[inner_sig_table, hr_sig_table]]
+        sig_layout_table = Table(sig_layout_data, colWidths=[3 * inch, 3 * inch])
+        sig_layout_table.setStyle(TableStyle([
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING', (0,0), (-1,-1), 0),
+            ('RIGHTPADDING', (0,0), (-1,-1), 0),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+            ('TOPPADDING', (0,0), (-1,-1), 0),
+        ]))
+        
+        story.append(sig_layout_table)
 
         doc.build(story)
         pdf_content = buffer.getvalue()
@@ -129,3 +173,4 @@ class PDFService:
         return path
 
 pdf_service = PDFService()
+

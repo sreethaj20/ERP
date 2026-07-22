@@ -32,7 +32,8 @@ def login(
             or_(
                 User.username == username, 
                 User.email == username,
-                User.employee_id == username
+                User.employee_id == username,
+                User.email.like(f"{username}@%")
             )
         ).first()
     except Exception as e:
@@ -58,11 +59,79 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    if user and user.is_active:
+        from app.models.employee import Employee
+        from app.models.offboarding import OffboardingRequest
+        from datetime import date, datetime, timedelta
+        
+        emp = db.query(Employee).filter(Employee.user_id == user.id, Employee.deleted_at == None).first()
+        if emp and emp.status != "Inactive":
+            offboard_req = db.query(OffboardingRequest).filter(
+                OffboardingRequest.employee_id == emp.employee_id,
+                OffboardingRequest.deleted_at == None
+            ).order_by(OffboardingRequest.id.desc()).first()
+            if offboard_req:
+                request_date = offboard_req.request_date or offboard_req.created_at
+                notice_days = offboard_req.notice_period_days or 0
+                notice_end_date = None
+                if request_date:
+                    req_date_val = request_date.date() if isinstance(request_date, datetime) else request_date
+                    notice_end_date = req_date_val + timedelta(days=notice_days)
+                
+                exit_date = offboard_req.exit_date or offboard_req.last_working_day
+                exit_date_val = None
+                if exit_date:
+                    if isinstance(exit_date, str):
+                        try:
+                            exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
+                        except Exception:
+                            pass
+                    elif isinstance(exit_date, datetime):
+                        exit_date_val = exit_date.date()
+                    else:
+                        exit_date_val = exit_date
+                
+                deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
+                if deactivate_date and (deactivate_date - date.today()).days < 0:
+                    emp.status = "Inactive"
+                    user.is_active = False
+                    offboard_req.status = "Completed"
+                    offboard_req.completed = True
+                    db.add(emp)
+                    db.add(user)
+                    db.add(offboard_req)
+                    try:
+                        db.commit()
+                        print(f"[OFFBOARDING] User '{user.username}' (employee_id={emp.employee_id}) has been DEACTIVATED dynamically during login attempt.")
+                    except Exception as e:
+                        db.rollback()
+                        print(f"[OFFBOARDING ERROR] Dynamic deactivation during login failed: {e}")
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="User account is inactive. Please contact admin."
         )
+    
+    # Also check if login_enabled is False in role_assignments (probation over or manually locked)
+    try:
+        from app.models.role_assignment import RoleAssignment
+        from app.models.employee import Employee as EmpModel
+        emp_for_role = db.query(EmpModel).filter(EmpModel.user_id == user.id, EmpModel.deleted_at == None).first()
+        if emp_for_role:
+            active_role = db.query(RoleAssignment).filter(
+                RoleAssignment.employee_id == emp_for_role.employee_id,
+                RoleAssignment.is_active == True
+            ).first()
+            if active_role and not active_role.login_enabled:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Login access has been disabled for your account. Please contact your manager or HR."
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[AUTH WARNING] Role assignment login check failed: {e}")
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

@@ -45,6 +45,7 @@ let _currentUser: any = null;
 export const logoutUser = async () => {
     // Record check-out BEFORE clearing the session (token still needed for the API call)
     await recordLogoutPresence().catch(e => console.warn('[ATTENDANCE] Checkout on logout failed:', e));
+    await api.post('auth/logout').catch(e => console.warn('[AUTH] Backend logout failed:', e));
     sessionStorage.clear();
     _companyProfile = null;
     _currentUser = null;
@@ -96,6 +97,7 @@ export const initStorage = async () => {
                 case 'activities': await refreshActivities(); break;
                 case 'announcements': await refreshAnnouncements(); break;
                 case 'performance_updated': await refreshPerformanceReviews(); break;
+                case 'notifications': await refreshNotifications(); break;
             }
             // Notify all listening components
             window.dispatchEvent(new Event('storage'));
@@ -284,8 +286,9 @@ export const refreshJobs = async () => {
         const [minExp, maxExp] = String(experienceRange).split('-').map((v: string) => v.trim());
         return {
             ...job,
-            job_id: job.id || job.job_id,
+            job_id: String(job.job_id || job.id || ''),
             job_code: job.job_code || `JOB-${job.id || job.job_id || '000'}`,
+            id: job.id,
             employment_type: job.job_type || job.employment_type || 'Full-time',
             experience_min: job.experience_min || minExp || '0',
             experience_max: job.experience_max || maxExp || '0',
@@ -321,11 +324,16 @@ export const refreshCandidates = async () => {
         return _candidates;
     }
 };
-export const refreshInterviews = async () => { _interviews = await fetchData('recruiter/interviews'); return _interviews; };
+export const refreshInterviews = async () => {
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const url = role === 'manager' ? 'manager/interviews' : (role === 'hr' ? 'hr/interviews' : 'recruiter/interviews');
+    _interviews = await fetchData(url);
+    return _interviews;
+};
 
 export const refreshOffers = async () => {
     const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
-    const url = role === 'manager' ? 'manager/offers' : 'recruiter/offers';
+    const url = role === 'manager' ? 'manager/offers' : (role === 'hr' ? 'hr/offers' : 'recruiter/offers');
     const data = await fetchData(url);
     _offers = (Array.isArray(data) ? data : []).map((o: any) => ({
         ...o,
@@ -398,7 +406,12 @@ export const refreshAttendanceCorrections = async () => {
     window.dispatchEvent(new Event('storage'));
     return _attendanceCorrections;
 };
-export const refreshHolidays = async () => { _holidays = await fetchData('hr/holidays'); return _holidays; };
+export const refreshHolidays = async () => {
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const url = role === 'hr' ? 'hr/holidays' : 'holidays';
+    _holidays = await fetchData(url);
+    return _holidays;
+};
 export const refreshAnnouncements = async () => {
     try {
         // Use shared endpoint that handles role-based filtering on backend
@@ -431,8 +444,43 @@ export const refreshCompanyProfile = async () => {
     }
     return _companyProfile;
 };
-export const refreshActivities = async () => { _activities = await fetchData('activities'); return _activities; };
-export const refreshScreeningLogs = async () => { _screeningLogs = await fetchData('recruiter/screening_logs'); return _screeningLogs; };
+export const refreshActivities = async () => {
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const endpoint = role === 'manager' ? 'manager/audit-logs' : 'activities';
+    const res = await fetchData(endpoint);
+    
+    _activities = (Array.isArray(res) ? res : []).map((log: any) => {
+        if (log.table_name) {
+            return {
+                id: log.id,
+                message: `${log.action} on ${log.table_name} (Record ID: ${log.record_id})`,
+                type: log.table_name,
+                timestamp: log.created_at,
+                user: log.changed_by || 'System'
+            };
+        } else {
+            return {
+                id: log.id,
+                message: log.message || log.description || `${log.action} in ${log.module || 'System'}`,
+                type: log.type || log.module || 'general',
+                timestamp: log.created_at || log.timestamp,
+                user: log.username || 'System'
+            };
+        }
+    });
+    return _activities;
+};
+export const refreshScreeningLogs = async () => {
+    try {
+        const data = await fetchData('recruiter/screening_logs');
+        _screeningLogs = Array.isArray(data) ? data : [];
+        return _screeningLogs;
+    } catch (e) {
+        console.warn('[STORAGE] refreshScreeningLogs failed:', e);
+        _screeningLogs = [];
+        return [];
+    }
+};
 export const refreshEarlyLogins = async () => {
     try {
         const role = getRole();
@@ -480,7 +528,9 @@ export const recordLoginPresence = async (id: string, name: string, role: string
         };
         console.log('[ATTENDANCE] Checkin payload:', payload);
 
-        const response = await api.post('hr/attendance/checkin', payload);
+        const isHROrManager = ['hr', 'manager'].includes(role?.toLowerCase());
+        const endpoint = isHROrManager ? 'hr/attendance/checkin' : 'employee/attendance/checkin';
+        const response = await api.post(endpoint, payload);
         console.log('[ATTENDANCE] Checkin success:', response.status);
         await refreshAttendance();
 
@@ -510,7 +560,10 @@ export const recordLogoutPresence = async () => {
             return;
         }
 
-        const response = await api.post('hr/attendance/checkout', { employee_id: empId });
+        const userRole = (sessionStorage.getItem("userRole") || '').toLowerCase();
+        const isHROrManager = ['hr', 'manager'].includes(userRole);
+        const endpoint = isHROrManager ? 'hr/attendance/checkout' : 'employee/attendance/checkout';
+        const response = await api.post(endpoint, { employee_id: empId });
         console.log('[ATTENDANCE] Checkout success on logout:', response.status);
 
         // 🚀 LINK: Automatically end shift session on logout (Skip for managers who don't track shifts)
@@ -708,8 +761,13 @@ export const getUserPresence = () => _presence;
 export const getVisibleJobs = (role: string, userId: string) => _jobs;
 export const getVisibleCandidates = (role?: string, userId?: string) => {
     const effectiveUserId = userId || sessionStorage.getItem('userId') || '';
+    const userRole = (role || sessionStorage.getItem('userRole') || '').toLowerCase();
+    const empId = sessionStorage.getItem('employeeId') || '';
     return _candidates
-        .filter((c: any) => !c.recruiter_id || String(c.recruiter_id) === String(effectiveUserId))
+        .filter((c: any) => {
+            if (userRole === 'hr' || userRole === 'manager') return true;
+            return !c.created_by || String(c.created_by) === String(empId) || String(c.created_by) === String(effectiveUserId);
+        })
         .map((c: any) => ({
             ...c,
             current_stage: c.current_stage || c.stage || 'Telephonic',
@@ -718,7 +776,16 @@ export const getVisibleCandidates = (role?: string, userId?: string) => {
         }));
 };
 export const getVisibleInterviews = (role: string, userId: string) => _interviews;
-export const getVisibleOffers = (role: string, userId: string) => _offers;
+export const getVisibleOffers = (role: string, userId: string) => {
+    const userRole = (role || sessionStorage.getItem('userRole') || '').toLowerCase();
+    if (userRole === 'hr' || userRole === 'manager') return _offers;
+    const empId = sessionStorage.getItem('employeeId') || '';
+    const effectiveUserId = userId || sessionStorage.getItem('userId') || '';
+    const myCandidates = _candidates
+        .filter((c: any) => !c.created_by || String(c.created_by) === String(empId) || String(c.created_by) === String(effectiveUserId))
+        .map((c: any) => String(c.candidate_id || c.id));
+    return _offers.filter((o: any) => myCandidates.includes(String(o.candidate_id)));
+};
 export const getTeamTimesheets = async (tl_id: string, date?: string): Promise<any[]> => {
     const params = new URLSearchParams({ tl_id });
     if (date) params.append('date', date);
@@ -738,6 +805,8 @@ export const getVisibleAttendance = (role: string, userId: string) => {
         const myEmpId = myEmp?.employee_id || '';
         const myUserId = String(userId);
 
+        if (!myEmpId && !myUserId) return [];
+
         const teamIds = _employees
             .filter(e => {
                 const tlId = String(e.team_leader_id || '');
@@ -745,10 +814,10 @@ export const getVisibleAttendance = (role: string, userId: string) => {
                 const mgrId = String(e.manager_id || '');
                 const repMgrId = String(e.reporting_manager_id || '');
 
-                return tlId === myEmpId || tlId === myUserId ||
-                    repId === myEmpId || repId === myUserId ||
-                    mgrId === myEmpId || mgrId === myUserId ||
-                    repMgrId === myEmpId || repMgrId === myUserId;
+                return (myEmpId && tlId === myEmpId) || (myUserId && tlId === myUserId) ||
+                    (myEmpId && repId === myEmpId) || (myUserId && repId === myUserId) ||
+                    (myEmpId && mgrId === myEmpId) || (myUserId && mgrId === myUserId) ||
+                    (myEmpId && repMgrId === myEmpId) || (myUserId && repMgrId === myUserId);
             })
             .map(e => String(e.employee_id || e.id));
 
@@ -761,20 +830,27 @@ export const getVisibleAttendance = (role: string, userId: string) => {
 export const getVisibleLeaves = (role: string, userId: string): any[] => {
     const r = role?.toLowerCase() || '';
     if (r === 'manager' || r === 'hr') return _leaves;
+    const myEmp = getMyEmployee();
+    const myEmpCode = myEmp?.employee_id || '';
+    const myUserId = String(userId);
     if (r === 'teamleader') {
-        const myEmp = getMyEmployee();
-        const myId = myEmp?.employee_id || String(userId);
+        const myId = myEmpCode || myUserId;
+        if (!myId) return [];
         const teamIds = _employees
             .filter(e =>
-                String(e.reporting_to_id) === String(myId) ||
-                String(e.team_leader_id) === String(myId) ||
-                String(e.manager_id) === String(myId) ||
-                String(e.reporting_manager_id) === String(myId)
+                (myId && String(e.reporting_to_id) === String(myId)) ||
+                (myId && String(e.team_leader_id) === String(myId)) ||
+                (myId && String(e.manager_id) === String(myId)) ||
+                (myId && String(e.reporting_manager_id) === String(myId))
             )
             .map(e => String(e.employee_id || e.id));
         return _leaves.filter(l => teamIds.includes(String(l.employee_id)));
     }
-    return _leaves.filter(l => String(l.employee_id) === String(userId));
+    return _leaves.filter(l => 
+        (myUserId && String(l.employee_id) === myUserId) || 
+        (myEmpCode && String(l.employee_id) === myEmpCode) ||
+        (myUserId && String(l.id) === myUserId)
+    );
 };
 export const getVisibleShifts = (role: string, userId: string) => _shifts;
 
@@ -786,10 +862,24 @@ export const generateId = (prefix?: string) => {
     return id;
 };
 
-// Returns all attendance corrections from cache
 export const getAttendanceCorrections = () => _attendanceCorrections;
 export const updateAttendanceCorrection = async (id: any, updates: any) => {
     const res = await api.patch(`hr/attendance/corrections/${id}`, updates);
+    await refreshAttendanceCorrections();
+    return res.data;
+};
+export const approveAttendanceCorrection = async (id: any, status: string) => {
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    let res;
+    if (role === 'hr') {
+        res = await api.patch(`hr/attendance/corrections/${id}`, { status });
+    } else if (role === 'manager') {
+        res = await api.post(`manager/attendance/corrections/${id}/approve?status=${status}`);
+    } else if (role === 'teamleader') {
+        res = await api.post(`teamleader/attendance/corrections/${id}/approve?status=${status}`);
+    } else {
+        throw new Error("Unauthorized to approve corrections");
+    }
     await refreshAttendanceCorrections();
     return res.data;
 };
@@ -1002,24 +1092,45 @@ export const getEmployeeShift = (empId: string) => {
         )
     );
 
-    // 2. Inheritance (Governance): If no direct shift, check manager's shift
+    // 2. Inheritance (Governance): If no direct shift, check Team Leader then Manager
     if (!shift && emp) {
-        const rawManagerId = emp.reporting_to_id || emp.manager_id;
-        if (rawManagerId) {
-            // Resolve manager's business ID to handle ID mismatches
-            const manager = _employees.find((e: any) =>
-                String(e.id) === String(rawManagerId) ||
-                String(e.employee_id) === String(rawManagerId)
+        // A. Team Leader Check
+        const rawTlId = emp.team_leader_id;
+        if (rawTlId) {
+            const tl = _employees.find((e: any) =>
+                String(e.id) === String(rawTlId) ||
+                String(e.employee_id) === String(rawTlId)
             );
-            const managerBusinessId = manager?.employee_id || rawManagerId;
-            const managerNumericId = manager?.id || rawManagerId;
+            const tlBusinessId = tl?.employee_id || rawTlId;
+            const tlNumericId = tl?.id || rawTlId;
 
             shift = _shifts.find((s: any) =>
                 (s.assignments || []).some((a: any) =>
-                    String(a.employee_id) === String(managerBusinessId) ||
-                    String(a.employee_id) === String(managerNumericId)
+                    String(a.employee_id) === String(tlBusinessId) ||
+                    String(a.employee_id) === String(tlNumericId)
                 )
             );
+        }
+
+        // B. Manager Fallback
+        if (!shift) {
+            const rawManagerId = emp.reporting_to_id || emp.manager_id;
+            if (rawManagerId) {
+                // Resolve manager's business ID to handle ID mismatches
+                const manager = _employees.find((e: any) =>
+                    String(e.id) === String(rawManagerId) ||
+                    String(e.employee_id) === String(rawManagerId)
+                );
+                const managerBusinessId = manager?.employee_id || rawManagerId;
+                const managerNumericId = manager?.id || rawManagerId;
+
+                shift = _shifts.find((s: any) =>
+                    (s.assignments || []).some((a: any) =>
+                        String(a.employee_id) === String(managerBusinessId) ||
+                        String(a.employee_id) === String(managerNumericId)
+                    )
+                );
+            }
         }
     }
 
@@ -1271,10 +1382,10 @@ export const addCandidate = async (candidate: any) => {
 export const updateCandidateStage = async (id: any, stage: string) => {
     console.log('[STORAGE] Updating candidate stage:', { id, stage });
     try {
-        const res = await sendData(`recruiter/candidates/${id}/stage`, { stage }, 'patch');
-        console.log('[STORAGE] Candidate stage updated successfully:', res);
+        const res = await api.patch(`recruiter/candidates/${id}/stage?stage=${stage}`);
+        console.log('[STORAGE] Candidate stage updated successfully:', res.data);
         await refreshCandidates();
-        return res;
+        return res.data;
     } catch (error) {
         console.error('[STORAGE] Error updating candidate stage:', error);
         throw error;
@@ -1570,6 +1681,7 @@ export const deleteAnnouncement = async (id: any) => {
 
 export const markNotificationRead = async (id: any) => {
     const res = await sendData(`notifications/${id}/read`, {}, 'patch');
+    await refreshNotifications();
     return res;
 };
 
@@ -1685,20 +1797,52 @@ export const updatePreboarding = async (id: any, updates: any) => {
 
     // Strip read-only/metadata fields before sending
     const { id: _id, preboard_id, employee_id, created_at, updated_at, ...clean } = updates;
-    const res = await sendData(endpoint, clean, 'put');
+
+    // Filter payload keys to only allowed fields to prevent validation errors (422)
+    let payload = clean;
+    if (role === 'hr') {
+        const allowedKeys = [
+            'documents_verified_by_hr', 'background_verification_status', 'form_status',
+            'hr_review_status', 'remarks', 'emergency_contact_name', 'emergency_contact_phone',
+            'emergency_contact_relation', 'bank_name', 'bank_account_number', 'bank_ifsc_code',
+            'permanent_address', 'current_address', 'city', 'state', 'pincode', 'country',
+            'nda_signed', 'code_of_conduct_signed', 'policy_acknowledged', 'uan_number',
+            'esi_number', 'pf_number'
+        ];
+        payload = {};
+        allowedKeys.forEach(k => {
+            if (clean[k] !== undefined) {
+                payload[k] = clean[k];
+            }
+        });
+    }
+
+    const res = await sendData(endpoint, payload, 'put');
+    await refreshPreboarding();
+    return res;
+};
+export const completePreboarding = async (id: any) => {
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const endpoint = role === 'manager' ? `manager/preboarding/${id}/complete` : `hr/preboarding-v2/${id}/verify`;
+    const res = await sendData(endpoint, {}, 'post');
     await refreshPreboarding();
     return res;
 };
 
 export const createOffboardingRequest = (empId: any, data: any) => ({
+    offboard_id: data.offboard_id || `OFF-${empId}-${Math.floor(1000 + Math.random() * 9000)}`,
     employee_id: empId,
+    employeeName: data.employeeName || null,
+    department: data.department || null,
     exit_date: data.exit_date,
     reason: data.reason,
-    notice_period_days: data.notice_period_days,
+    notice_period_days: data.notice_period_days || 0,
     notice_remaining_days: data.notice_remaining_days || 0,
-    handover_to: data.handover_to,
-    manager_approved: false,
-    completed: false
+    handover_to: data.handover_to || null,
+    final_dues_amount: data.final_dues_amount || 0.0,
+    exit_interview_notes: data.exit_interview_notes || null,
+    manager_approved: data.manager_approved || false,
+    completed: data.completed || false
 });
 
 export const addOffboardingRequest = async (data: any) => {
@@ -1730,7 +1874,9 @@ export const finalizeOffboarding = async (id: any) => {
 };
 
 export const addRoleAssignment = async (data: any) => {
-    const res = await sendData('hr/roles', data);
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const endpoint = role === 'manager' ? 'manager/roles' : 'hr/roles';
+    const res = await sendData(endpoint, data);
     await refreshRoles();
     return res;
 };
@@ -1745,7 +1891,9 @@ export const createRoleAssignment = (empId: any, assignedBy: string, data: any) 
 });
 
 export const updateRoleAssignment = async (id: any, updates: any) => {
-    const res = await sendData(`hr/roles/${id}`, updates, 'put');
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const endpoint = role === 'manager' ? `manager/roles/${id}` : `hr/roles/${id}`;
+    const res = await sendData(endpoint, updates, 'put');
     await refreshRoles();
     return res;
 };
@@ -1874,7 +2022,16 @@ export const deleteOffboardingRequest = async (id: any) => {
     return res;
 };
 
-export const getAttendanceByEmployee = (id: any) => _attendance.filter(a => String(a.employee_id) === String(id));
+export const getAttendanceByEmployee = (id: any) => {
+    const emp = _employees.find(e => String(e.id) === String(id) || String(e.employee_id) === String(id));
+    const empId = emp?.employee_id || id;
+    const dbId = emp?.id || id;
+    return _attendance.filter(a => 
+        String(a.employee_id) === String(empId) || 
+        String(a.employee_id) === String(dbId) ||
+        String(a.id) === String(dbId)
+    );
+};
 export const addHoliday = async (name: string, date: string) => {
     const res = await sendData('hr/holidays', { name, date, type: "Mandatory" });
     await refreshHolidays();
@@ -1968,4 +2125,14 @@ export const getLeavePolicies = async () => {
 
 export const updateLeavePolicy = async (data: { leave_type: string, total_days: number, description?: string }) => {
     return sendData('hr/leave-policies', data, 'put');
+};
+
+export const getDepartments = async () => {
+    try {
+        const res = await api.get('hr/departments');
+        return Array.isArray(res.data) ? res.data : [];
+    } catch (error) {
+        console.error('[STORAGE] Error fetching departments:', error);
+        return [];
+    }
 };

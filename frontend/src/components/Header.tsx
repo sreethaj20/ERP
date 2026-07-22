@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaBell, FaUserCircle, FaSignOutAlt, FaArrowLeft, FaSun, FaMoon } from 'react-icons/fa';
+import { FaBell, FaUserCircle, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
 import Logo from './Logo';
 import { logoutUser, endShiftSession, getNotifications, markNotificationRead, getData } from '../utils/storage';
 import { useTheme } from '../context/ThemeContext';
@@ -34,7 +34,8 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           ...n,
           read: n.is_read,
           userId: n.user_id,
-          timestamp: n.created_at
+          timestamp: n.created_at,
+          type: n.category || n.type || 'General'
         }));
         setNotifications(mapped);
       }
@@ -131,30 +132,6 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           www.mercuresolution.com
         </a>
 
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          style={{
-            background: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-            border: `1px solid var(--border-light)`,
-            borderRadius: '20px',
-            padding: '6px 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            color: theme === 'dark' ? '#ffd60a' : '#5856d6',
-            fontSize: '12px',
-            fontWeight: '600',
-            transition: 'all 0.3s ease'
-          }}
-        >
-          {theme === 'dark' ? <FaSun size={14} /> : <FaMoon size={14} />}
-          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
-        </button>
-
-        <div style={{ width: '1px', height: '24px', background: 'var(--border-light)' }}></div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           {/* Notifications */}

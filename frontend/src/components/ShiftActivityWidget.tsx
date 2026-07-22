@@ -249,12 +249,16 @@ export default function ShiftActivityWidget() {
                                 onClick={async () => {
                                     setLoading(true);
                                     try {
-                                        await startShiftSession(myShift.id);
-                                        await syncData();
-                                        setMessage({ type: 'success', text: "Shift started! Have a productive day." });
-                                        setTimeout(() => setMessage(null), 3000);
-                                    } catch (e) {
-                                        setMessage({ type: 'error', text: "Failed to start shift. Already active?" });
+                                        const res = await startShiftSession(myShift.id);
+                                        if (res && res.success) {
+                                            await syncData();
+                                            setMessage({ type: 'success', text: "Shift started! Have a productive day." });
+                                            setTimeout(() => setMessage(null), 3000);
+                                        } else {
+                                            setMessage({ type: 'error', text: res.message || "Failed to start shift due to early login rules." });
+                                        }
+                                    } catch (e: any) {
+                                        setMessage({ type: 'error', text: e.response?.data?.detail || "Failed to start shift. Already active?" });
                                     }
                                     setLoading(false);
                                 }}

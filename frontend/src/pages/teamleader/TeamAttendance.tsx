@@ -2,52 +2,73 @@ import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
-import { getEmployees } from "../../utils/storage";
-import { getTeamTimesheets } from "../../utils/teamleaderAPI";
+import { getTeamMembers, getTeamAttendanceRecords } from "../../services/teamleaderService";
 import { FaClock, FaCalendarCheck, FaUserFriends, FaSignOutAlt, FaSignInAlt, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
 import { downloadCSV } from "../../utils/formatters";
+import { refreshAttendanceCorrections, approveAttendanceCorrection } from "../../utils/storage";
 
 export default function TeamAttendance() {
   const [members, setMembers] = useState<any[]>([]);
   const [attendance, setAttendance] = useState<any[]>([]);
-  const userId = sessionStorage.getItem("userId") || "";
+  const [corrections, setCorrections] = useState<any[]>([]);
   const today = new Date().toISOString().split('T')[0];
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
     const loadTeamData = async () => {
-      const empId = sessionStorage.getItem("employeeId") || "";
-      const allEmployees = getEmployees();
-      const team = allEmployees.filter((e: any) => {
-        const tlId = String(e.team_leader_id || '');
-        const repId = String(e.reporting_to_id || '');
-        const mgrId = String(e.manager_id || '');
-        const repMgrId = String(e.reporting_manager_id || '');
+      try {
+        const team = await getTeamMembers();
+        const normalizedTeam = (team || []).map((e: any) => ({
+          ...e,
+          name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim()
+        }));
+        setMembers(normalizedTeam);
+      } catch (err) {
+        console.error("Error loading team members:", err);
+      }
 
-        return tlId === String(userId) || tlId === String(empId) ||
-               repId === String(userId) || repId === String(empId) ||
-               mgrId === String(userId) || mgrId === String(empId) ||
-               repMgrId === String(userId) || repMgrId === String(empId);
-      });
-      setMembers(team);
+      try {
+        const teamAttendance = await getTeamAttendanceRecords();
+        setAttendance(teamAttendance);
+      } catch (err) {
+        console.error("Error loading team attendance records:", err);
+      }
 
-      // 🕐 SERVER-SIDE TEAM FILTERING
-      const teamAttendance = await getTeamTimesheets(userId);
-      setAttendance(teamAttendance);
+      try {
+        const corr = await refreshAttendanceCorrections();
+        setCorrections(Array.isArray(corr) ? corr : []);
+      } catch (err) {
+        console.error("Error loading corrections:", err);
+      }
     };
     
     loadTeamData();
-  }, [userId]);
+  }, []);
+
+  const matchEmp = (a: any, m: any) => {
+    const aEmpId = String(a.employee_id || '').trim();
+    const aUserId = String(a.user_id || '').trim();
+    const mId = String(m.id || '').trim();
+    const mEmpId = String(m.employee_id || '').trim();
+    const mUserId = String(m.user_id || '').trim();
+    return (
+      (aEmpId && (aEmpId === mId || aEmpId === mEmpId || aEmpId === mUserId)) ||
+      (aUserId && (aUserId === mId || aUserId === mEmpId || aUserId === mUserId))
+    );
+  };
+
+  const isSameDate = (d1: any, targetDateStr: string) => {
+    if (!d1) return false;
+    const str = String(d1).includes('T') ? String(d1).split('T')[0] : String(d1).substring(0, 10);
+    return str === targetDateStr;
+  };
 
   const handleExportToday = () => {
     const data = members.map(m => {
-      const att = attendance.find(a => 
-        (String(a.employee_id) === String(m.id) || String(a.employee_id) === String(m.employee_id)) && 
-        a.date === today
-      );
+      const att = attendance.find(a => matchEmp(a, m) && isSameDate(a.date, today));
       return {
-        "Employee ID": m.id,
+        "Employee ID": m.employee_id || m.id,
         "Name": m.name,
         "Login Time": att?.login_time ? new Date(att.login_time).toLocaleTimeString() : 'N/A',
         "Logout Time": att?.logout_time ? new Date(att.logout_time).toLocaleTimeString() : 'N/A',
@@ -57,6 +78,59 @@ export default function TeamAttendance() {
     });
     downloadCSV(data, `Team_Attendance_Daily_${today}.csv`);
   };
+
+  const handleExportMonthly = () => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const data = members.map(m => {
+      const stats = attendance.filter(a => {
+        if (!a.date || !matchEmp(a, m)) return false;
+        const dateStr = String(a.date).includes('T') ? String(a.date).split('T')[0] : String(a.date).substring(0, 10);
+        const parts = dateStr.split('-');
+        if (parts.length < 3) return false;
+        const aYear = parseInt(parts[0], 10);
+        const aMonth = parseInt(parts[1], 10) - 1;
+        return aMonth === selectedMonth && aYear === selectedYear;
+      });
+
+      const present = stats.filter(s => {
+        const status = String(s.status || '').toLowerCase();
+        const remark = String(s.remark || '').toLowerCase();
+        return status.includes('present') || status.includes('extension') || status.includes('active') || remark.includes('extension');
+      }).length;
+      const leaves = stats.filter(s => {
+        const status = String(s.status || '').toLowerCase();
+        const remark = String(s.remark || '').toLowerCase();
+        return status.includes('leave') || remark.includes('leave');
+      }).length;
+      const lop = stats.filter(s => String(s.status || '').toLowerCase().includes('absent')).length;
+      const halfDay = stats.filter(s => String(s.status || '').toLowerCase().includes('half')).length;
+      const totalDays = stats.length;
+
+      return {
+        "Employee ID": m.employee_id || m.id,
+        "Name": m.name,
+        "Month": monthNames[selectedMonth],
+        "Year": selectedYear,
+        "Present": present,
+        "Leaves": leaves,
+        "LOP (Absent)": lop,
+        "Half Day": halfDay,
+        "Total Days": totalDays
+      };
+    });
+    downloadCSV(data, `Team_Attendance_Monthly_${monthNames[selectedMonth]}_${selectedYear}.csv`);
+  };
+
+  // Compute Unit Statistics strictly for the assigned team members
+  const onClockCount = members.filter(m => {
+    const att = attendance.find(a => matchEmp(a, m) && isSameDate(a.date, today));
+    return att && att.login_time && !att.logout_time;
+  }).length;
+
+  const completedCount = members.filter(m => {
+    const att = attendance.find(a => matchEmp(a, m) && isSameDate(a.date, today));
+    return att && att.logout_time;
+  }).length;
 
   return (
     <div className="dashboard-container">
@@ -84,15 +158,12 @@ export default function TeamAttendance() {
               </thead>
               <tbody>
                 {members.map(m => {
-                  const todayAtt = attendance.find(a => 
-                    (String(a.employee_id) === String(m.id) || String(a.employee_id) === String(m.employee_id)) && 
-                    a.date === today
-                  );
+                  const todayAtt = attendance.find(a => matchEmp(a, m) && isSameDate(a.date, today));
                   return (
                     <tr key={m.id} style={trStyle}>
                       <td style={{ padding: "12px" }}>
                         <div style={{ fontWeight: "600", fontSize: '14px' }}>{m.name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{m.id}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{m.employee_id || m.id}</div>
                       </td>
                       <td style={{ padding: "12px" }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: todayAtt?.login_time ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
@@ -129,7 +200,7 @@ export default function TeamAttendance() {
                 })}
                 {members.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                    <td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
                       No direct reports found in your unit.
                     </td>
                   </tr>
@@ -142,8 +213,8 @@ export default function TeamAttendance() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <GlassCard title="Unit Statistics" subtitle="Today's deployment">
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
-              <StatRow label="On Clock" value={attendance.filter(a => a.date === today && !a.logout_time).length} icon={<FaClock color="#30d158" />} />
-              <StatRow label="Completed" value={attendance.filter(a => a.date === today && a.logout_time).length} icon={<FaCheckCircle color="#0a84ff" />} />
+              <StatRow label="On Clock" value={onClockCount} icon={<FaClock color="#30d158" />} />
+              <StatRow label="Completed" value={completedCount} icon={<FaCheckCircle color="#0a84ff" />} />
               <StatRow label="Expected" value={members.length} icon={<FaUserFriends color="#bf5af2" />} />
             </div>
           </GlassCard>
@@ -163,7 +234,7 @@ export default function TeamAttendance() {
         title="Monthly Individual Summary"
         subtitle="Aggregate performance audit"
         headerAction={
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <select
               className="apple-input"
               value={selectedMonth}
@@ -182,6 +253,13 @@ export default function TeamAttendance() {
             >
               {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
             </select>
+            <button
+              onClick={handleExportMonthly}
+              className="apple-btn"
+              style={{ padding: '4px 12px', fontSize: '12px', background: 'var(--accent-blue)', color: '#fff', height: '32px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              Export CSV
+            </button>
           </div>
         }
       >
@@ -199,19 +277,28 @@ export default function TeamAttendance() {
             </thead>
             <tbody>
               {members.map(m => {
-                const month = new Date().getMonth();
-                const year = new Date().getFullYear();
                 const stats = attendance.filter(a => {
-                  if (!a.date) return false;
-                  const d = new Date(a.date);
-                  const isMatch = String(a.employee_id) === String(m.id) || String(a.employee_id) === String(m.employee_id);
-                  return isMatch && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+                  if (!a.date || !matchEmp(a, m)) return false;
+                  const dateStr = String(a.date).includes('T') ? String(a.date).split('T')[0] : String(a.date).substring(0, 10);
+                  const parts = dateStr.split('-');
+                  if (parts.length < 3) return false;
+                  const aYear = parseInt(parts[0], 10);
+                  const aMonth = parseInt(parts[1], 10) - 1; // 0-indexed
+                  return aMonth === selectedMonth && aYear === selectedYear;
                 });
 
-                const present = stats.filter(s => s.status === 'Present').length;
-                const leaves = stats.filter(s => s.status === 'Leave').length;
-                const lop = stats.filter(s => s.status === 'Absent').length;
-                const halfDay = stats.filter(s => s.status === 'Half Day').length;
+                const present = stats.filter(s => {
+                  const status = String(s.status || '').toLowerCase();
+                  const remark = String(s.remark || '').toLowerCase();
+                  return status.includes('present') || status.includes('extension') || status.includes('active') || remark.includes('extension');
+                }).length;
+                const leaves = stats.filter(s => {
+                  const status = String(s.status || '').toLowerCase();
+                  const remark = String(s.remark || '').toLowerCase();
+                  return status.includes('leave') || remark.includes('leave');
+                }).length;
+                const lop = stats.filter(s => String(s.status || '').toLowerCase().includes('absent')).length;
+                const halfDay = stats.filter(s => String(s.status || '').toLowerCase().includes('half')).length;
                 const totalDays = stats.length;
 
                 return (
@@ -231,6 +318,57 @@ export default function TeamAttendance() {
           </table>
         </div>
       </GlassCard>
+
+    {/* Clock Correction Approvals */}
+    <div style={{ marginTop: '30px' }}>
+      <GlassCard title="Clock Correction Requests" subtitle="Approve or reject your unit's check-in/out adjustments">
+        <div style={{ overflowX: 'auto', marginTop: '15px' }}>
+          {corrections.filter(c => c.status === 'Pending').length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-tertiary)' }}>No pending correction requests.</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+              <thead>
+                <tr style={thStyle}>
+                  {['Employee', 'Date', 'Requested In', 'Requested Out', 'Reason', 'Action'].map(h => (
+                    <th key={h} style={{ padding: '10px 14px' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {corrections.filter(c => c.status === 'Pending').map((c: any) => (
+                  <tr key={c.id} style={trStyle}>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ fontWeight: '600' }}>{c.employee_name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{c.employee_id}</div>
+                    </td>
+                    <td style={{ padding: '12px 14px', fontFamily: 'monospace' }}>{c.date}</td>
+                    <td style={{ padding: '12px 14px', color: 'var(--accent-blue)' }}>
+                      {c.requested_check_in ? new Date(c.requested_check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </td>
+                    <td style={{ padding: '12px 14px', color: 'var(--accent-blue)' }}>
+                      {c.requested_check_out ? new Date(c.requested_check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    </td>
+                    <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', maxWidth: '180px', wordBreak: 'break-word' }}>{c.reason}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={async () => { try { await approveAttendanceCorrection(c.id, 'Approved'); const corr = await refreshAttendanceCorrections(); setCorrections(Array.isArray(corr) ? corr : []); } catch(e: any) { alert(e.message); } }}
+                          className="apple-btn" style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--accent-green)', height: '28px' }}
+                        >Approve</button>
+                        <button
+                          onClick={async () => { try { await approveAttendanceCorrection(c.id, 'Rejected'); const corr = await refreshAttendanceCorrections(); setCorrections(Array.isArray(corr) ? corr : []); } catch(e: any) { alert(e.message); } }}
+                          className="apple-btn" style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--accent-red)', height: '28px' }}
+                        >Reject</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </GlassCard>
+    </div>
     </div>
   );
 }
@@ -241,6 +379,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
   if (status === 'Present') { color = '#30d158'; bg = 'rgba(48, 209, 88, 0.1)'; }
   else if (status === 'Half Day') { color = '#ff9f0a'; bg = 'rgba(255, 159, 10, 0.1)'; }
+  else if (status && status.toLowerCase().includes('leave')) { color = '#bf5af2'; bg = 'rgba(191, 90, 242, 0.1)'; }
   else if (status === 'Short Login') { color = '#ff453a'; bg = 'rgba(255, 69, 58, 0.1)'; }
   else if (status === 'Extra Break') { color = '#ff453a'; bg = 'rgba(255, 69, 58, 0.1)'; }
   else if (status === 'Expected') { color = 'var(--accent-blue)'; bg = 'rgba(10, 132, 255, 0.1)'; }

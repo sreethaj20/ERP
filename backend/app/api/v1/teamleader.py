@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import date
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, get_current_user_with_role
 from app.models.user import User
@@ -68,6 +69,30 @@ def get_team_attendance(db: Session = Depends(get_db), current_user: User = Depe
     # Also pass user ID for fallback if repo/service supports it or just use it to fetch more
     return shift_service.get_team_attendance(db, tl_id, user_id=str(current_user.id))
 
+
+@router.get("/attendance/records", response_model=List[AttendanceOut])
+def get_team_attendance_records(
+    date: Optional[date] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    skip: int = 0,
+    limit: int = 2000,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_role("teamleader"))
+):
+    """Team Leader: View historical attendance records for your team members."""
+    return attendance_service.get_my_attendance(
+        db,
+        None,
+        skip,
+        limit,
+        viewer_role="teamleader",
+        viewer_id=current_user.id,
+        date_filter=date,
+        start_date=start_date,
+        end_date=end_date
+    )
+
 # --- Leave Recommendations ---
 
 @router.get("/leaves/pending", response_model=List[LeaveOut])
@@ -91,6 +116,27 @@ async def recommend_leave(leave_id: str, action: str = "approve", rejection_reas
     res = await leave_service.approve_recommendation(db, leave_id, emp.employee_id, "teamleader", action, rejection_reason)
     if not res:
         raise HTTPException(status_code=404, detail="Leave request not found")
+        
+    # Trigger E2E real-time notification to the Manager
+    try:
+        from app.services.notification_service import notification_service
+        from app.models.user import User
+        
+        manager_emp_id = res.manager_id
+        if manager_emp_id:
+            manager_user = db.query(User).filter(User.employee_id == manager_emp_id).first()
+            if manager_user:
+                await notification_service.push_notification(
+                    db,
+                    user_id=manager_user.id,
+                    employee_id=manager_emp_id,
+                    title="Leave Recommendation Submitted",
+                    message=f"TL {emp.name} recommended {res.leave_type} leave approval for {res.name}.",
+                    category="Leave"
+                )
+    except Exception as e:
+        print(f"[TL LEAVE RECOMMEND NOTIFICATION ERROR] {e}")
+        
     return res
 
 # --- Early Login Approvals ---

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { getPreboardingList, updatePreboarding, getEmployees } from "../../utils/storage";
+import { getPreboardingList, updatePreboarding, getEmployees, completePreboarding } from "../../utils/storage";
 import { FaUserClock, FaTasks, FaUniversity, FaFileSignature, FaClipboardCheck, FaInfoCircle, FaCheckDouble } from "react-icons/fa";
 
 export default function PreboardingMonitoring() {
@@ -43,15 +43,14 @@ export default function PreboardingMonitoring() {
 
   const handleDay1Ready = async () => {
     if (!selected) return;
-    await updatePreboarding(selected.preboard_id, {
-      preboard_status: 'completed',
-      training_completed: true,
-      policy_acknowledged: true,
-      documents_verified: true
-    });
-    await loadData();
-    setSelected((prev: any) => ({ ...prev, preboard_status: 'completed', training_completed: true, policy_acknowledged: true, documents_verified: true }));
-    alert("Employee flagged as Day-1 Ready!");
+    try {
+      await completePreboarding(selected.preboard_id);
+      await loadData();
+      setSelected((prev: any) => ({ ...prev, preboard_status: 'completed', self_onboarding_status: 'completed', training_completed: true, policy_acknowledged: true, documents_verified: true }));
+      alert("Employee flagged as Day-1 Ready!");
+    } catch (e: any) {
+      alert("Failed to complete preboarding: " + (e.response?.data?.detail || e.message));
+    }
   };
 
   return (

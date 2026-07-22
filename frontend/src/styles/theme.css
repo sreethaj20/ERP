@@ -1,9 +1,9 @@
 /* === ORIGINAL GLASSY DESIGN REBUILT === */
 /* Dark Glassmorphism - Original Mercure Style */
 :root, [data-theme="dark"] {
-  --bg-primary: #020617;
-  --bg-secondary: #0f0f23;
-  --bg-tertiary: #1e1e2e;
+  --bg-primary: #0b0f19;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
   --text-primary: #ffffff;
   --text-secondary: #b8bcc6;
   --text-tertiary: #6b7280;
@@ -12,8 +12,8 @@
   --accent-indigo: #6366f1;
   --accent-green: #22c55e;
   --border-light: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(15, 23, 42, 0.75);
-  --glass-heavy: rgba(2, 6, 23, 0.9);
+  --glass-bg: rgba(17, 24, 39, 0.75);
+  --glass-heavy: rgba(11, 15, 25, 0.9);
   --glass-input: rgba(255, 255, 255, 0.04);
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
   --shadow-glow: 0 0 20px rgba(14, 165, 233, 0.3);
@@ -21,16 +21,16 @@
 
 /* Light - Subtle Blue Glass (Non-White) */
 [data-theme="light"] {
-  --bg-primary: #f1f5f9;
-  --bg-secondary: #f8fafc;
-  --bg-tertiary: #e2e8f0;
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e5e7eb;
   --text-primary: #1e293b;
   --text-secondary: #475569;
   --text-tertiary: #64748b;
   --accent-blue: #0284c7;
   --border-light: rgba(59, 130, 246, 0.15);
   --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-heavy: rgba(248, 250, 252, 0.95);
+  --glass-heavy: rgba(255, 255, 255, 0.95);
   --glass-input: rgba(255, 255, 255, 0.7);
   --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
   --shadow-glow: 0 0 20px rgba(2, 132, 199, 0.25);

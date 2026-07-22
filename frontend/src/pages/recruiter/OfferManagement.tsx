@@ -1,28 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { refreshOffers, refreshCandidates, refreshJobs, getVisibleOffers, updateOfferStatus, createOffer, getVisibleCandidates, getVisibleJobs, getCandidates, acceptOfferLetter, rejectOfferLetter } from "../../utils/storage";
+import { refreshOffers, refreshCandidates, refreshJobs, getVisibleOffers, updateOfferStatus, createOffer, getVisibleCandidates, getVisibleJobs, getCandidates, acceptOfferLetter, rejectOfferLetter, api } from "../../utils/storage";
 import {
     FaFileSignature, FaCheck, FaTimes, FaPlus, FaMoneyBillWave,
     FaCalendarCheck, FaGift, FaBuilding, FaCheckCircle, FaSearch,
-    FaUserClock, FaEnvelopeOpenText, FaHistory, FaDownload, FaFilePdf
+    FaUserClock, FaEnvelopeOpenText, FaHistory, FaDownload, FaFilePdf, FaLock
 } from 'react-icons/fa';
 import OfferLetterTemplate from "../../components/recruiter/OfferLetterTemplate";
+import { createJob, addCandidate } from "../../services/recruiterService";
+import { generateSecureOfferPdf } from "../../utils/generateSecureOfferPdf";
 
 export interface Offer {
-  id: number;
-  offer_id: string;
-  candidate_id: string;
-  job_id: string;
-  offered_ctc: string;
-  salary?: number;
-  joining_date: string;
-  offer_status: string;
-  department?: string;
-  employment_type?: string;
-  reporting_manager_id?: string;
-  candidate?: { name: string; email: string };
-  job?: { title: string };
+    id: number;
+    offer_id: string;
+    candidate_id: string;
+    job_id: string;
+    offered_ctc: string;
+    salary?: number;
+    joining_date: string;
+    offer_status: string;
+    department?: string;
+    employment_type?: string;
+    reporting_manager_id?: string;
+    candidate?: { name: string; email: string };
+    job?: { title: string };
 }
 
 export default function OfferManagement() {
@@ -52,9 +54,11 @@ export default function OfferManagement() {
     });
 
     const [candidateSearch, setCandidateSearch] = useState("");
-    const [jobSearch, setJobSearch] = useState(""); 
+    const [jobSearch, setJobSearch] = useState("");
 
     const [selectedOfferForPrint, setSelectedOfferForPrint] = useState<any>(null);
+    const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+    const offerTemplateContainerRef = useRef<HTMLDivElement>(null);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [candidatesData, setCandidatesData] = useState<any[]>([]);
@@ -64,11 +68,12 @@ export default function OfferManagement() {
     const loadData = async () => {
         try {
             // Always refresh from API — do not read stale in-memory cache
-            const [cands, offs, jbs] = await Promise.all([
-                refreshCandidates(),
+            const [candsRes, offs, jbs] = await Promise.all([
+                api.get('recruiter/candidates?exclude_offered=true'),
                 refreshOffers(),
                 refreshJobs()
             ]);
+            const cands = candsRes.data;
             setCandidatesData(Array.isArray(cands) ? cands : []);
             setOffersData(Array.isArray(offs) ? offs : []);
             setJobsData(Array.isArray(jbs) ? jbs : []);
@@ -109,20 +114,26 @@ export default function OfferManagement() {
             offered_ctc: form.offered_ctc,
             joining_date: form.joining_date
         });
-        
-        // 🔍 ENHANCED VALIDATION - Manual mode accepts any name
-        const ctcNum = parseFloat(form.offered_ctc);
+
+        // 🔍 ENHANCED VALIDATION - Retrieve values directly from DOM to prevent browser autocomplete/cache mismatch
+        const fixedElem = document.getElementById("fixed_component_input") as HTMLInputElement;
+        const varElem = document.getElementById("variable_component_input") as HTMLInputElement;
+
+        const fixedVal = fixedElem ? (parseFloat(fixedElem.value) || 0) : (parseFloat(form.fixed_component) || 0);
+        const varVal = varElem ? (parseFloat(varElem.value) || 0) : (parseFloat(form.variable_component) || 0);
+        const ctcNum = fixedVal + varVal;
+
         const candidateInput = isManualMode ? form.candidate_name.trim() : form.candidate_id.trim();
         if (!candidateInput) {
             return alert("❌ Candidate name/ID is required");
         }
         if (!form.job_id.trim()) {
-            return alert("❌ Job Role is required"); 
+            return alert("❌ Job Role is required");
         }
         if (!form.joining_date) {
             return alert("❌ Joining Date is required");
         }
-        if (isNaN(ctcNum) || ctcNum <= 0) {
+        if (ctcNum <= 0) {
             return alert("❌ CTC must be a valid positive number");
         }
         console.log('[OfferManagement] Raw form values:', {
@@ -135,52 +146,109 @@ export default function OfferManagement() {
         });
 
         if (isManualMode) {
-            // MANUAL MODE: Generate ID & PDF (skip backend)
-            const manualCandidateId = `MANUAL-${Date.now()}-${form.candidate_name.trim().replace(/\\s+/g, '-').substring(0,20)}`;
-            const manualOffer = {
-                offer_id: `OFFER-${manualCandidateId}`,
-                candidate_id: manualCandidateId,
-                candidate_name: form.candidate_name.trim(),
-                first_name: form.candidate_name.trim().split(' ')[0] || form.candidate_name.trim(),
-                job_title: form.job_id.trim(),
-                job_id: form.job_id.trim(),
-                offered_ctc: ctcNum.toLocaleString('en-IN'),
-                ctc: ctcNum,
-                fixed_component: parseFloat(form.fixed_component) || 0,
-                joining_date: form.joining_date,
-                department: form.department || 'Engineering',
-                employment_type: form.employment_type || 'Full-time',
-                reporting_manager_id: form.reporting_manager_id || 'MGR-001',
-                offer_status: 'sent'
-            };
-            
-            console.log('[Manual Offer] Generated:', manualOffer);
-            setSelectedOfferForPrint(manualOffer);
-            setTimeout(() => {
-                const candidateName = manualOffer.candidate_name.replace(/[^a-zA-Z0-9]/g, '_');
-                const offerPdfName = `Offer_Letter_${candidateName}_${new Date().toISOString().slice(0,10)}.pdf`;
-                window.print();
-            }, 100);
-            alert(`✅ MANUAL OFFER GENERATED!\nID: ${manualCandidateId}\nPrint PDF now! (No DB record)`);
-            setIsAdding(false);
+            try {
+                // 1. Resolve or Create Job Requisition
+                let resolvedJobId = "";
+                const existingJob = jobsData.find((j: any) => j.title.toLowerCase() === form.job_id.trim().toLowerCase() || j.job_code.toLowerCase() === form.job_id.trim().toLowerCase());
+                if (existingJob) {
+                    resolvedJobId = existingJob.job_id;
+                } else {
+                    const jobResult = await createJob({
+                        title: form.job_id.trim(),
+                        department: form.department || 'Engineering',
+                        description: 'Automatically created job for manual offer letter audit governance.',
+                        experience_min: 0.0,
+                        experience_max: 0.0,
+                        status: 'open',
+                        positions_open: 1
+                    });
+                    resolvedJobId = jobResult.job_id || jobResult.id;
+                }
+
+                // 2. Create Candidate
+                const candResult = await addCandidate({
+                    job_id: resolvedJobId,
+                    first_name: form.candidate_name.trim().split(' ')[0] || form.candidate_name.trim(),
+                    last_name: form.candidate_name.trim().split(' ').slice(1).join(' ') || '',
+                    email: `manual_${Date.now()}_${Math.floor(Math.random() * 1000)}@mercuresolutions.com`,
+                    current_stage: 'Selected',
+                    application_status: 'active',
+                    source: 'Direct'
+                });
+                const resolvedCandidateId = candResult.candidate_id || candResult.id;
+
+                // 3. Create Offer
+                const offerPayload = {
+                    candidate_id: resolvedCandidateId,
+                    job_id: resolvedJobId,
+                    ctc: ctcNum,
+                    salary: fixedVal,
+                    joining_date: form.joining_date,
+                    offer_status: "sent",
+                    sent_by: sessionStorage.getItem('userId') || 'REC-001',
+                    sent_at: new Date().toISOString(),
+                    fixed_component: fixedVal,
+                    variable_component: varVal,
+                    joining_bonus: parseFloat(form.joining_bonus) || 0,
+                    relocation_bonus: parseFloat(form.relocation_bonus) || 0,
+                    offer_expiry_date: form.offer_expiry_date || null,
+                    department: form.department || 'Engineering',
+                    employment_type: form.employment_type || 'Full-time',
+                    reporting_manager_id: form.reporting_manager_id || 'MGR-001',
+                    offer_letter_url: `/api/recruiter/offer/preview/${resolvedCandidateId}-${Date.now()}`
+                };
+
+                const offerResult = await createOffer(offerPayload);
+                console.log('[OfferManagement] Manual offer logged to DB:', offerResult);
+
+                // 4. Trigger print preview using DB record
+                const printData = {
+                    ...offerResult,
+                    candidate_name: form.candidate_name.trim(),
+                    candidate: candResult,
+                    job: existingJob || { title: form.job_id.trim() }
+                };
+
+                setSelectedOfferForPrint(printData);
+                setTimeout(() => {
+                    window.print();
+                }, 300);
+
+                setForm({
+                    candidate_id: "", candidate_name: "", job_id: "", selectedJobTitle: "",
+                    offered_ctc: "", fixed_component: "",
+                    variable_component: "", joining_bonus: "0", relocation_bonus: "0",
+                    joining_date: "", offer_expiry_date: "", department: "",
+                    employment_type: "Full-time", reporting_manager_id: "MGR-001", offer_letter_url: "",
+                    email: "", phone: ""
+                });
+                setIsAdding(false);
+                setCandidateSearch('');
+                setJobSearch('');
+                await loadData();
+                alert(`✅ MANUAL OFFER GENERATED & AUDITED!\nCandidate: ${form.candidate_name}\nJob: ${form.job_id}\nOffer logged to Database.`);
+            } catch (err: any) {
+                console.error('[OfferManagement] Manual mode error:', err);
+                alert(`❌ Failed to process manual offer: ${err.message || err}`);
+            }
             return;
         }
 
         // NORMAL MODE backend
         const offerLetterPreviewUrl = form.offer_letter_url || `/api/recruiter/offer/preview/${form.candidate_id.trim()}-${Date.now()}`;
-        
+
         try {
             const offerPayload = {
                 candidate_id: form.candidate_id.trim(),
                 job_id: form.job_id.trim(),
-                ctc: parseFloat(form.offered_ctc) || 0,
-                salary: parseFloat(form.fixed_component) || 0,
+                ctc: ctcNum,
+                salary: fixedVal,
                 joining_date: form.joining_date,
                 offer_status: "sent",
                 sent_by: sessionStorage.getItem('userId') || 'REC-001',
                 sent_at: new Date().toISOString(),
-                fixed_component: parseFloat(form.fixed_component) || 0,
-                variable_component: parseFloat(form.variable_component) || 0,
+                fixed_component: fixedVal,
+                variable_component: varVal,
                 joining_bonus: parseFloat(form.joining_bonus) || 0,
                 relocation_bonus: parseFloat(form.relocation_bonus) || 0,
                 offer_expiry_date: form.offer_expiry_date || null,
@@ -191,10 +259,10 @@ export default function OfferManagement() {
             };
 
             console.log('[OfferManagement] 🔄 Sending EXACT payload to backend:', JSON.stringify(offerPayload, null, 2));
-            
+
             const result = await createOffer(offerPayload);
             console.log('[OfferManagement] Success:', result);
-            
+
             // Reset form
             setForm({
                 candidate_id: "", candidate_name: "", job_id: "", selectedJobTitle: "",
@@ -218,14 +286,16 @@ export default function OfferManagement() {
     const handleAccept = async (offer: any) => {
         try {
             const payload = {
+                status: "accepted",
                 joining_date: offer.joining_date,
                 department: offer.department,
                 employment_type: offer.employment_type || "Full-Time", // Fixed from employee_type
-                manager_id: offer.reporting_manager_id
+                reporting_manager_id: offer.reporting_manager_id || offer.manager_id || "MGR-001",
+                manager_id: offer.reporting_manager_id || offer.manager_id || "MGR-001"
             };
             const offerId = offer.offer_id || offer.id || (typeof offer === 'number' ? offer : null);
             if (!offerId) throw new Error("Offer ID missing");
-            
+
             await acceptOfferLetter(offerId, payload);
             await loadData();
             alert("Offer Accepted! Automating Employee creation and Onboarding initiation...");
@@ -247,11 +317,11 @@ export default function OfferManagement() {
         setSelectedOfferForPrint(offer);
         const candidateName = (offer.candidate_name || offer.candidate?.name || 'Candidate').replace(/[^a-zA-Z0-9]/g, '_');
         const offerPdfName = `Offer_Letter_${candidateName}_${new Date().toISOString().slice(0, 10)}.pdf`;
-        
+
         // Temporarily change document title for PDF print filename
         const originalTitle = document.title;
         document.title = offerPdfName;
-        
+
         setTimeout(() => {
             window.print();
             // Restore title after print dialog closes
@@ -267,67 +337,146 @@ export default function OfferManagement() {
                 <Header role="Recruiter" title="Offer & Contract Management" />
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', gap: '20px' }}>
-                            <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
-                                <FaSearch style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                                <input
-                                    className="apple-input"
-                                    placeholder="Search offers by candidate name..."
-                                    style={{ paddingLeft: '45px' }}
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
-                            </div>
-                            <label className="toggle-container" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={isManualMode}
-                                    onChange={(e) => setIsManualMode(e.target.checked)}
-                                    style={{ width: '16px', height: '16px' }}
-                                />
-                                Manual Mode (No DB Required)
-                            </label>
-                            <button className="apple-btn" onClick={() => setIsAdding(!isAdding)}>
-                                <FaPlus /> {isAdding ? 'Cancel' : 'Release New Offer'}
-                            </button>
-                        </div>
+                    <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                        <FaSearch style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
+                        <input
+                            className="apple-input"
+                            placeholder="Search offers by candidate name..."
+                            style={{ paddingLeft: '45px' }}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+                    <label className="toggle-container" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <input
+                            type="checkbox"
+                            checked={isManualMode}
+                            onChange={(e) => setIsManualMode(e.target.checked)}
+                            style={{ width: '16px', height: '16px' }}
+                        />
+                        Manual Mode (No DB Required)
+                    </label>
+                    <button className="apple-btn" onClick={() => setIsAdding(!isAdding)}>
+                        <FaPlus /> {isAdding ? 'Cancel' : 'Release New Offer'}
+                    </button>
+                </div>
 
                 {isAdding && (
                     <GlassCard title="Official Offer Configuration" style={{ marginBottom: '30px' }}>
                         <form onSubmit={handleCreateOffer} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px' }}>
                             <div style={{ gridColumn: 'span 2' }}>
-                                <label style={labelStyle}>{isManualMode ? 'Candidate Full Name' : 'Candidate'} <span style={{fontSize:'10px'}}>({isManualMode ? 'Any name OK' : 'Name/ID → Auto-resolves'}) *</span></label>
-                                <input 
-                                    className="apple-input" 
-                                    placeholder={isManualMode ? "Type full name (e.g. VAMSHI KRISHNA)" : "Type candidate name/ID (e.g. KRISHNA VENKAT)..."} 
-                                    value={isManualMode ? form.candidate_name : candidateSearch}
-                                    onChange={(e) => {
-                                        if (isManualMode) {
-                                            setForm({ ...form, candidate_name: e.target.value });
-                                        } else {
-                                            setCandidateSearch(e.target.value);
-                                            setForm({ ...form, candidate_id: e.target.value });
-                                        }
-                                    }} 
-                                />
+                                <label style={labelStyle}>{isManualMode ? 'Candidate Full Name' : 'Candidate'} <span style={{ fontSize: '10px' }}>({isManualMode ? 'Any name OK' : 'Select eligible candidate'}) *</span></label>
+                                {isManualMode ? (
+                                    <input
+                                        className="apple-input"
+                                        placeholder="Type full name (e.g. VAMSHI KRISHNA)"
+                                        value={form.candidate_name}
+                                        onChange={(e) => setForm({ ...form, candidate_name: e.target.value })}
+                                    />
+                                ) : (
+                                    <select
+                                        className="apple-input"
+                                        value={form.candidate_id}
+                                        onChange={(e) => {
+                                            const selectedId = e.target.value;
+                                            const selectedCand = candidatesData.find((c: any) => String(c.candidate_id || c.id) === String(selectedId));
+                                            if (selectedCand) {
+                                                const fullName = selectedCand.name || `${selectedCand.first_name} ${selectedCand.last_name || ''}`.trim();
+                                                const matchedJob = jobsData.find((j: any) => String(j.job_id) === String(selectedCand.job_id) || String(j.id) === String(selectedCand.job_id));
+
+                                                setForm({
+                                                    ...form,
+                                                    candidate_id: selectedId,
+                                                    candidate_name: fullName,
+                                                    job_id: matchedJob ? String(matchedJob.job_id || matchedJob.id) : String(selectedCand.job_id || ""),
+                                                    selectedJobTitle: matchedJob ? matchedJob.title : "",
+                                                    department: matchedJob ? (matchedJob.department || "") : "",
+                                                    reporting_manager_id: form.reporting_manager_id || "MGR-001"
+                                                });
+                                                setCandidateSearch(fullName);
+                                                setJobSearch(matchedJob ? matchedJob.title : "");
+                                            } else {
+                                                setForm({
+                                                    ...form,
+                                                    candidate_id: "",
+                                                    candidate_name: "",
+                                                    job_id: "",
+                                                    selectedJobTitle: "",
+                                                    department: ""
+                                                });
+                                                setCandidateSearch("");
+                                                setJobSearch("");
+                                            }
+                                        }}
+                                    >
+                                        <option value="">-- Select Candidate --</option>
+                                        {eligibleCandidates.map((c: any) => {
+                                            const fullName = c.name || `${c.first_name} ${c.last_name || ''}`.trim();
+                                            const id = c.candidate_id || c.id;
+                                            return (
+                                                <option key={id} value={id}>
+                                                    {fullName} ({c.current_stage || 'Selected'})
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                )}
                                 {(isManualMode ? form.candidate_name : form.candidate_id) && (
-                                    <div style={{fontSize:'11px', color:'var(--accent-green)', marginTop:'4px'}}>
+                                    <div style={{ fontSize: '11px', color: 'var(--accent-green)', marginTop: '4px' }}>
                                         ✓ {isManualMode ? `Manual: ${form.candidate_name}` : `Using: ${form.candidate_id}`}
                                     </div>
                                 )}
                             </div>
                             <div style={{ gridColumn: 'span 2' }}>
-                                <label style={labelStyle}>Job Role <span style={{fontSize:'10px'}}>(Title/ID → Auto-resolves)</span> *</label>
-                                <input 
-                                    className="apple-input" 
-                                    placeholder="Type job title/ID (e.g. AR CALLER)..." 
-                                    value={jobSearch}
-                                    onChange={(e) => {
-                                        setJobSearch(e.target.value);
-                                        setForm({ ...form, job_id: e.target.value, selectedJobTitle: e.target.value });
-                                    }} 
-                                />
+                                <label style={labelStyle}>Job Role <span style={{ fontSize: '10px' }}>({isManualMode ? 'Type job title/ID' : 'Select job role'}) *</span></label>
+                                {isManualMode ? (
+                                    <input
+                                        className="apple-input"
+                                        placeholder="Type job title/ID (e.g. AR CALLER)..."
+                                        value={jobSearch}
+                                        onChange={(e) => {
+                                            setJobSearch(e.target.value);
+                                            setForm({ ...form, job_id: e.target.value, selectedJobTitle: e.target.value });
+                                        }}
+                                    />
+                                ) : (
+                                    <select
+                                        className="apple-input"
+                                        value={form.job_id}
+                                        onChange={(e) => {
+                                            const selectedJobId = e.target.value;
+                                            const matchedJob = jobsData.find((j: any) => String(j.job_id) === String(selectedJobId) || String(j.id) === String(selectedJobId));
+                                            if (matchedJob) {
+                                                setForm({
+                                                    ...form,
+                                                    job_id: selectedJobId,
+                                                    selectedJobTitle: matchedJob.title,
+                                                    department: matchedJob.department || form.department
+                                                });
+                                                setJobSearch(matchedJob.title);
+                                            } else {
+                                                setForm({
+                                                    ...form,
+                                                    job_id: "",
+                                                    selectedJobTitle: "",
+                                                });
+                                                setJobSearch("");
+                                            }
+                                        }}
+                                    >
+                                        <option value="">-- Select Job --</option>
+                                        {jobsData.map((j: any) => {
+                                            const id = j.job_id || j.id;
+                                            return (
+                                                <option key={id} value={id}>
+                                                    {j.title} ({j.job_code || id})
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                )}
                                 {form.job_id && (
-                                    <div style={{fontSize:'11px', color:'var(--accent-green)', marginTop:'4px'}}>
+                                    <div style={{ fontSize: '11px', color: 'var(--accent-green)', marginTop: '4px' }}>
                                         ✓ Using: {form.job_id}
                                     </div>
                                 )}
@@ -335,7 +484,7 @@ export default function OfferManagement() {
 
                             {/* Selected Candidate Snapshot */}
                             {(() => {
-                                const cand = eligibleCandidates.find((c: any) => (c.candidate_id === form.candidate_id || c.id === form.candidate_id));
+                                const cand = candidatesData.find((c: any) => (c.candidate_id === form.candidate_id || c.id === form.candidate_id));
                                 if (!cand) return null;
                                 const fullName = cand.name || `${cand.first_name} ${cand.last_name}`;
                                 return (
@@ -371,15 +520,60 @@ export default function OfferManagement() {
 
                             <div>
                                 <label style={labelStyle}>Total CTC Offered (L.P.A) *</label>
-                                <input className="apple-input" type="number" placeholder="12,00,000" value={form.offered_ctc} onChange={(e) => setForm({ ...form, offered_ctc: e.target.value })} />
+                                <input
+                                    id="offered_ctc_input"
+                                    className="apple-input"
+                                    type="text"
+                                    placeholder="Total calculated CTC"
+                                    value={
+                                        ((parseFloat(form.fixed_component) || 0) + (parseFloat(form.variable_component) || 0)) > 0
+                                            ? ((parseFloat(form.fixed_component) || 0) + (parseFloat(form.variable_component) || 0)).toString()
+                                            : form.offered_ctc
+                                    }
+                                    readOnly
+                                    style={{ backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed' }}
+                                />
+                                <span style={{ fontSize: '9px', color: 'var(--text-tertiary)', marginTop: '2px', display: 'block' }}>✓ Auto-calculated (Fixed + Variable)</span>
                             </div>
                             <div>
                                 <label style={labelStyle}>Fixed Component (L.P.A)</label>
-                                <input className="apple-input" type="number" placeholder="10,00,000" value={form.fixed_component} onChange={(e) => setForm({ ...form, fixed_component: e.target.value })} />
+                                <input
+                                    id="fixed_component_input"
+                                    className="apple-input"
+                                    type="number"
+                                    placeholder="e.g. 9,67,404"
+                                    value={form.fixed_component}
+                                    onChange={(e) => {
+                                        const newFixed = e.target.value;
+                                        const fixedVal = parseFloat(newFixed) || 0;
+                                        const varVal = parseFloat(form.variable_component) || 0;
+                                        setForm({
+                                            ...form,
+                                            fixed_component: newFixed,
+                                            offered_ctc: (fixedVal + varVal).toString()
+                                        });
+                                    }}
+                                />
                             </div>
                             <div>
                                 <label style={labelStyle}>Variable Component</label>
-                                <input className="apple-input" type="number" value={form.variable_component} onChange={(e) => setForm({ ...form, variable_component: e.target.value })} />
+                                <input
+                                    id="variable_component_input"
+                                    className="apple-input"
+                                    type="number"
+                                    placeholder="e.g. 2,90,221"
+                                    value={form.variable_component}
+                                    onChange={(e) => {
+                                        const newVar = e.target.value;
+                                        const fixedVal = parseFloat(form.fixed_component) || 0;
+                                        const varVal = parseFloat(newVar) || 0;
+                                        setForm({
+                                            ...form,
+                                            variable_component: newVar,
+                                            offered_ctc: (fixedVal + varVal).toString()
+                                        });
+                                    }}
+                                />
                             </div>
                             <div>
                                 <label style={labelStyle}>Joining Bonus</label>
@@ -410,7 +604,7 @@ export default function OfferManagement() {
                             <div style={{ gridColumn: 'span 2' }}>
                                 <label style={labelStyle}>Offer Letter URL / Drive Link <span style={{ fontSize: '9px', opacity: 0.7 }}>(Optional - auto-generates preview)</span></label>
                                 <input className="apple-input" placeholder="https://drive.google.com/..." value={form.offer_letter_url} onChange={(e) => setForm({ ...form, offer_letter_url: e.target.value })} />
-                            </div> 
+                            </div>
 
                             <div style={{ gridColumn: 'span 4', marginTop: '10px' }}>
                                 <button type="submit" className="apple-btn" style={{ width: '100%', background: 'var(--accent-orange)', fontWeight: 'bold' }}>
@@ -434,7 +628,7 @@ export default function OfferManagement() {
                                             <FaEnvelopeOpenText fontSize="20px" color="var(--accent-orange)" />
                                         </div>
                                         <div>
-                                            <h3 style={{ fontSize: '18px', margin: 0 }}>{cand?.name || (cand ? (cand.first_name + " " + cand.last_name) : "Candidate " + o.candidate_id)}</h3>
+                                            <h3 style={{ fontSize: '18px', margin: 0 }}>{o.candidate_name || cand?.name || (cand ? (cand.first_name + " " + cand.last_name) : "Candidate " + o.candidate_id)}</h3>
                                             <span style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{job?.title || 'Job Selection Required'}</span>
                                         </div>
                                     </div>
@@ -444,9 +638,15 @@ export default function OfferManagement() {
                                         fontSize: '10px',
                                         fontWeight: '800',
                                         textTransform: 'uppercase',
-                                        background: o.offer_status === 'accepted' ? 'rgba(48, 209, 88, 0.1)' : o.offer_status === 'declined' ? 'rgba(248, 81, 73, 0.1)' : 'rgba(10, 132, 255, 0.1)',
-                                        color: o.offer_status === 'accepted' ? 'var(--accent-green)' : o.offer_status === 'declined' ? 'var(--accent-red)' : 'var(--accent-blue)',
-                                        border: `1px solid ${o.offer_status === 'accepted' ? 'rgba(48, 209, 88, 0.2)' : o.offer_status === 'declined' ? 'rgba(248, 81, 73, 0.2)' : 'rgba(10, 132, 255, 0.2)'}`
+                                        background: o.offer_status === 'accepted' || o.offer_status === 'manager_approved' ? 'rgba(48, 209, 88, 0.1)' :
+                                            o.offer_status === 'declined' || o.offer_status === 'manager_rejected' ? 'rgba(248, 81, 73, 0.1)' :
+                                            o.offer_status === 'sent' ? 'rgba(255, 159, 10, 0.1)' : 'rgba(10, 132, 255, 0.1)',
+                                        color: o.offer_status === 'accepted' || o.offer_status === 'manager_approved' ? 'var(--accent-green)' :
+                                            o.offer_status === 'declined' || o.offer_status === 'manager_rejected' ? 'var(--accent-red)' :
+                                            o.offer_status === 'sent' ? '#ff9f0a' : 'var(--accent-blue)',
+                                        border: `1px solid ${o.offer_status === 'accepted' || o.offer_status === 'manager_approved' ? 'rgba(48, 209, 88, 0.2)' :
+                                            o.offer_status === 'declined' || o.offer_status === 'manager_rejected' ? 'rgba(248, 81, 73, 0.2)' :
+                                            o.offer_status === 'sent' ? 'rgba(255, 159, 10, 0.2)' : 'rgba(10, 132, 255, 0.2)'}`
                                     }}>
                                         {o.offer_status}
                                     </span>
@@ -456,6 +656,11 @@ export default function OfferManagement() {
                                     <div>
                                         <span style={miniLabelStyle}><FaMoneyBillWave /> Offered CTC</span>
                                         <div style={{ fontSize: '16px', fontWeight: 'bold' }}>₹{parseInt(o.offered_ctc || '0').toLocaleString('en-IN')} L.P.A</div>
+                                        {(parseFloat(o.fixed_component) > 0 || parseFloat(o.variable_component) > 0) && (
+                                            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                                                Fixed: ₹{parseInt(o.fixed_component || '0').toLocaleString('en-IN')}{parseFloat(o.variable_component) > 0 && ` • Var: ₹${parseInt(o.variable_component || '0').toLocaleString('en-IN')}`}
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <span style={miniLabelStyle}><FaCalendarCheck /> Joining Date</span>
@@ -472,7 +677,7 @@ export default function OfferManagement() {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                                    {o.offer_status === "sent" && (
+                                    {(o.offer_status === "sent" || o.offer_status === "manager_approved") && (
                                         <>
                                             <button className="apple-btn" style={{ flex: 1, background: 'var(--accent-green)' }} onClick={() => handleAccept(o)}>
                                                 <FaCheck /> Accept
@@ -487,9 +692,9 @@ export default function OfferManagement() {
                                     </button>
                                 </div>
 
-                                {o.offer_status === "declined" && (
+                                {(o.offer_status === "declined" || o.offer_status === "manager_rejected") && (
                                     <div style={{ width: '100%', padding: '12px', background: 'rgba(248, 81, 73, 0.05)', color: 'var(--accent-red)', borderRadius: '10px', fontSize: '11px' }}>
-                                        <strong>Decline Reason:</strong> {o.declined_reason || 'No reason specified'}
+                                        <strong>Decline/Rejection Reason:</strong> {o.declined_reason || o.rejection_reason || 'No reason specified'}
                                     </div>
                                 )}
                             </GlassCard>
@@ -527,25 +732,55 @@ export default function OfferManagement() {
                         backgroundColor: 'rgba(0,0,0,0.5)',
                         backdropFilter: 'blur(5px)'
                     }} className="no-print">
-                        <button className="apple-btn" onClick={() => window.print()} style={{ background: 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px 24px', fontSize: '14px', borderRadius: '30px', fontWeight: 600 }}>
-                            <FaDownload /> Download / Print PDF
+                        <button
+                            className="apple-btn"
+                            disabled={isPdfGenerating}
+                            onClick={async () => {
+                                if (!offerTemplateContainerRef.current) return;
+                                setIsPdfGenerating(true);
+                                try {
+                                    const candidateName = (
+                                        selectedOfferForPrint?.candidate_name ||
+                                        selectedOfferForPrint?.candidate?.name ||
+                                        'Candidate'
+                                    ).replace(/[^a-zA-Z0-9]/g, '_');
+                                    const fileName = `Offer_Letter_${candidateName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+                                    await generateSecureOfferPdf(offerTemplateContainerRef.current, fileName);
+                                } catch (err) {
+                                    console.error('Secure PDF generation failed:', err);
+                                    alert('❌ PDF generation failed. Please try again.');
+                                } finally {
+                                    setIsPdfGenerating(false);
+                                }
+                            }}
+                            style={{ background: isPdfGenerating ? '#555' : 'var(--accent-blue)', color: 'white', border: 'none', padding: '10px 24px', fontSize: '14px', borderRadius: '30px', fontWeight: 600, opacity: isPdfGenerating ? 0.7 : 1, cursor: isPdfGenerating ? 'wait' : 'pointer' }}
+                        >
+                            {isPdfGenerating ? (
+                                <><FaLock style={{ marginRight: 6 }} /> Generating Secure PDF…</>
+                            ) : (
+                                <><FaLock style={{ marginRight: 6 }} /> Download Secure PDF (Signature Only)
+                                </>
+                            )}
                         </button>
                         <button className="apple-btn" onClick={() => setSelectedOfferForPrint(null)} style={{ background: '#333', color: 'white', border: '1px solid #555', padding: '10px 24px', fontSize: '14px', borderRadius: '30px' }}>
                             <FaTimes /> Close Preview
                         </button>
                     </div>
 
-                    <div className="preview-content-wrap" style={{
+                    <div ref={offerTemplateContainerRef} className="preview-content-wrap" style={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         padding: '40px 0'
                     }}>
-                            <OfferLetterTemplate
+                        <OfferLetterTemplate
                             offer={selectedOfferForPrint}
-                            candidate={candidatesData.find((c: any) => c.candidate_id === selectedOfferForPrint.candidate_id || c.id === selectedOfferForPrint.candidate_id) || selectedOfferForPrint.candidate}
+                            candidate={candidatesData.find((c: any) => 
+                                String(c.candidate_id || c.id || '').toLowerCase() === String(selectedOfferForPrint.candidate_id || '').toLowerCase() || 
+                                String(c.id || '').toLowerCase() === String(selectedOfferForPrint.candidate_id || '').toLowerCase()
+                            ) || selectedOfferForPrint.candidate}
                             job={jobsData.find((j: any) => String(j.job_id) === String(selectedOfferForPrint.job_id) || String(j.id) === String(selectedOfferForPrint.job_id)) || selectedOfferForPrint.job}
-                        /> 
+                        />
                     </div>
                 </div>
             )}
@@ -625,6 +860,12 @@ export default function OfferManagement() {
                         overflow: hidden !important; /* Keep internal page content clipped to A4 */
                         position: relative !important;
                         box-sizing: border-box !important;
+                    }
+                    
+                    .offer-page:last-child,
+                    .offer-page:last-of-type {
+                        page-break-after: avoid !important;
+                        break-after: avoid !important;
                     }
                     
                     /* Force background graphics */

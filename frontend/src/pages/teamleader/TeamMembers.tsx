@@ -8,7 +8,7 @@ import { downloadCSV } from "../../utils/formatters";
 
 const MemberRow = ({ m, presence, onClick }: any) => {
   const p = presence.find((px: any) => px.employee_id === (m.employee_id || m.id));
-  
+
   const isActive = p && !p.logout_time;
   const onBreak = p?.on_break;
   const hasFinished = p && p.logout_time;
@@ -79,17 +79,17 @@ export default function TeamMembers() {
   const fetchData = async () => {
     setLoading(true);
     try {
-        const [mList, pList] = await Promise.all([
-            getTeamMembers(),
-            getTeamAttendance() // This contains live session data
-        ]);
-        setMembers(mList || []);
-        // Map attendance to the expected presence format if necessary
-        setPresence(pList || []);
+      const [mList, pList] = await Promise.all([
+        getTeamMembers(),
+        getTeamAttendance() // This contains live session data
+      ]);
+      setMembers(mList || []);
+      // Map attendance to the expected presence format if necessary
+      setPresence(pList || []);
     } catch (err) {
-        console.error("Failed to load team data", err);
+      console.error("Failed to load team data", err);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -101,37 +101,37 @@ export default function TeamMembers() {
     setSelectedMember(m);
     // Fetch specific member history from API
     try {
-        const eid = m.employee_id || m.id;
-        const [attRes, leaveRes] = await Promise.all([
-            api.get(`teamleader/members/${encodeURIComponent(eid)}/attendance`),
-            api.get(`teamleader/members/${encodeURIComponent(eid)}/leaves`),
-        ]);
-        setMemberAttendance(attRes.data || []);
-        setMemberLeaves((leaveRes.data || []).filter((l: any) => l.status === 'approved'));
+      const eid = m.employee_id || m.id;
+      const [attRes, leaveRes] = await Promise.all([
+        api.get(`teamleader/members/${encodeURIComponent(eid)}/attendance`),
+        api.get(`teamleader/members/${encodeURIComponent(eid)}/leaves`),
+      ]);
+      setMemberAttendance(attRes.data || []);
+      setMemberLeaves((leaveRes.data || []).filter((l: any) => l.status?.toLowerCase() === 'approved'));
     } catch (err) {
-        console.error("Error loading member history");
+      console.error("Error loading member history");
     }
   };
 
   const handleDownloadRoster = () => {
-      const data = members.map(mem => {
-        const p = presence.find((px: any) => px.employee_id === (mem.employee_id || mem.id));
-        const status = p ? (!p.logout_time ? (p.on_break ? 'ON BREAK' : 'ACTIVE') : 'COMPLETED') : 'OFFLINE';
-        return {
-          "Employee ID": mem.employee_id || mem.id,
-          "Name": mem.first_name ? `${mem.first_name} ${mem.last_name || ''}` : mem.name,
-          "Department": mem.department_name || mem.department || '—',
-          "Status": status,
-          "Shift Start": p?.login_time ? new Date(p.login_time).toLocaleTimeString() : '—'
-        };
-      });
-      downloadCSV(data, `Team_Roster_${new Date().toISOString().split('T')[0]}.csv`);
+    const data = members.map(mem => {
+      const p = presence.find((px: any) => px.employee_id === (mem.employee_id || mem.id));
+      const status = p ? (!p.logout_time ? (p.on_break ? 'ON BREAK' : 'ACTIVE') : 'COMPLETED') : 'OFFLINE';
+      return {
+        "Employee ID": mem.employee_id || mem.id,
+        "Name": mem.first_name ? `${mem.first_name} ${mem.last_name || ''}` : mem.name,
+        "Department": mem.department_name || mem.department || '—',
+        "Status": status,
+        "Shift Start": p?.login_time ? new Date(p.login_time).toLocaleTimeString() : '—'
+      };
+    });
+    downloadCSV(data, `Team_Roster_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
-const online = presence.filter(p => !p.logout_time);
-const onBreakCount = presence.filter(p => !p.logout_time && p.on_break);
-const completed = presence.filter(p => p.logout_time);
-const offlineCount = members.length - presence.length;
+  const online = presence.filter(p => !p.logout_time);
+  const onBreakCount = presence.filter(p => !p.logout_time && p.on_break);
+  const completed = presence.filter(p => p.logout_time);
+  const offlineCount = members.length - presence.length;
   return (
     <div className="dashboard-container">
       <Header role="Team Leader" title="Direct Reports" />
@@ -354,13 +354,23 @@ const AttendanceCalendar = ({ employeeId, attendanceData, leaveData }: any) => {
 
   // Helper to determine status for a specific date
   const getStatusForDate = (dateNum: number) => {
-    // Prevent showing absent for future dates in current month
-    if (dateNum > today.getDate()) return { type: 'future', label: '', color: 'rgba(255,255,255,0.03)' };
-
     // Use local time construction to avoid strictly-UTC timezone shifting
     const dateObj = new Date(year, month, dateNum);
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
     const dayOfWeek = dateObj.getDay();
+
+    // Check Leaves (Approved leaves take priority for future & past dates)
+    const isLeaved = leaveData.find((l: any) => {
+      const startStr = l.start_date || l.startDate || l.from_date || l.fromDate;
+      const endStr = l.end_date || l.endDate || l.to_date || l.toDate;
+      if (!startStr || !endStr) return false;
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(23, 59, 59, 999);
+      return dateObj >= start && dateObj <= end;
+    });
+    if (isLeaved) return { type: 'leave', label: 'L', color: 'rgba(255, 159, 10, 0.2)', textColor: '#ff9f0a' };
 
     // Check Weekends
     if (dayOfWeek === 0 || dayOfWeek === 6) return { type: 'weekend', label: 'W', color: 'rgba(255,255,255,0.05)', textColor: 'var(--text-tertiary)' };
@@ -369,23 +379,28 @@ const AttendanceCalendar = ({ employeeId, attendanceData, leaveData }: any) => {
     const isHoliday = holidays.find((h: any) => h.date === dateStr);
     if (isHoliday) return { type: 'holiday', label: 'H', color: 'rgba(255, 214, 10, 0.15)', textColor: '#ffd60a' };
 
-    // Check Leaves
-    const isLeaved = leaveData.find((l: any) => {
-      const start = new Date(l.startDate);
-      const end = new Date(l.endDate);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(23, 59, 59, 999);
-      return dateObj >= start && dateObj <= end;
-    });
-    if (isLeaved) return { type: 'leave', label: 'L', color: 'rgba(255, 159, 10, 0.2)', textColor: '#ff9f0a' };
+    // Prevent showing absent for future un-worked dates
+    if (dateNum > today.getDate()) return { type: 'future', label: '', color: 'rgba(255,255,255,0.03)' };
 
     // Check Attendance
     const attObj = attendanceData.find((a: any) => a.date === dateStr);
-    if (!attObj) return { type: 'absent', label: 'A', color: 'rgba(255, 69, 58, 0.1)', textColor: '#ff453a' };
+    if (attObj) {
+      const st = String(attObj.status || '').toLowerCase();
+      if (st.includes('present') || st.includes('on time') || st.includes('active')) {
+        return { type: 'present', label: 'P', color: 'rgba(48, 209, 88, 0.15)', textColor: '#30d158' };
+      }
+      if (st.includes('leave')) {
+        return { type: 'leave', label: 'L', color: 'rgba(255, 159, 10, 0.2)', textColor: '#ff9f0a' };
+      }
+      if (st.includes('late')) {
+        return { type: 'late', label: 'LT', color: 'rgba(255, 159, 10, 0.15)', textColor: '#ff9f0a' };
+      }
+      if (st.includes('half')) {
+        return { type: 'half', label: 'HD', color: 'rgba(100, 210, 255, 0.15)', textColor: '#64d2ff' };
+      }
+    }
 
-    if (attObj.status === 'Present' || attObj.status === 'On Time') return { type: 'present', label: 'P', color: 'rgba(48, 209, 88, 0.15)', textColor: '#30d158' };
-    if (attObj.status === 'Late') return { type: 'late', label: 'LT', color: 'rgba(255, 159, 10, 0.15)', textColor: '#ff9f0a' };
-    if (attObj.status === 'Half Day') return { type: 'half', label: 'HD', color: 'rgba(100, 210, 255, 0.15)', textColor: '#64d2ff' };
+    if (!attObj) return { type: 'absent', label: 'A', color: 'rgba(255, 69, 58, 0.1)', textColor: '#ff453a' };
 
     return { type: 'unknown', label: '?', color: 'rgba(255,255,255,0.05)', textColor: 'var(--text-secondary)' };
   };

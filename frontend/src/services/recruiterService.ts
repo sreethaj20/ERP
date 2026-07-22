@@ -105,3 +105,9 @@ export const deleteJob = async (jobId: string) => {
     const response = await api.delete(`recruiter/jobs/${jobId}`);
     return response.data;
 };
+
+export const createApplication = async (applicationData: any) => {
+    const response = await api.post("recruiter/applications", applicationData);
+    return response.data;
+};
+

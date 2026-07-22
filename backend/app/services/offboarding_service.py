@@ -16,18 +16,27 @@ class OffboardingService:
     def initiate_offboarding(self, db: Session, obj_in: OffboardingCreate):
         return offboarding_repo.create(db, obj_in)
 
-    def get_multi(self, db: Session, skip: int = 0, limit: int = 100, manager_id: Optional[str] = None):
+    def get_multi(self, db: Session, skip: int = 0, limit: int = 100, manager_id: Optional[str] = None, offboarding_type: Optional[str] = None):
+        from sqlalchemy import func
         query = db.query(OffboardingRequest)
         if manager_id:
             query = query.filter(OffboardingRequest.employee_id.in_(
                 db.query(Employee.employee_id).filter(Employee.manager_id == manager_id)
             ))
         else:
-            # HR View: Filter out administrative staff offboarding
+            # HR View
             admin_roles = ["hr", "recruiter", "teamleader", "it", "admin", "itdepartment"]
-            query = query.filter(~OffboardingRequest.employee_id.in_(
-                db.query(Employee.employee_id).filter(Employee.designation.in_(admin_roles))
-            ))
+            staff_emp_ids = db.query(Employee.employee_id).filter(
+                (func.lower(Employee.designation).in_(admin_roles)) |
+                (func.lower(Employee.role).in_(admin_roles))
+            )
+            if offboarding_type == "staff":
+                query = query.filter(OffboardingRequest.employee_id.in_(staff_emp_ids))
+            elif offboarding_type == "employee":
+                query = query.filter(~OffboardingRequest.employee_id.in_(staff_emp_ids))
+            else:
+                # None/all: return all offboardings (let the frontend partition them or query them specifically)
+                pass
         results = query.offset(skip).limit(limit).all()
         for r in results:
             if r.relieving_letter_url:
@@ -69,7 +78,36 @@ class OffboardingService:
         if obj_in.completed is True:
             db_obj.status = "Completed"
             db_obj.completed = True
-            self._deactivate_user_identity(db, db_obj.employee_id)
+            
+            # Deactivate only if exit date / notice period completed (< today)
+            from datetime import date, datetime, timedelta
+            today = date.today()
+            req_date = db_obj.request_date or db_obj.created_at or today
+            req_date_val = req_date.date() if isinstance(req_date, datetime) else req_date
+            notice_days = getattr(obj_in, "notice_period_days", None) or db_obj.notice_period_days or 0
+            notice_end_date = req_date_val + timedelta(days=notice_days)
+            
+            exit_date = getattr(obj_in, "exit_date", None) or db_obj.exit_date or db_obj.last_working_day
+            exit_date_val = None
+            if exit_date:
+                if isinstance(exit_date, str):
+                    try:
+                        exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
+                    except Exception:
+                        pass
+                elif isinstance(exit_date, datetime):
+                    exit_date_val = exit_date.date()
+                else:
+                    exit_date_val = exit_date
+            
+            deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
+            
+            if deactivate_date < today:
+                self._deactivate_user_identity(db, db_obj.employee_id)
+            else:
+                if emp:
+                    emp.status = "On Notice"
+                    db.add(emp)
             
         res = offboarding_repo.update(db, db_obj, obj_in)
         
@@ -102,7 +140,38 @@ class OffboardingService:
             
         if obj_in.completed is True:
             db_obj.status = "Completed"
-            self._deactivate_user_identity(db, db_obj.employee_id)
+            
+            # Deactivate only if exit date / notice period completed (< today)
+            from datetime import date, datetime, timedelta
+            today = date.today()
+            req_date = db_obj.request_date or db_obj.created_at or today
+            req_date_val = req_date.date() if isinstance(req_date, datetime) else req_date
+            notice_days = getattr(obj_in, "notice_period_days", None) or db_obj.notice_period_days or 0
+            notice_end_date = req_date_val + timedelta(days=notice_days)
+            
+            exit_date = getattr(obj_in, "exit_date", None) or db_obj.exit_date or db_obj.last_working_day
+            exit_date_val = None
+            if exit_date:
+                if isinstance(exit_date, str):
+                    try:
+                        exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
+                    except Exception:
+                        pass
+                elif isinstance(exit_date, datetime):
+                    exit_date_val = exit_date.date()
+                else:
+                    exit_date_val = exit_date
+            
+            deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
+            
+            from app.models.employee import Employee
+            emp = db.query(Employee).filter(Employee.employee_id == db_obj.employee_id).first()
+            if deactivate_date < today:
+                self._deactivate_user_identity(db, db_obj.employee_id)
+            else:
+                if emp:
+                    emp.status = "On Notice"
+                    db.add(emp)
             
         # 📄 PDF Logic: Trigger relieving letter generation if requested
         if obj_in.relieving_letter_sent and not db_obj.relieving_letter_url:
@@ -151,7 +220,14 @@ class OffboardingService:
             if user:
                 user.is_active = False
                 db.add(user)
-        # Note: No explicit db.commit() here; the calling service method's repository update will commit the transaction.
+                print(f"[OFFBOARDING] User '{user.username}' (employee_id={employee_id}) has been DEACTIVATED — login blocked.")
+        
+        # Commit immediately so is_active=False takes effect right away
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[OFFBOARDING ERROR] Failed to deactivate user identity for {employee_id}: {e}")
         
     def delete_request(self, db: Session, offboard_id: str, changed_by: Optional[str] = None):
         db_obj = offboarding_repo.get_by_offboard_id(db, offboard_id)
@@ -164,5 +240,70 @@ class OffboardingService:
         db.delete(db_obj)
         db.commit()
         return True
+
+    def check_and_deactivate_expired_offboardings(self, db: Session):
+        """Sync and deactivate all employees whose exit date / notice period has expired."""
+        from datetime import date, datetime, timedelta
+        from app.models.employee import Employee
+        from app.models.offboarding import OffboardingRequest
+        from app.models.user import User
+
+        today = date.today()
+        
+        # Query for all active offboarding requests for employees who are not Inactive or Archived
+        active_offboardings = db.query(Employee, OffboardingRequest).join(
+            OffboardingRequest, Employee.employee_id == OffboardingRequest.employee_id
+        ).filter(
+            ~Employee.status.in_(["Inactive", "Archived"]),
+            Employee.deleted_at == None,
+            OffboardingRequest.deleted_at == None
+        ).all()
+        
+        updated = False
+        for emp, req in active_offboardings:
+            # Calculate notice period end date
+            req_date = req.request_date or req.created_at or today
+            req_date_val = req_date.date() if isinstance(req_date, datetime) else req_date
+            notice_days = req.notice_period_days or 0
+            notice_end_date = req_date_val + timedelta(days=notice_days)
+            
+            exit_date = req.exit_date or req.last_working_day
+            exit_date_val = None
+            if exit_date:
+                if isinstance(exit_date, str):
+                    try:
+                        exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
+                    except Exception:
+                        pass
+                elif isinstance(exit_date, datetime):
+                    exit_date_val = exit_date.date()
+                else:
+                    exit_date_val = exit_date
+            
+            deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
+            
+            if deactivate_date < today:
+                emp.status = "Inactive"
+                db.add(emp)
+                
+                user = db.query(User).filter(User.employee_id == emp.employee_id).first()
+                if user and user.is_active:
+                    user.is_active = False
+                    db.add(user)
+                    print(f"[OFFBOARDING SYNC] Deactivated user '{user.username}' (employee_id={emp.employee_id}) - notice expired.")
+                    
+                if not req.completed or req.status != "Completed":
+                    req.status = "Completed"
+                    req.completed = True
+                    db.add(req)
+                    
+                updated = True
+                
+        if updated:
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"[OFFBOARDING SYNC ERROR] Failed to commit deactivations: {e}")
 
 offboarding_service = OffboardingService()

@@ -17,6 +17,7 @@ class HROnboardingService:
     def get_requests(self, db: Session, skip: int = 0, limit: int = 100):
         requests = hr_onboarding_repo.get_multi(db, skip, limit)
         for r in requests:
+            self._merge_employee_master_data(db, r)
             self.hydrate_onboarding_request(r)
         return requests
 
@@ -28,6 +29,56 @@ class HROnboardingService:
             "resume_url", "bank_proof_url", "offer_letter_signed_url"
         ]
         return storage_service.hydrate_urls(req, fields)
+
+    def _merge_employee_master_data(self, db: Session, req: Any):
+        if not req or not req.employee_id:
+            return
+        from app.models.employee import Employee
+        emp = db.query(Employee).filter(Employee.employee_id == req.employee_id, Employee.deleted_at == None).first()
+        if not emp:
+            return
+            
+        # Merge fields from Employee (prioritize Employee as single source of truth)
+        req.first_name = emp.first_name or req.first_name
+        req.last_name = emp.last_name or req.last_name
+        req.name = emp.name or req.name
+        req.official_email = emp.official_email or req.official_email
+        req.personal_email = emp.personal_email or req.personal_email
+        req.designation = emp.designation or req.designation
+        req.department = emp.department or req.department
+        req.gender = emp.gender or req.gender
+        req.dob = emp.dob or emp.date_of_birth or req.dob
+        req.blood_group = emp.blood_group or req.blood_group
+        req.marital_status = emp.marital_status or req.marital_status
+        req.nationality = emp.nationality or req.nationality
+        req.personal_mobile = emp.personal_mobile or emp.phone or req.personal_mobile
+        req.alternate_mobile = emp.alternate_mobile or req.alternate_mobile
+        req.aadhaar_number = emp.aadhaar_number or req.aadhaar_number
+        req.pan_number = emp.pan_number or req.pan_number
+        req.passport_number = emp.passport_number or req.passport_number
+        req.uan_number = emp.uan_number or req.uan_number
+        req.esi_number = emp.esi_number or req.esi_number
+        req.pf_number = emp.pf_number or getattr(req, 'pf_number', None)
+        req.joining_location = emp.work_location or req.joining_location
+        req.joining_date = emp.joining_date or req.joining_date
+        req.expected_join_date = emp.joining_date or req.expected_join_date
+        req.probation_period_days = emp.probation_period_days or req.probation_period_days
+        req.reporting_manager_id = emp.manager_id or emp.reporting_manager_id or req.reporting_manager_id
+        req.team_leader_id = emp.team_leader_id or req.team_leader_id
+        
+        # Address fields
+        req.city = emp.city or req.city
+        req.state = emp.state or req.state
+        req.country = emp.country or req.country
+        req.pincode = emp.pincode or emp.postal_code or req.pincode
+        
+        # Files/URLs
+        req.aadhaar_file_url = emp.aadhaar_file_url or req.aadhaar_file_url
+        req.pan_file_url = emp.pan_file_url or req.pan_file_url
+        req.education_certificate_url = emp.education_certificate_url or req.education_certificate_url
+        req.resume_url = emp.resume_url or req.resume_url
+        req.offer_letter_signed_url = emp.offer_letter_signed_url or req.offer_letter_signed_url
+        req.bank_proof_url = emp.bank_proof_url or req.bank_proof_url
 
     def create_request(self, db: Session, obj_in: HROnboardingCreate) -> HROnboardingRequest:
         res = hr_onboarding_repo.create(db, obj_in)
@@ -245,6 +296,8 @@ class HROnboardingService:
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
+        self._merge_employee_master_data(db, db_obj)
+        self.hydrate_onboarding_request(db_obj)
 
         # Real-time event
         await websocket_manager.broadcast({
@@ -265,6 +318,8 @@ class HROnboardingService:
         res = hr_onboarding_repo.update(db, db_obj, obj_in)
         db.commit()
         db.refresh(res)
+        self._merge_employee_master_data(db, res)
+        self.hydrate_onboarding_request(res)
         return res
 
 hr_onboarding_service = HROnboardingService()

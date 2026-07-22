@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import Logo from "../../components/Logo";
+import headerLogoImage from "../../assets/mercure-logo.jpeg";
+import watermarkImage from "../../assets/mercure-logo.png";
+import uditSignatureImage from "../../assets/udit-signature.png";
 import {
   getOffboardingRequests, addOffboardingRequest, updateOffboardingRequest,
   createOffboardingRequest, getEmployees, updateEmployee, finalizeOffboarding
@@ -17,6 +20,87 @@ export default function OffboardingGovernance() {
   // Relieving Letter State
   const [showLetter, setShowLetter] = useState(false);
   const [letterData, setLetterData] = useState<any>(null);
+
+  const handlePrintRelievingLetter = () => {
+    if (!letterData) return;
+    const empName = (letterData.name || 'Employee').replace(/[^a-zA-Z0-9]/g, '_');
+    const pdfName = `Relieving_Letter_${empName}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    const originalTitle = document.title;
+    document.title = pdfName;
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
+    }, 300);
+  };
+
+  const formatLetterData = (emp: any, reqRecord: any) => {
+    const toTitleCase = (str: string) => {
+      if (!str) return '';
+      const formatted = str.trim();
+      if (formatted.toUpperCase() === 'TEAMLEADER') return 'Team Leader';
+      return formatted.replace(/\b\w+/g, txt => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase());
+    };
+
+    const parseDateString = (dateInput: any): Date | null => {
+      if (!dateInput) return null;
+      if (dateInput instanceof Date) return isNaN(dateInput.getTime()) ? null : dateInput;
+      
+      const str = String(dateInput).trim();
+      if (!str) return null;
+
+      const isoMatch = str.match(/^(\d{4})[-/](\d{2})[-/](\d{2})/);
+      if (isoMatch) {
+        const year = parseInt(isoMatch[1], 10);
+        const month = parseInt(isoMatch[2], 10) - 1;
+        const day = parseInt(isoMatch[3], 10);
+        return new Date(year, month, day);
+      }
+
+      const textMonthMatch = str.match(/^(\d{1,2})[-/\s]([A-Za-z]+)[-/\s](\d{4})/);
+      if (textMonthMatch) {
+        const day = parseInt(textMonthMatch[1], 10);
+        const monthStr = textMonthMatch[2].toLowerCase();
+        const year = parseInt(textMonthMatch[3], 10);
+        
+        const months = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+        const monthIndex = months.findIndex(m => m.startsWith(monthStr));
+        if (monthIndex !== -1) {
+          return new Date(year, monthIndex, day);
+        }
+      }
+
+      const parsed = new Date(str);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const formatDate = (dateInput: any) => {
+      const parsed = parseDateString(dateInput);
+      if (!parsed) return 'TBD';
+      const day = String(parsed.getDate()).padStart(2, '0');
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      return `${day}-${months[parsed.getMonth()]}-${parsed.getFullYear()}`;
+    };
+
+    const resignationDateVal = parseDateString(reqRecord?.created_at || reqRecord?.request_date) || new Date();
+    const noticeDays = reqRecord?.notice_period_days !== undefined ? reqRecord.notice_period_days : 60;
+    const dorVal = (() => {
+      const d = new Date(resignationDateVal);
+      d.setDate(d.getDate() + noticeDays);
+      return d;
+    })();
+
+    return {
+      name: toTitleCase(emp?.name || 'Employee'),
+      id: emp?.employee_id || emp?.id || reqRecord?.employee_id,
+      designation: toTitleCase(emp?.designation || 'Specialist'),
+      doj: formatDate(emp?.joining_date || emp?.doj || '2023-01-01'),
+      dor: formatDate(dorVal),
+      resignationDate: formatDate(resignationDateVal),
+      issueDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+    };
+  };
 
   useEffect(() => { loadData(); }, []);
 
@@ -80,14 +164,7 @@ export default function OffboardingGovernance() {
       const emp = getEmpDetails(employee_id);
       const req = (requests || []).find(r => r.offboard_id === offboard_id) || selected;
 
-      setLetterData({
-        name: emp?.name || 'Employee',
-        id: employee_id,
-        designation: emp?.designation || 'Specialist',
-        doj: emp?.doj || '2023-01-01',
-        dor: req?.exit_date || new Date().toISOString().split('T')[0],
-        issueDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-      });
+      setLetterData(formatLetterData(emp, req));
 
       // Simulation: Automated Email Dispatch
       alert(`✅ Final Settlement Authorized.\n📧 Relieving letter has been automatically dispatched to ${emp?.email || 'employee'}.`);
@@ -103,7 +180,8 @@ export default function OffboardingGovernance() {
 
   return (
     <>
-      <Header role="Manager" title="Strategic Separation" />
+      <div className="no-print">
+        <Header role="Manager" title="Strategic Separation" />
 
       <div style={{ marginBottom: "30px" }}>
         <h1 style={{ fontSize: "32px", fontWeight: "700" }}>Offboarding Governance</h1>
@@ -244,14 +322,7 @@ export default function OffboardingGovernance() {
                     <button
                       onClick={() => {
                         const emp = getEmpDetails(selected.employee_id);
-                        setLetterData({
-                          name: emp?.name || 'Employee',
-                          id: selected.employee_id,
-                          designation: emp?.designation || 'Specialist',
-                          doj: emp?.doj || '2023-01-01',
-                          dor: selected.exit_date || new Date().toISOString().split('T')[0],
-                          issueDate: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-                        });
+                        setLetterData(formatLetterData(emp, selected));
                         setShowLetter(true);
                       }}
                       className="apple-btn"
@@ -270,16 +341,112 @@ export default function OffboardingGovernance() {
           )}
         </GlassCard>
       </div>
+      </div>
 
       {/* Relieving Letter Modal */}
       {showLetter && letterData && (
-        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(15px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '60px 20px', overflowY: 'auto' }}>
+        <div className="relieving-letter-modal-wrapper" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(15px)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', padding: '60px 20px', overflowY: 'auto' }}>
           <style>{`
             @media print {
-              body * { visibility: hidden; }
-              .relieving-letter, .relieving-letter * { visibility: visible; }
-              .relieving-letter { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; margin: 0 !important; box-shadow: none !important; border: none !important; }
-              .no-print { display: none !important; }
+              @page {
+                size: A4;
+                margin: 0 !important;
+              }
+              
+              header, footer, nav, .top-header, .bottom-dock-container, .announcement-banner, .no-print, .no-print * {
+                display: none !important;
+                visibility: hidden !important;
+              }
+              
+              html, body, #root, .layout-root, .dashboard-container {
+                display: block !important;
+                visibility: visible !important;
+                height: auto !important;
+                min-height: 0 !important;
+                overflow: visible !important;
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                max-width: none !important;
+              }
+              
+              .dashboard-container::before,
+              .dashboard-container::after {
+                display: none !important;
+                content: none !important;
+              }
+              
+              .relieving-letter-modal-wrapper {
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                background: white !important;
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: visible !important;
+                z-index: auto !important;
+                backdrop-filter: none !important;
+              }
+              
+              .relieving-letter-modal-wrapper > div {
+                position: relative !important;
+                display: block !important;
+                visibility: visible !important;
+                width: 210mm !important;
+                max-width: none !important;
+                height: auto !important;
+                min-height: 0 !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: white !important;
+              }
+              
+              .relieving-letter {
+                display: flex !important;
+                flex-direction: column !important;
+                position: relative !important;
+                width: 210mm !important;
+                height: 268mm !important;
+                min-height: 268mm !important;
+                box-sizing: border-box !important;
+                padding: 15mm 20mm !important;
+                margin: 0 auto !important;
+                box-shadow: none !important;
+                border: none !important;
+                background: white !important;
+                color: black !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+                break-after: avoid !important;
+                overflow: hidden !important;
+              }
+              
+              .relieving-letter-footer {
+                position: absolute !important;
+                bottom: 10mm !important;
+                left: 20mm !important;
+                right: 20mm !important;
+                padding-top: 10px !important;
+                border-top: 1.5px solid #2b6cb0 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: flex-start !important;
+              }
+              
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
             }
           `}</style>
           <div style={{ position: 'relative', width: '100%', maxWidth: '850px', marginBottom: '60px' }}>
@@ -288,62 +455,133 @@ export default function OffboardingGovernance() {
             </button>
 
             {/* Paper Representation */}
-            <div className="relieving-letter" style={{ background: 'white', color: '#333', padding: '80px', borderRadius: '4px', boxShadow: '0 30px 60px rgba(0,0,0,0.6)', fontFamily: '"Times New Roman", Times, serif', minHeight: '1050px', position: 'relative' }}>
-              {/* Company Header */}
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #333', paddingBottom: '20px', marginBottom: '40px' }}>
-                <Logo width={160} showTagline={true} />
-                <div style={{ fontSize: '24px', fontWeight: '800', marginTop: '15px', color: '#000' }}>MERCURE SOLUTIONS PRIVATE LIMITED</div>
-                <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>Corporate Headquarters: 5th Floor, Tech Hub, Bangalore - 560001</div>
+            <div className="relieving-letter" style={{ 
+                background: 'white', 
+                color: '#333', 
+                padding: '60px 80px', 
+                borderRadius: '4px', 
+                boxShadow: '0 30px 60px rgba(0,0,0,0.6)', 
+                fontFamily: "'Aptos', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif", 
+                minHeight: '1050px', 
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+                boxSizing: 'border-box'
+            }}>
+              {/* Watermark Background Layer */}
+              <div className="watermark-layer" style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '550px',
+                  opacity: 0.12,
+                  zIndex: 0,
+                  pointerEvents: 'none',
+                  WebkitPrintColorAdjust: 'exact',
+                  printColorAdjust: 'exact',
+                  userSelect: 'none',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
+              }}>
+                  <img src={watermarkImage} alt="Watermark" style={{ width: '100%', height: 'auto', objectFit: 'contain', filter: 'grayscale(100%)' }} />
               </div>
 
-              <div style={{ textAlign: 'right', marginBottom: '40px', fontSize: '14px' }}>
-                <b>Date:</b> {letterData.issueDate}
-              </div>
 
-              <div style={{ textAlign: 'center', marginBottom: '50px' }}>
-                <h2 style={{ fontSize: '22px', textDecoration: 'underline', fontWeight: 'bold' }}>RELIEVING CUM EXPERIENCE LETTER</h2>
-              </div>
+                {/* Company Header */}
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    paddingBottom: '8px',
+                    marginBottom: '30px',
+                    borderBottom: '1.5px solid #2b6cb0'
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', height: '60px', overflow: 'hidden' }}>
+                        <img
+                            src={headerLogoImage}
+                            alt="Mercure Solutions"
+                            style={{ width: '200px', height: '60px', objectFit: 'contain', margin: '0', imageRendering: 'crisp-edges' }}
+                        />
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <p style={{ margin: '0', fontSize: '15px', color: '#000000', fontWeight: 'normal' }}>www.mercuresolution.com</p>
+                    </div>
+                </div>
 
-              <div style={{ fontSize: '16px', lineHeight: '1.8', textAlign: 'justify' }}>
-                <p><b>TO WHOMSOEVER IT MAY CONCERN</b></p>
-                <br />
-                <p>
-                  This is to certify that <b>Mr./Ms. {letterData.name}</b> (Employee ID: <b>{letterData.id}</b>) was employed
-                  with Mercure Solutions Private Limited as a <b>{letterData.designation}</b> from <b>{letterData.doj}</b> to <b>{letterData.dor}</b>.
-                </p>
-                <p>
-                  During {letterData.name}'s tenure with us, they have displayed high levels of professional competence and dedication.
-                  The conduct and performance during the employment period were found to be satisfactory.
-                </p>
-                <p>
-                  We confirm that all dues have been cleared and {letterData.name} has been relieved of all responsibilities
-                  and duties from the close of business hours on <b>{letterData.dor}</b>.
-                </p>
-                <p>
-                  We wish <b>{letterData.name}</b> the very best for all future endeavors.
-                </p>
-              </div>
+                <div style={{ textAlign: 'right', marginBottom: '30px', fontSize: '13px' }}>
+                  <b>Date:</b> {letterData.issueDate}
+                </div>
 
-              <div style={{ marginTop: '100px' }}>
-                <p>For <b>Mercure Solutions Private Limited</b>,</p>
-                <div style={{ marginTop: '40px' }}>
-                  <div style={{ borderTop: '1px solid #333', width: '200px', paddingTop: '8px' }}>
-                    <b>Authorized Signatory</b>
-                    <div style={{ fontSize: '12px', color: '#666' }}>Human Resources Department</div>
+                <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+                  <h2 style={{ fontSize: '20px', textDecoration: 'underline', fontWeight: 'bold', margin: 0 }}>RELIEVING LETTER</h2>
+                </div>
+
+                <div style={{ fontSize: '14px', lineHeight: '1.8', textAlign: 'justify', color: '#000' }}>
+                  <p>Dear <b>{letterData.name}</b>,</p>
+                  <br />
+                  <p>
+                    With reference to your resignation email dated <b>{letterData.resignationDate}</b>, you are hereby relieved from your duties as of <b>{letterData.dor}</b>.
+                    We confirm that you have been working with Mercure Solutions as <b>{letterData.designation}</b> from <b>{letterData.doj}</b> to <b>{letterData.dor}</b>.
+                  </p>
+                  <p>
+                    We would like to thank you for your service with Mercure Solutions and wish you the best in your future endeavors.
+                  </p>
+                  <p style={{ marginTop: '16px', fontSize: '13px' }}>
+                    <b>Note:</b> It is recommended to keep your current salaried bank account active for a minimum of 1 year from your date of relieving to ensure fast and hassle-free transactions by the company.
+                  </p>
+                </div>
+
+                <div style={{ marginTop: '60px' }}>
+                  <p style={{ margin: 0 }}>Yours sincerely,</p>
+                  <p style={{ margin: '2px 0 0 0' }}>For and on behalf of <b>Mercure Solutions</b></p>
+                  <div style={{ height: '65px', display: 'flex', alignItems: 'center', margin: '3px 0 0 0' }}>
+                    <img
+                      src={uditSignatureImage}
+                      alt="Udit Rao Signature"
+                      style={{ height: '60px', objectFit: 'contain', display: 'block' }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '13px' }}>
+                    <b>Udit Rao</b>
+                    <div style={{ fontSize: '11px', color: '#666' }}>HR Department</div>
                   </div>
                 </div>
-              </div>
 
-              {/* Seal Mockup */}
-              <div style={{ position: 'absolute', bottom: '80px', right: '80px', width: '100px', height: '100px', border: '5px double #1a3a5f', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px', transform: 'rotate(-15deg)', opacity: 0.15 }}>
-                <div style={{ textAlign: 'center', color: '#1a3a5f', fontSize: '10px', fontWeight: 'bold' }}>MERCURE<br />CORPORATE<br />SEAL</div>
-              </div>
+
+                {/* Footer Section */}
+                <div className="relieving-letter-footer" style={{
+                    position: 'absolute',
+                    bottom: '60px',
+                    left: '80px',
+                    right: '80px',
+                    paddingTop: '10px',
+                    borderTop: '1.5px solid #2b6cb0',
+                    fontSize: '9px',
+                    color: '#333333',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                }}>
+                    <div style={{ paddingRight: '20px', textAlign: 'left' }}>
+                        <strong style={{ color: '#2b6cb0' }}>Regd. Office:</strong> Mercure Solutions Private Limited<br />
+                        M Floor, Mahaveer Waterpark, Kondapur,<br />
+                        Hitec City, Hyderabad, Telangana - 500084
+                    </div>
+                    <div style={{ marginLeft: 'auto', textAlign: 'left' }}>
+                        <strong style={{ color: '#2b6cb0' }}>CIN:</strong> U62013TS2025PTC196108<br />
+                        <strong style={{ color: '#2b6cb0' }}>GSTIN:</strong> 36AATCM1458J1ZX<br />
+                        <strong style={{ color: '#2b6cb0' }}>E:</strong> <a href="mailto:info@mercuresolution.com" style={{ color: '#2b6cb0', textDecoration: 'underline' }}>info@mercuresolution.com</a>
+                    </div>
+                </div>
             </div>
 
             {/* Actions Downloader */}
             <div className="no-print" style={{ marginTop: '30px', display: 'flex', justifyContent: 'center' }}>
               <button
-                onClick={() => window.print()}
+                onClick={handlePrintRelievingLetter}
                 className="apple-btn"
                 style={{
                   background: '#30d158',

@@ -15,6 +15,7 @@ import AnnouncementWidget from "../../components/AnnouncementWidget";
 import ShiftActivityWidget from "../../components/ShiftActivityWidget";
 import WelcomeBanner from "../../components/WelcomeBanner";
 import { syncCompanyProfile } from "../../utils/companyUtils";
+import NoticePeriodBanner from "../../components/NoticePeriodBanner";
 
 export default function ITDashboard() {
   const navigate = useNavigate();
@@ -105,6 +106,8 @@ export default function ITDashboard() {
 
       {/* Shift Activity System */}
       <ShiftActivityWidget />
+
+      <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
 
       {/* Hero Stats */}
       <div className="grid-4" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "20px", marginBottom: "40px" }}>

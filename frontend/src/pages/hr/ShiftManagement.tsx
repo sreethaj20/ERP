@@ -186,7 +186,7 @@ export default function ShiftManagement() {
     const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
 
     const toggleEmployeeSelect = (empId: string) => {
-        setSelectedEmployees(prev => 
+        setSelectedEmployees(prev =>
             prev.includes(empId) ? prev.filter(id => id !== empId) : [...prev, empId]
         );
     };
@@ -226,9 +226,9 @@ export default function ShiftManagement() {
     };
 
     const handleAssign = async (emp: any) => {
-        if (!selectedShiftForAssign) { 
-            alert('Select a shift first'); 
-            return; 
+        if (!selectedShiftForAssign) {
+            alert('Select a shift first');
+            return;
         }
         try {
             const isAssigned = assignedIds.includes(emp.employee_id);
@@ -261,9 +261,9 @@ export default function ShiftManagement() {
                 <button
                     className="apple-btn"
                     onClick={() => { setShowForm(true); setEditingId(null); setForm({ ...DEFAULT_FORM }); }}
-                    style={{ 
-                        background: 'linear-gradient(135deg, #0a84ff 0%, #0056b3 100%)', 
-                        color: 'white', 
+                    style={{
+                        background: 'linear-gradient(135deg, #0a84ff 0%, #0056b3 100%)',
+                        color: 'white',
                         padding: '12px 24px',
                         boxShadow: '0 4px 15px rgba(10,132,255,0.3)',
                         borderRadius: '14px'
@@ -274,13 +274,13 @@ export default function ShiftManagement() {
             </div>
 
             {/* Navigation Tabs */}
-            <div style={{ 
-                display: 'flex', 
-                gap: '8px', 
-                marginBottom: '32px', 
-                background: 'rgba(255,255,255,0.03)', 
-                borderRadius: '16px', 
-                padding: '6px', 
+            <div style={{
+                display: 'flex',
+                gap: '8px',
+                marginBottom: '32px',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '16px',
+                padding: '6px',
                 width: 'fit-content',
                 border: '1px solid rgba(255,255,255,0.05)'
             }}>
@@ -288,15 +288,15 @@ export default function ShiftManagement() {
                     { id: 'shifts', label: 'Shift Definitions', icon: FaClock },
                     { id: 'assign', label: 'Staff Deployment', icon: FaUsers }
                 ].map(t => (
-                    <button 
-                        key={t.id} 
-                        onClick={() => setTab(t.id as any)} 
+                    <button
+                        key={t.id}
+                        onClick={() => setTab(t.id as any)}
                         style={{
-                            padding: '10px 24px', 
-                            borderRadius: '12px', 
-                            border: 'none', 
-                            cursor: 'pointer', 
-                            fontWeight: '600', 
+                            padding: '10px 24px',
+                            borderRadius: '12px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: '600',
                             fontSize: '14px',
                             display: 'flex',
                             alignItems: 'center',
@@ -320,8 +320,8 @@ export default function ShiftManagement() {
                     zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center',
                     padding: '20px'
                 }}>
-                    <GlassCard style={{ 
-                        width: '100%', maxWidth: '800px', 
+                    <GlassCard style={{
+                        width: '100%', maxWidth: '800px',
                         border: '1px solid rgba(10,132,255,0.3)',
                         animation: 'modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
                     }}>
@@ -334,9 +334,9 @@ export default function ShiftManagement() {
                                     Define timing parameters and operational rules.
                                 </p>
                             </div>
-                            <button onClick={() => setShowForm(false)} style={{ 
-                                background: 'rgba(255,255,255,0.05)', border: 'none', 
-                                color: 'var(--text-tertiary)', cursor: 'pointer', 
+                            <button onClick={() => setShowForm(false)} style={{
+                                background: 'rgba(255,255,255,0.05)', border: 'none',
+                                color: 'var(--text-tertiary)', cursor: 'pointer',
                                 width: '40px', height: '40px', borderRadius: '50%',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}>
@@ -443,7 +443,7 @@ export default function ShiftManagement() {
                             <button className="apple-btn" onClick={() => setShowForm(false)} style={{ background: 'transparent', color: 'var(--text-secondary)' }}>
                                 Close Portal
                             </button>
-                            <button className="apple-btn" onClick={handleSave} 
+                            <button className="apple-btn" onClick={handleSave}
                                 style={{ background: '#0a84ff', color: 'white', padding: '10px 32px' }}>
                                 <FaSave style={{ marginRight: '10px' }} /> Commit Changes
                             </button>
@@ -460,19 +460,19 @@ export default function ShiftManagement() {
             ) : tab === 'shifts' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
                     {shifts.length === 0 ? (
-                         <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '100px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '24px' }}>
+                        <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '100px 20px', background: 'rgba(255,255,255,0.02)', borderRadius: '24px' }}>
                             <FaClock size={60} style={{ color: 'var(--text-tertiary)', opacity: 0.1, marginBottom: '20px' }} />
                             <h3>No Operational Shifts Found</h3>
                             <p style={{ color: 'var(--text-secondary)' }}>Begin by architecting a shift schedule to enable personnel tracking.</p>
-                         </div>
+                        </div>
                     ) : shifts.map((shift: any) => {
                         const count = shift.assignments?.length || 0;
                         const color = shift.color || '#0a84ff';
                         const hours = calcShiftHours(shift.start_time, shift.end_time);
 
                         return (
-                            <GlassCard key={shift.id} style={{ 
-                                position: 'relative', overflow: 'hidden', padding: 0, 
+                            <GlassCard key={shift.id} style={{
+                                position: 'relative', overflow: 'hidden', padding: 0,
                                 border: '1px solid rgba(255,255,255,0.05)',
                                 transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
                             }}>
@@ -494,10 +494,10 @@ export default function ShiftManagement() {
                                         </div>
                                     </div>
 
-                                    <div style={{ 
-                                        display: 'flex', alignItems: 'center', gap: '15px', 
-                                        padding: '16px', background: 'rgba(0,0,0,0.2)', 
-                                        borderRadius: '16px', marginBottom: '20px' 
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center', gap: '15px',
+                                        padding: '16px', background: 'rgba(0,0,0,0.2)',
+                                        borderRadius: '16px', marginBottom: '20px'
                                     }}>
                                         <div style={{ textAlign: 'center', flex: 1 }}>
                                             <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '4px' }}>IN</div>
@@ -531,8 +531,8 @@ export default function ShiftManagement() {
                                                 <div key={day} style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#ff453a' }} title={`OFF: ${day}`} />
                                             ))}
                                         </div>
-                                        <button 
-                                            className="apple-btn" 
+                                        <button
+                                            className="apple-btn"
                                             onClick={() => { setSelectedShiftForAssign(shift.id); setTab('assign'); }}
                                             style={{ padding: '6px 16px', fontSize: '12px', background: `${color}15`, color: color, border: `1px solid ${color}30` }}
                                         >
@@ -571,15 +571,15 @@ export default function ShiftManagement() {
                         </div>
                     </GlassCard>
 
-                    <GlassCard 
-                        title="Deployment Matrix" 
+                    <GlassCard
+                        title="Deployment Matrix"
                         subtitle={selectedShift ? `Active Shift: ${selectedShift.shift_name} / ${assignedIds.length} Personnel` : 'Select a Squad to Begin Deployment'}
                         style={{ padding: '24px' }}
                     >
                         <div style={{ display: 'flex', gap: '15px', marginBottom: '24px' }}>
                             <div style={{ position: 'relative', flex: 1 }}>
                                 <FaSearch style={{ position: 'absolute', top: '50%', left: '16px', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                                <input className="apple-input" placeholder="Filter by Name, ID, or Department..." value={assignSearch} 
+                                <input className="apple-input" placeholder="Filter by Name, ID, or Department..." value={assignSearch}
                                     onChange={e => setAssignSearch(e.target.value)} style={{ paddingLeft: '44px' }} />
                             </div>
                             <select className="apple-input" value={assignFilter} onChange={e => setAssignFilter(e.target.value)} style={{ width: '180px' }}>
@@ -614,8 +614,12 @@ export default function ShiftManagement() {
                             {filteredEmps.map(emp => {
                                 const isAssigned = assignedIds.includes(emp.employee_id);
                                 const isSelected = selectedEmployees.includes(emp.employee_id);
+                                const tlRef = emp.team_leader_id;
                                 const managerRef = emp.reporting_to_id || emp.manager_id;
-                                const inheritedShift = !isAssigned && managerRef ? shifts.find(s => (s.assignments || []).some((a: any) => String(a.employee_id) === String(managerRef))) : null;
+                                const inheritedShiftFromTL = !isAssigned && tlRef ? shifts.find(s => (s.assignments || []).some((a: any) => String(a.employee_id) === String(tlRef))) : null;
+                                const inheritedShiftFromMgr = !isAssigned && !inheritedShiftFromTL && managerRef ? shifts.find(s => (s.assignments || []).some((a: any) => String(a.employee_id) === String(managerRef))) : null;
+                                const inheritedShift = inheritedShiftFromTL || inheritedShiftFromMgr;
+                                const isFromTL = !!inheritedShiftFromTL;
 
                                 return (
                                     <div key={emp.employee_id} style={{
@@ -639,7 +643,11 @@ export default function ShiftManagement() {
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                                                     <span style={{ fontSize: '10px', fontWeight: '800', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-tertiary)' }}>{emp.employee_id}</span>
                                                     <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>{emp.department || 'General'}</span>
-                                                    {inheritedShift && <span style={{ fontSize: '10px', color: '#0a84ff', display: 'flex', alignItems: 'center', gap: '4px' }}><FaLink size={10} /> Following TL Shift</span>}
+                                                    {inheritedShift && (
+                                                        <span style={{ fontSize: '10px', color: '#0a84ff', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                            <FaLink size={10} /> Following {isFromTL ? 'TL' : 'Manager'} Shift
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>

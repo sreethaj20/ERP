@@ -33,8 +33,15 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            if (id.includes('react')) return 'vendor-react';
-            if (id.includes('react-icons')) return 'vendor-icons';
+            if (/[\\/]node_modules[\\/]react-icons[\\/]/.test(id)) {
+              return 'vendor-icons';
+            }
+            if (/[\\/]node_modules[\\/](react-router|react-router-dom|@remix-run[\\/]router)[\\/]/.test(id)) {
+              return 'vendor-router';
+            }
+            if (/[\\/]node_modules[\\/](react|react-dom|scheduler|loose-envify)[\\/]/.test(id)) {
+              return 'vendor-react';
+            }
             return 'vendor';
           }
         }

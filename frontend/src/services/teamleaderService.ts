@@ -25,6 +25,11 @@ export const getTeamAttendance = async () => {
     return response.data;
 };
 
+export const getTeamAttendanceRecords = async () => {
+    const response = await api.get("teamleader/attendance/records");
+    return response.data;
+};
+
 export const handleEarlyLogin = async (request_id: number, status: string) => {
     // Backend expects a dict payload with "status"
     const response = await api.post(`teamleader/early-login/${request_id}/approve`, { status });

@@ -8,7 +8,8 @@ import {
   addOnboardingRequest, addPreboarding, addOffboardingRequest,
   getNextEmployeeId,
   DEFAULT_PASSWORD, isAdminRole, notifyDepartment,
-  uploadFile, getFileUrl, getEmployeesForReference, getEmployeeDocumentsForHR
+  uploadFile, getFileUrl, getEmployeesForReference, getEmployeeDocumentsForHR,
+  getDepartments
 } from "../../utils/storage";
 import { downloadCSV } from "../../utils/formatters";
 import { FaUserPlus, FaSearch, FaListUl, FaUserTag, FaTimes, FaSave, FaRocket, FaUserClock, FaSignOutAlt, FaFileDownload, FaUpload, FaLaptop, FaMouse, FaKeyboard, FaTrash } from "react-icons/fa";
@@ -39,6 +40,14 @@ export default function EmployeeMaster() {
   const [activeTab, setActiveTab] = useState("general");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Departments, Filters and Pagination states
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState("");
+  const [deptFilter, setDeptFilter] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Lifecycle data states
   const [onboardingData, setOnboardingData] = useState<any>(null);
   const [preboardingData, setPreboardingData] = useState<any>(null);
@@ -50,6 +59,20 @@ export default function EmployeeMaster() {
       setEmployees(Array.isArray(data) ? data : []);
       const refs = await getEmployeesForReference();
       setAllEmployees(Array.isArray(refs) ? refs : []);
+      
+      try {
+        const deptsData = await getDepartments();
+        const defaultDepts = ["Engineering", "Human Resources", "IT Operations", "Recruitment", "Marketing", "Sales", "Finance"];
+        if (Array.isArray(deptsData) && deptsData.length > 0) {
+          const names = deptsData.map((d: any) => typeof d === 'string' ? d : (d.name || d.code));
+          setDepartments(names);
+        } else {
+          setDepartments(defaultDepts);
+        }
+      } catch (err) {
+        console.error("Failed to load departments:", err);
+        setDepartments(["Engineering", "Human Resources", "IT Operations", "Recruitment", "Marketing", "Sales", "Finance"]);
+      }
     };
     fetchData();
 
@@ -90,6 +113,11 @@ export default function EmployeeMaster() {
   const handleSave = async () => {
     if (!name || !email) {
       alert("Please fill in name and email.");
+      return;
+    }
+
+    if (role === 'employee' && !teamLeaderId) {
+      alert("⚠️ Selection Required: Normal employees must be assigned to a Team Leader. Please select a Team Leader.");
       return;
     }
 
@@ -162,7 +190,7 @@ export default function EmployeeMaster() {
     setBankIfsc("");
     setEmergencyName("");
     setEmergencyPhone("");
-    alert(`✅ Employee Onboarded Successfully!\n\n👤 Name: ${name}\n📧 Login: ${email}\n🔑 Password: ${DEFAULT_PASSWORD}\n📋 Reports To: ${managerEmp?.name || 'Not Assigned'}\n\nEmployee can now log in to the portal.`);
+    alert(`✅ Employee Onboarded Successfully!\n\n👤 Name: ${name}\n📧 Username: ${email.split('@')[0]}\n📋 Reports To: ${managerEmp?.name || tlEmp?.name || 'Not Assigned'}\n\nCredentials and portal access details have been securely dispatched to their registered email address.`);
   };
 
   const handleUpdate = async () => {
@@ -174,6 +202,11 @@ export default function EmployeeMaster() {
 
     if (!targetId.startsWith('EMP-') && !targetId.match(/^\d+$/)) {
       alert(`❌ Invalid Employee ID: ${targetId}\nMust be EMP-XXXX format or numeric`);
+      return;
+    }
+
+    if (selectedEmp.role === 'employee' && !selectedEmp.team_leader_id) {
+      alert("⚠️ Selection Required: Normal employees must be assigned to a Team Leader. Please select a Team Leader.");
       return;
     }
 
@@ -260,12 +293,34 @@ export default function EmployeeMaster() {
       if (onboardingData) {
         const rid = onboardingData.request_id || onboardingData.id;
         if (rid) {
-          await updateOnboardingRequest(rid, {
+          const onboardingSync = {
             ...onboardingData,
-            ...identitySync,
             reporting_manager: finalReportingName,
-            reporting_manager_id: finalReportingId
-          });
+            reporting_manager_id: finalReportingId,
+            first_name: updatedEmp.first_name,
+            last_name: updatedEmp.last_name,
+            name: updatedEmp.name,
+            email: updatedEmp.email,
+            official_email: updatedEmp.official_email,
+            personal_email: updatedEmp.personal_email,
+            personal_mobile: updatedEmp.personal_mobile,
+            designation: updatedEmp.designation,
+            department: updatedEmp.department,
+            dob: updatedEmp.dob,
+            gender: updatedEmp.gender,
+            marital_status: updatedEmp.marital_status,
+            blood_group: updatedEmp.blood_group,
+            nationality: updatedEmp.nationality,
+            pan_number: updatedEmp.pan_number,
+            aadhaar_number: updatedEmp.aadhaar_number,
+            passport_number: updatedEmp.passport_number,
+            uan_number: updatedEmp.uan_number,
+            esi_number: updatedEmp.esi_number,
+            pincode: updatedEmp.pincode,
+            alternate_mobile: updatedEmp.alternate_mobile,
+            pf_number: updatedEmp.pf_number,
+          };
+          await updateOnboardingRequest(rid, onboardingSync);
         }
       }
 
@@ -273,7 +328,27 @@ export default function EmployeeMaster() {
       if (preboardingData) {
         const pid = preboardingData.preboard_id || preboardingData.id;
         if (pid) {
-          await updatePreboarding(pid, { ...preboardingData, ...identitySync });
+          const preboardSync = {
+            ...preboardingData,
+            permanent_address: updatedEmp.permanent_address,
+            current_address: updatedEmp.current_address,
+            city: updatedEmp.city,
+            state: updatedEmp.state,
+            pincode: updatedEmp.pincode,
+            country: updatedEmp.country,
+            emergency_contact_name: updatedEmp.emergency_contact_name,
+            emergency_contact_phone: updatedEmp.emergency_contact_phone,
+            emergency_contact_relation: updatedEmp.emergency_contact_relation,
+            dob: updatedEmp.dob,
+            gender: updatedEmp.gender,
+            marital_status: updatedEmp.marital_status,
+            blood_group: updatedEmp.blood_group,
+            nationality: updatedEmp.nationality,
+            bank_name: updatedEmp.bank_name,
+            bank_account_number: updatedEmp.bank_account_number,
+            bank_ifsc_code: updatedEmp.bank_ifsc_code
+          };
+          await updatePreboarding(pid, preboardSync);
         }
       }
 
@@ -315,7 +390,7 @@ export default function EmployeeMaster() {
     if (!window.confirm(`⚠️ CRITICAL ACTION: Are you sure you want to PERMANENTLY delete ${selectedEmp.name} and their portal access? This cannot be undone.`)) return;
 
     try {
-      await deleteEmployee(selectedEmp.id);
+      await deleteEmployee(selectedEmp.employee_id);
       setSelectedEmp(null);
       const data = await getEmployeesAsync();
       setEmployees(Array.isArray(data) ? data : []);
@@ -452,19 +527,44 @@ export default function EmployeeMaster() {
   };
 
   const filteredDirectory = employees.filter(emp => {
+    // 1. Search text filter
     const searchLow = searchQuery.toLowerCase();
-    if (!searchLow) return true;
-
-    return (
+    const matchesSearch = !searchLow || (
       (emp.name || '').toLowerCase().includes(searchLow) ||
-      String(emp.id || '').toLowerCase().includes(searchLow) ||
+      String(emp.employee_id || emp.id || '').toLowerCase().includes(searchLow) ||
       (emp.email || '').toLowerCase().includes(searchLow) ||
       (emp.official_email || '').toLowerCase().includes(searchLow) ||
       (emp.designation || '').toLowerCase().includes(searchLow) ||
       (emp.department || '').toLowerCase().includes(searchLow) ||
       (emp.role || '').toLowerCase().includes(searchLow)
     );
+
+    // 2. Status filter
+    const matchesStatus = !statusFilter || 
+      emp.status === statusFilter || 
+      (statusFilter === "Resigned" && emp.status === "Inactive") ||
+      (statusFilter === "Offboarding" && emp.status === "On Notice");
+
+    // 3. Department filter
+    const matchesDept = !deptFilter || emp.department === deptFilter;
+
+    // 4. Join date range filter
+    const empJoinDate = emp.joining_date || emp.join_date;
+    let matchesDate = true;
+    if (startDateFilter && empJoinDate) {
+      matchesDate = matchesDate && (empJoinDate >= startDateFilter);
+    }
+    if (endDateFilter && empJoinDate) {
+      matchesDate = matchesDate && (empJoinDate <= endDateFilter);
+    }
+
+    return matchesSearch && matchesStatus && matchesDept && matchesDate;
   });
+
+  // Pagination slicing
+  const itemsPerPage = 10;
+  const totalPages = Math.ceil(filteredDirectory.length / itemsPerPage);
+  const paginatedDirectory = filteredDirectory.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleExportDirectory = () => {
     const exportData = filteredDirectory.map((emp: any) => ({
@@ -504,7 +604,7 @@ export default function EmployeeMaster() {
                 <label style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>PORTAL LOGIN / COMPANY EMAIL</label>
                 <input placeholder="e.g. employee@company.com" className="apple-input" value={email} onChange={(e) => setEmail(e.target.value)} />
                 <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '-5px', marginLeft: '5px' }}>
-                  🔑 Initial password will be: <strong>{DEFAULT_PASSWORD}</strong>
+                  📧 Credentials will be generated and delivered secure-only via email.
                 </div>
               </div>
               <input placeholder="Designation" className="apple-input" value={designation} onChange={(e) => setDesignation(e.target.value)} />
@@ -527,7 +627,9 @@ export default function EmployeeMaster() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>DEPARTMENT</label>
                 <select className="apple-input" value={dept || ''} onChange={(e) => setDept(e.target.value)} style={{ appearance: "none" }}>
-                  <option value="Engineering">Engineering</option>
+                  {departments.map((d: string) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
 
@@ -579,8 +681,80 @@ export default function EmployeeMaster() {
               <FaTimes />
             </button>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-light)', marginTop: '10px' }}>
+              {/* Profile Photo Display */}
+              <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden', background: 'var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--accent-blue)', flexShrink: 0 }}>
+                {(selectedEmp.profile_photo_url || selectedEmp.photo) ? (
+                  <img
+                    src={getFileUrl(selectedEmp.profile_photo_url || selectedEmp.photo)}
+                    alt=""
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    fontSize: '24px',
+                    color: 'white',
+                    background: `hsl(${(selectedEmp.name || '').charCodeAt(0) * 15 % 360}, 65%, 45%)`
+                  }}>
+                    {(selectedEmp.name || 'E').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              
+              {/* Photo Uploader */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedEmp.name}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{selectedEmp.employee_id || selectedEmp.id} • {selectedEmp.designation}</div>
+                
+                <label style={{
+                  padding: '3px 10px',
+                  background: 'rgba(10,132,255,0.1)',
+                  color: 'var(--accent-blue)',
+                  borderRadius: '6px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(10,132,255,0.2)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  width: 'fit-content',
+                  marginTop: '4px'
+                }}>
+                  <FaUpload size={9} /> Change Profile Photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const fileData = await uploadFile(file, 'profile_photo', selectedEmp.employee_id || selectedEmp.id);
+                          setSelectedEmp({
+                            ...selectedEmp,
+                            profile_photo_url: fileData.file_path,
+                            photo: fileData.file_path
+                          });
+                          alert("Profile photo uploaded successfully!");
+                        } catch (err) {
+                          alert("Failed to upload photo.");
+                        }
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            </div>
+
             <div style={tabContainer}>
-              {['general', 'onboarding', 'preboarding', 'offboarding'].map(t => (
+              {['general', 'compliance', 'onboarding', 'preboarding', 'offboarding'].map(t => (
                 <button
                   key={t}
                   onClick={() => setActiveTab(t)}
@@ -605,7 +779,7 @@ export default function EmployeeMaster() {
                       placeholder="Enter company email for login..."
                       style={{ background: 'transparent', border: 'none', borderBottom: '1px solid var(--accent-blue)', borderRadius: '0', padding: '5px 0', fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)', width: '100%', outline: 'none' }}
                     />
-                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>🔑 Default Password: {DEFAULT_PASSWORD}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '6px' }}>🔑 Credentials managed securely via email delivery.</div>
                   </div>
 
                   <InputGroup label="First Name" value={selectedEmp.first_name} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, first_name: v })} />
@@ -620,7 +794,9 @@ export default function EmployeeMaster() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>DEPARTMENT</label>
                     <select className="apple-input" value={selectedEmp.department || ''} onChange={(e) => setSelectedEmp({ ...selectedEmp, department: e.target.value })} style={{ appearance: "none" }}>
-                      <option value="Engineering">Engineering</option>
+                      {departments.map((d: string) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
                     </select>
                   </div>
                   <InputGroup label="Cost Center" value={selectedEmp.cost_center} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, cost_center: v })} />
@@ -717,6 +893,41 @@ export default function EmployeeMaster() {
                       <option value="night">Night</option>
                       <option value="rotational">Rotational</option>
                     </select>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'compliance' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div style={{ gridColumn: 'span 2' }}><h3 style={{ fontSize: '14px', borderBottom: '1px solid var(--border-light)', paddingBottom: '5px' }}>Government IDs & Tax Registrations</h3></div>
+                  <InputGroup label="PAN Number" value={selectedEmp.pan_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, pan_number: v })} />
+                  <InputGroup label="Aadhaar Number" value={selectedEmp.aadhaar_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, aadhaar_number: v })} />
+                  <InputGroup label="Passport Number" value={selectedEmp.passport_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, passport_number: v })} />
+                  <InputGroup label="UAN Number" value={selectedEmp.uan_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, uan_number: v })} />
+                  <InputGroup label="ESI Number" value={selectedEmp.esi_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, esi_number: v })} />
+                  <InputGroup label="PF Number" value={selectedEmp.pf_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, pf_number: v })} />
+
+                  <div style={{ gridColumn: 'span 2', marginTop: '10px' }}><h3 style={{ fontSize: '14px', borderBottom: '1px solid var(--border-light)', paddingBottom: '5px' }}>Compliance Status Flags</h3></div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" checked={!!selectedEmp.pf_registered} onChange={(e) => setSelectedEmp({ ...selectedEmp, pf_registered: e.target.checked })} />
+                    <span style={{ fontSize: '12px', fontWeight: '500' }}>PF Registered</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" checked={!!selectedEmp.esi_registered} onChange={(e) => setSelectedEmp({ ...selectedEmp, esi_registered: e.target.checked })} />
+                    <span style={{ fontSize: '12px', fontWeight: '500' }}>ESI Registered</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" checked={!!selectedEmp.insurance_enrolled} onChange={(e) => setSelectedEmp({ ...selectedEmp, insurance_enrolled: e.target.checked })} />
+                    <span style={{ fontSize: '12px', fontWeight: '500' }}>Group Insurance Enrolled</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <input type="checkbox" checked={!!selectedEmp.payroll_id_created} onChange={(e) => setSelectedEmp({ ...selectedEmp, payroll_id_created: e.target.checked })} />
+                    <span style={{ fontSize: '12px', fontWeight: '500' }}>Payroll Account Provisioned</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', gridColumn: 'span 2' }}>
+                    <input type="checkbox" checked={!!selectedEmp.identity_verified} onChange={(e) => setSelectedEmp({ ...selectedEmp, identity_verified: e.target.checked })} />
+                    <span style={{ fontSize: '12px', fontWeight: '500' }}>Identity Verification Completed</span>
                   </div>
                 </div>
               )}
@@ -980,33 +1191,85 @@ export default function EmployeeMaster() {
 
         {/* Directory View */}
         <GlassCard title="Employee Directory" subtitle={`${employees.length} total staff members in record`}>
-          <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', gap: '10px' }}>
-            <div style={{ position: 'relative' }}>
-              <FaSearch style={{ position: 'absolute', left: '10px', top: '10px', fontSize: '12px', color: 'var(--text-tertiary)' }} />
+          {/* Filter Toolbar */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '16px', background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-light)', marginTop: '15px' }}>
+            <div>
+              <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>SEARCH TEXT</label>
+              <div style={{ position: 'relative' }}>
+                <FaSearch style={{ position: 'absolute', left: '10px', top: '8px', fontSize: '11px', color: 'var(--text-tertiary)' }} />
+                <input
+                  placeholder="Search name or ID..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '5px 8px 5px 26px', fontSize: '11px', color: 'white', outline: 'none' }}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>STATUS</label>
+              <select
+                className="apple-input"
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                style={{ padding: '4px 8px', fontSize: '11px', height: '27px', appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', width: '100%' }}
+              >
+                <option value="">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Offboarding">Offboarding</option>
+                <option value="On Notice">On Notice</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Resigned">Resigned</option>
+              </select>
+            </div>
+            
+            <div>
+              <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>DEPARTMENT</label>
+              <select
+                className="apple-input"
+                value={deptFilter}
+                onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
+                style={{ padding: '4px 8px', fontSize: '11px', height: '27px', appearance: 'none', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', width: '100%' }}
+              >
+                <option value="">All Departments</option>
+                {departments.map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>JOIN FROM</label>
               <input
-                placeholder="Search name or ID..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '10px',
-                  padding: '6px 10px 6px 30px',
-                  fontSize: '11px',
-                  color: 'white',
-                  outline: 'none',
-                  width: '180px'
-                }}
+                type="date"
+                className="apple-input"
+                value={startDateFilter}
+                onChange={(e) => { setStartDateFilter(e.target.value); setCurrentPage(1); }}
+                style={{ padding: '4px 8px', fontSize: '11px', height: '27px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', width: '100%', color: 'white' }}
               />
             </div>
-            <button
-              onClick={handleExportDirectory}
-              className="apple-btn"
-              style={{ padding: '6px 12px', fontSize: '11px', background: 'rgba(58,214,125,0.1)', color: '#30d158', display: 'flex', alignItems: 'center', gap: '6px' }}
-              title="Download results as CSV"
-            >
-              <FaFileDownload size={12} /> Export CSV
-            </button>
+
+            <div>
+              <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>JOIN TO</label>
+              <input
+                type="date"
+                className="apple-input"
+                value={endDateFilter}
+                onChange={(e) => { setEndDateFilter(e.target.value); setCurrentPage(1); }}
+                style={{ padding: '4px 8px', fontSize: '11px', height: '27px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', width: '100%', color: 'white' }}
+              />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button
+                onClick={handleExportDirectory}
+                className="apple-btn"
+                style={{ width: '100%', padding: '6px 12px', fontSize: '11px', height: '27px', background: 'rgba(58,214,125,0.1)', color: '#30d158', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', border: '1px solid rgba(58,214,125,0.2)' }}
+              >
+                <FaFileDownload size={11} /> Export CSV
+              </button>
+            </div>
           </div>
           <div style={{ overflowX: "auto", marginTop: "10px" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
@@ -1021,7 +1284,7 @@ export default function EmployeeMaster() {
                 </tr>
               </thead>
               <tbody>
-                {filteredDirectory.length === 0 ? (
+                {paginatedDirectory.length === 0 ? (
                   <tr>
                     <td colSpan={6} style={{ padding: "60px 20px", textAlign: "center", color: "var(--text-tertiary)" }}>
                       <FaSearch size={30} style={{ marginBottom: "15px", opacity: 0.2 }} />
@@ -1030,11 +1293,51 @@ export default function EmployeeMaster() {
                     </td>
                   </tr>
                 ) : (
-                  filteredDirectory.map(emp => (
+                  paginatedDirectory.map(emp => (
                     <tr key={emp.id} style={{ borderBottom: "1px dotted var(--border-light)", color: "var(--text-primary)", fontSize: "13px" }}>
                       <td style={{ padding: "12px" }}>
-                        <div style={{ fontWeight: "600" }}>{emp.name}</div>
-                        <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{emp.id} • {emp.email}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          {/* Circular Avatar */}
+                          <div style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            overflow: 'hidden',
+                            background: 'var(--border-light)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            fontWeight: 'bold',
+                            fontSize: '12px',
+                            color: 'white',
+                            border: '1px solid var(--border-light)'
+                          }}>
+                            {(emp.profile_photo_url || emp.photo) ? (
+                              <img
+                                src={getFileUrl(emp.profile_photo_url || emp.photo)}
+                                alt=""
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e: any) => { e.target.style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                background: `hsl(${(emp.name || '').charCodeAt(0) * 15 % 360}, 65%, 45%)`
+                              }}>
+                                {(emp.name || 'E').charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: "600" }}>{emp.name}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{emp.employee_id || emp.id} • {emp.email}</div>
+                          </div>
+                        </div>
                       </td>
                       <td style={{ padding: "12px" }}>
                         <div>{emp.department}</div>
@@ -1074,8 +1377,14 @@ export default function EmployeeMaster() {
                         <span style={{
                           padding: "3px 8px",
                           borderRadius: "4px",
-                          background: emp.status === "Active" ? "rgba(48, 209, 88, 0.1)" : "rgba(255, 159, 10, 0.1)",
-                          color: emp.status === "Active" ? "#30d158" : "#ff9f0a",
+                          background: emp.status === "Active" ? "rgba(48, 209, 88, 0.1)" : 
+                                      emp.status === "Inactive" ? "rgba(255, 69, 58, 0.1)" :
+                                      emp.status === "On Notice" ? "rgba(255, 159, 10, 0.1)" :
+                                      "rgba(255, 159, 10, 0.1)",
+                          color: emp.status === "Active" ? "#30d158" : 
+                                 emp.status === "Inactive" ? "#ff453a" :
+                                 emp.status === "On Notice" ? "#ff9f0a" :
+                                 "#ff9f0a",
                           fontSize: "11px",
                           fontWeight: 'bold'
                         }}>
@@ -1096,6 +1405,43 @@ export default function EmployeeMaster() {
               </tbody>
             </table>
           </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', padding: '12px 4px 0 4px', borderTop: '1px solid var(--border-light)' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredDirectory.length)} of {filteredDirectory.length} employees
+              </span>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="apple-btn"
+                  style={{ padding: '4px 10px', fontSize: '11px', width: 'auto', background: currentPage === 1 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)', color: currentPage === 1 ? 'var(--text-tertiary)' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', border: '1px solid var(--border-light)' }}
+                >
+                  Prev
+                </button>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className="apple-btn"
+                    style={{ padding: '4px 8px', fontSize: '11px', width: 'auto', background: currentPage === i + 1 ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)', color: 'white', border: currentPage === i + 1 ? 'none' : '1px solid var(--border-light)' }}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="apple-btn"
+                  style={{ padding: '4px 10px', fontSize: '11px', width: 'auto', background: currentPage === totalPages ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)', color: currentPage === totalPages ? 'var(--text-tertiary)' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', border: '1px solid var(--border-light)' }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </GlassCard>
       </div>
     </div>

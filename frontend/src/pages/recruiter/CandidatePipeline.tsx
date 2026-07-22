@@ -14,7 +14,8 @@ import {
   scheduleInterview,
   acceptOffer,
   rejectOffer,
-  deleteCandidate
+  deleteCandidate,
+  createApplication
 } from "../../services/recruiterService";
 import { getEmployeesForReference } from "../../services/employeeService";
 
@@ -150,13 +151,57 @@ export default function CandidatePipeline() {
     loadData();
   }, []);
 
+  React.useEffect(() => {
+    if (selectedCandidate && screenings.length > 0) {
+      const candIdStr = String(selectedCandidate.candidate_id || selectedCandidate.id);
+      const dbIdStr = String(selectedCandidate.id || '');
+      const existingScreening = screenings.find((s: any) =>
+        String(s.candidate_id) === candIdStr || (dbIdStr && String(s.candidate_id) === dbIdStr)
+      );
+      if (existingScreening) {
+        setScreeningForm({
+          screening_score: existingScreening.screening_score != null ? Number(existingScreening.screening_score) : 5,
+          skill_match_score: existingScreening.skill_match_score != null ? Number(existingScreening.skill_match_score) : 5,
+          experience_match_score: existingScreening.experience_match_score != null ? Number(existingScreening.experience_match_score) : 5,
+          communication_score: existingScreening.communication_score != null ? Number(existingScreening.communication_score) : 5,
+          notes: existingScreening.notes || existingScreening.screening_notes || "",
+          decision: existingScreening.decision || "shortlisted"
+        });
+      }
+    }
+  }, [selectedCandidate, screenings]);
+
+  const getJobTitle = (c: any, jobsList: any[]) => {
+    if (!c) return 'Unknown Role';
+    const match = jobsList.find((j: any) =>
+      String(j.job_id) === String(c.job_id) ||
+      String(j.id) === String(c.job_id) ||
+      String(j.job_id) === String(c.job) ||
+      String(j.id) === String(c.job)
+    );
+    return match?.title || c.job_title || c.job || (c.job_id ? `Requisition (${c.job_id})` : 'General Requisition');
+  };
+
   const filteredCandidates = allCandidates.filter((c: any) => {
     // Skip invalid candidates
     if (!c || (!c.first_name && !c.name && !c.candidate_name)) {
       return false;
     }
     
-    const matchesJob = selectedJobId === "all" || c.job_id === selectedJobId || c.id === selectedJobId || c.job === selectedJobId;
+    const selectedJobObj = jobs.find((j: any) =>
+      String(j.job_id) === String(selectedJobId) || String(j.id) === String(selectedJobId)
+    );
+
+    const matchesJob = selectedJobId === "all" || (
+      String(c.job_id) === String(selectedJobId) ||
+      String(c.id) === String(selectedJobId) ||
+      (selectedJobObj && (
+        String(c.job_id) === String(selectedJobObj.job_id) ||
+        String(c.job_id) === String(selectedJobObj.id) ||
+        String(c.job) === String(selectedJobObj.title)
+      ))
+    );
+
     const matchesSearch = (c.first_name + " " + (c.last_name || "")).toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -170,6 +215,7 @@ export default function CandidatePipeline() {
     // Data Sanitization (Feature 62): Convert empty strings for Decimal/Int fields
     const payload = {
       ...form,
+      job_id: String(form.job_id),  // Backend expects string — guard against numeric IDs
       total_experience_years: form.total_experience_years === "" ? "0.0" : form.total_experience_years,
       relevant_experience_years: form.relevant_experience_years === "" ? "0.0" : form.relevant_experience_years,
       notice_period_days: form.notice_period_days === "" ? 0 : parseInt(form.notice_period_days),
@@ -180,7 +226,20 @@ export default function CandidatePipeline() {
       application_status: "active"
     };
 
-    await addCandidate(payload);
+
+    const newCand = await addCandidate(payload);
+    if (newCand && (newCand.candidate_id || newCand.id)) {
+      try {
+        await createApplication({
+          candidate_id: String(newCand.candidate_id || newCand.id),
+          job_id: String(payload.job_id),
+          current_stage: "Telephonic",
+          status: "active"
+        });
+      } catch (appErr) {
+        console.error("Failed to auto-create application log:", appErr);
+      }
+    }
 
     setForm({
       job_id: "", first_name: "", last_name: "", email: "", phone: "",
@@ -196,18 +255,47 @@ export default function CandidatePipeline() {
   const handleMove = async (id: string, currentStage: string) => {
     const currentIndex = stages.indexOf(currentStage);
     if (currentIndex < stages.length - 2) {
-      await updateCandidateStage(id, stages[currentIndex + 1]);
-      await loadData();
-      if (selectedCandidate) {
-        setSelectedCandidate((prev: any) => ({ ...prev, current_stage: stages[currentIndex + 1] }));
+      const nextStage = stages[currentIndex + 1];
+      try {
+        await updateCandidateStage(id, nextStage);
+        try {
+          await createApplication({
+            candidate_id: String(id),
+            job_id: String(selectedCandidate?.job_id),
+            current_stage: nextStage,
+            status: "active"
+          });
+        } catch (appErr) {
+          console.error("Failed to log application move event:", appErr);
+        }
+        await loadData();
+        if (selectedCandidate) {
+          setSelectedCandidate((prev: any) => ({ ...prev, current_stage: nextStage }));
+        }
+      } catch (err: any) {
+        alert(err?.response?.data?.detail || "Failed to move candidate stage.");
       }
     }
   };
 
   const handleReject = async (id: string) => {
-    await updateCandidateStage(id, "Rejected");
-    await loadData();
-    setSelectedCandidate(null);
+    try {
+      await updateCandidateStage(id, "Rejected");
+      try {
+        await createApplication({
+          candidate_id: String(id),
+          job_id: String(selectedCandidate?.job_id),
+          current_stage: "Rejected",
+          status: "rejected"
+        });
+      } catch (appErr) {
+        console.error("Failed to log application reject event:", appErr);
+      }
+      await loadData();
+      setSelectedCandidate(null);
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Failed to reject candidate.");
+    }
   };
 
   const handleSaveScreening = async (e: React.FormEvent) => {
@@ -259,16 +347,20 @@ export default function CandidatePipeline() {
     if (!selectedCandidate) return;
     if (!interviewForm.interviewer_id || !interviewForm.interview_date) return alert("Interviewer and Date are required");
 
-    await scheduleInterview({
-      candidate_id: String(selectedCandidate.candidate_id || selectedCandidate.id),
-      job_id: String(selectedCandidate.job_id),
-      ...interviewForm,
-      interviewer_id: String(interviewForm.interviewer_id)
-    });
+    try {
+      await scheduleInterview({
+        candidate_id: String(selectedCandidate.candidate_id || selectedCandidate.id),
+        job_id: String(selectedCandidate.job_id),
+        ...interviewForm,
+        interviewer_id: String(interviewForm.interviewer_id)
+      });
 
-    await loadData();
-    alert("Interview Scheduled Successfully");
-    setInterviewForm({ round_number: 1, interview_type: 'Technical', interviewer_id: '', interview_date: '', meeting_link: '' });
+      await loadData();
+      alert("Interview Scheduled Successfully");
+      setInterviewForm({ round_number: 1, interview_type: 'Technical', interviewer_id: '', interview_date: '', meeting_link: '' });
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || "Failed to schedule interview round.");
+    }
   };
 
   const downloadCSV = () => {
@@ -290,7 +382,7 @@ export default function CandidatePipeline() {
         csvRows.push(`--- STAGE: ${stage.toUpperCase()} (${stageCandidates.length} Candidates) ---`);
 
         const stageRows = stageCandidates.map((c: any) => {
-          const jobTitle = jobs.find((j: any) => (j.job_id === c.job_id || j.id === c.job_id))?.title || c.job || 'N/A';
+          const jobTitle = getJobTitle(c, jobs);
           return [
             c.application_id || 'N/A',
             c.first_name,
@@ -406,6 +498,51 @@ export default function CandidatePipeline() {
           </form>
         </GlassCard>
       )}
+      {/* Job Requisition Filter Pills */}
+      <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '20px', paddingBottom: '5px' }}>
+        <button
+          onClick={() => setSelectedJobId("all")}
+          className="apple-btn"
+          style={{
+            padding: '5px 14px',
+            fontSize: '11px',
+            borderRadius: '20px',
+            background: selectedJobId === "all" ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+            color: selectedJobId === "all" ? '#fff' : 'var(--text-secondary)',
+            whiteSpace: 'nowrap',
+            fontWeight: selectedJobId === "all" ? 'bold' : 'normal'
+          }}
+        >
+          All Requisitions ({allCandidates.length})
+        </button>
+        {jobs.map((j: any, i: number) => {
+          const jobIdStr = j.job_id || String(j.id);
+          const candCount = allCandidates.filter((c: any) =>
+            String(c.job_id) === String(j.job_id) ||
+            String(c.job_id) === String(j.id) ||
+            String(c.job) === String(j.title)
+          ).length;
+          const isSelected = selectedJobId === jobIdStr || selectedJobId === String(j.id);
+          return (
+            <button
+              key={j.job_id || j.id || i}
+              onClick={() => setSelectedJobId(jobIdStr)}
+              className="apple-btn"
+              style={{
+                padding: '5px 14px',
+                fontSize: '11px',
+                borderRadius: '20px',
+                background: isSelected ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                color: isSelected ? '#fff' : 'var(--text-secondary)',
+                whiteSpace: 'nowrap',
+                fontWeight: isSelected ? 'bold' : 'normal'
+              }}
+            >
+              {j.title} ({candCount})
+            </button>
+          );
+        })}
+      </div>
 
       <div style={{ display: 'flex', gap: '20px', overflowX: 'auto', paddingBottom: '20px', minHeight: '70vh' }}>
         {stages.map((stage: string) => {
@@ -432,7 +569,7 @@ export default function CandidatePipeline() {
                   const candidateName = `${c.first_name || ''} ${c.last_name || ''}`.trim() || c.name || 'Unknown Candidate';
                   const currentCompany = c.current_company || 'Fresher';
                   const experience = c.total_experience_years || '0';
-                  const jobTitle = jobs.find((j: any) => (j.job_id === c.job_id || j.id === c.job_id))?.title || c.job || 'Unknown Role';
+                  const jobTitle = getJobTitle(c, jobs);
 
                   // Skip invalid candidates
                   if (!c || (!c.first_name && !c.name && !c.candidate_name)) {
@@ -452,9 +589,11 @@ export default function CandidatePipeline() {
                                 </span>
                             )}
                             {(() => {
-                                const myInts = interviews.filter(i => String(i.candidate_id) === String(c.candidate_id || c.id) && i.status === 'Scheduled');
-                                if (myInts.length > 0) {
-                                    const next = myInts[0];
+                                const scheduledInts = interviews.filter(i => String(i.candidate_id) === String(c.candidate_id || c.id) && i.status === 'Scheduled');
+                                const completedInts = interviews.filter(i => String(i.candidate_id) === String(c.candidate_id || c.id) && i.status?.toLowerCase() === 'completed');
+                                
+                                if (scheduledInts.length > 0) {
+                                    const next = scheduledInts[0];
                                     const isToday = new Date(next.interview_date).toDateString() === new Date().toDateString();
                                     return (
                                         <span style={{ 
@@ -464,6 +603,20 @@ export default function CandidatePipeline() {
                                             fontWeight: 'bold', border: `1px solid ${isToday ? 'rgba(255,159,10,0.2)' : 'rgba(10,132,255,0.2)'}`
                                         }}>
                                             {isToday ? 'INTERVIEW TODAY' : 'UPCOMING INT'}
+                                        </span>
+                                    );
+                                } else if (completedInts.length > 0) {
+                                    const last = completedInts[completedInts.length - 1];
+                                    const isPass = last.result === 'pass';
+                                    const isFail = last.result === 'fail';
+                                    return (
+                                        <span style={{ 
+                                            fontSize: '8px', padding: '2px 6px', borderRadius: '10px', 
+                                            background: isPass ? 'rgba(48, 209, 88, 0.1)' : (isFail ? 'rgba(255, 69, 58, 0.1)' : 'rgba(255,255,255,0.05)'), 
+                                            color: isPass ? 'var(--accent-green)' : (isFail ? 'var(--accent-red)' : 'var(--text-tertiary)'), 
+                                            fontWeight: 'bold', border: `1px solid ${isPass ? 'rgba(48, 209, 88, 0.2)' : 'rgba(255, 69, 58, 0.2)'}`
+                                        }}>
+                                            {last.result ? `EVAL: ${last.result.toUpperCase()}` : 'EVAL COMPLETED'}
                                         </span>
                                     );
                                 }
@@ -478,7 +631,7 @@ export default function CandidatePipeline() {
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
                           <div style={{ fontSize: '10px', color: 'var(--accent-blue)', fontWeight: 'bold', fontFamily: "'Aptos', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" }}>
-                            {jobs.find((j: any) => (j.job_id === c.job_id || j.id === c.job_id))?.title || c.job || 'Unknown Role'}
+                            {jobTitle}
                           </div>
                           <span style={{ fontSize: '9px', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', fontFamily: "'Aptos', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" }}>{c.total_experience_years}Y</span>
                         </div>
@@ -685,14 +838,14 @@ export default function CandidatePipeline() {
                   </div>
                 )}
 
-                {screenings.filter((s: any) => s.candidate_id === (selectedCandidate.candidate_id || selectedCandidate.id)).length > 0 && (
+                {screenings.filter((s: any) => String(s.candidate_id) === String(selectedCandidate.candidate_id || selectedCandidate.id) || String(s.candidate_id) === String(selectedCandidate.id)).length > 0 && (
                   <div>
                     <h4 style={sectionHeaderStyle}><FaUserCheck /> Screening Logs</h4>
-                    {screenings.filter((s: any) => s.candidate_id === (selectedCandidate.candidate_id || selectedCandidate.id)).map((s: any, i: number) => (
+                    {screenings.filter((s: any) => String(s.candidate_id) === String(selectedCandidate.candidate_id || selectedCandidate.id) || String(s.candidate_id) === String(selectedCandidate.id)).map((s: any, i: number) => (
                       <div key={s.screening_id || i} style={{ ...detailBoxStyle, marginBottom: '10px', fontSize: '11px', padding: '12px', background: 'rgba(255,255,255,0.01)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                           <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>SCREENING: {s.type ? s.type.toUpperCase() : "FEEDBACK"}</span>
-                          <span style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}>{new Date(s.created_at).toLocaleDateString()}</span>
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: '10px' }}>{s.created_at ? new Date(s.created_at).toLocaleDateString() : 'Today'}</span>
                         </div>
                         <div style={{ color: 'var(--text-secondary)' }}>{s.screening_notes || s.notes}</div>
                         {s.decision && <div style={{ fontSize: '10px', marginTop: '5px', color: s.decision === 'rejected' || s.decision === 'fail' ? 'var(--accent-red)' : 'var(--accent-green)' }}>Result: {s.decision.toUpperCase()}</div>}
@@ -704,10 +857,17 @@ export default function CandidatePipeline() {
                 <div>
                   <h4 style={sectionHeaderStyle}><FaAward /> Interview Scorecards</h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {interviews.filter((int: any) => int.candidate_id === (selectedCandidate.candidate_id || selectedCandidate.id)).map((int: any, i: number) => {
-                      const interviewer = employees.find((e: any) => e.id === int.interviewer_id);
+                    {interviews.filter((int: any) => 
+                      String(int.candidate_id).toLowerCase().trim() === String(selectedCandidate.candidate_id || '').toLowerCase().trim() ||
+                      String(int.candidate_id).toLowerCase().trim() === String(selectedCandidate.id || '').toLowerCase().trim()
+                    ).map((int: any, i: number) => {
+                      const interviewer = employees.find((e: any) => 
+                        String(e.id) === String(int.interviewer_id) || 
+                        String(e.employee_id) === String(int.interviewer_id)
+                      );
+                      const isCompleted = int.status?.toLowerCase() === 'completed';
                       return (
-                        <div key={int.interview_id || i} style={{ ...detailBoxStyle, padding: '15px', background: int.status === 'completed' ? 'rgba(88, 166, 255, 0.05)' : 'rgba(255,255,255,0.02)' }}>
+                        <div key={int.interview_id || i} style={{ ...detailBoxStyle, padding: '15px', background: isCompleted ? 'rgba(88, 166, 255, 0.05)' : 'rgba(255,255,255,0.02)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                             <div style={{ fontWeight: 'bold', fontSize: '13px' }}>
                               Round {int.round_number}: {int.interview_type}
@@ -720,13 +880,13 @@ export default function CandidatePipeline() {
                               color: int.result === 'pass' ? 'var(--accent-green)' : (int.result === 'fail' ? 'var(--accent-red)' : 'var(--text-tertiary)'),
                               fontWeight: 'bold'
                             }}>
-                              {int.status === 'completed' ? (int.result ? int.result.toUpperCase() : 'COMPLETED') : 'PENDING'}
+                              {isCompleted ? (int.result ? int.result.toUpperCase() : 'COMPLETED') : 'PENDING'}
                             </span>
                           </div>
                           <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
                             Interviewer: <strong>{interviewer?.name || int.interviewer_id}</strong>
                           </div>
-                          {int.status === 'completed' && (
+                          {isCompleted && (
                             <div style={{ background: 'rgba(0,0,0,0.2)', padding: '10px', borderRadius: '8px' }}>
                               <div style={{ fontSize: '11px' }}>"{int.feedback || "No feedback provided."}"</div>
                             </div>
@@ -774,19 +934,19 @@ export default function CandidatePipeline() {
                       <FaCheck /> Move to {stages[stages.indexOf(selectedCandidate.current_stage) + 1]}
                     </button>
                   )}
-                  <button className="apple-btn" style={{ background: 'rgba(248, 81, 73, 0.1)', color: 'var(--accent-red)' }} onClick={() => handleReject(selectedCandidate.candidate_id || selectedCandidate.id)}>
+                  <button className="apple-btn" style={{ flex: 1, background: 'rgba(248, 81, 73, 0.15)', color: 'var(--accent-red)' }} onClick={() => handleReject(selectedCandidate.candidate_id || selectedCandidate.id)}>
                     <FaTimes /> Mark as Ineligible / Reject
                   </button>
                 </>
               )}
               {["Telephonic", "Screening (Zoom Meeting)", "Assignment"].includes(selectedCandidate.current_stage) && (
-                <button className="apple-btn" style={{ background: 'rgba(248, 81, 73, 0.1)', color: 'var(--accent-red)' }} onClick={() => handleReject(selectedCandidate.candidate_id || selectedCandidate.id)}>
+                <button className="apple-btn" style={{ flex: 1, background: 'rgba(248, 81, 73, 0.15)', color: 'var(--accent-red)' }} onClick={() => handleReject(selectedCandidate.candidate_id || selectedCandidate.id)}>
                   <FaTimes /> Mark as Ineligible / Reject
                 </button>
               )}
               <button 
                 className="apple-btn" 
-                style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-tertiary)' }} 
+                style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }} 
                 onClick={async () => {
                   if (window.confirm("Are you sure you want to archive this candidate?")) {
                     await deleteCandidate(selectedCandidate.candidate_id || selectedCandidate.id);

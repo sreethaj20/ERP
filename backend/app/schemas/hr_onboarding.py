@@ -68,6 +68,7 @@ class HROnboardingBase(BaseModel):
     passport_number: Optional[str] = None
     uan_number: Optional[str] = None
     esi_number: Optional[str] = None
+    pf_number: Optional[str] = None
 
     # Document URLs
     aadhaar_file_url: Optional[str] = None
@@ -131,6 +132,7 @@ class HROnboardingUpdate(BaseModel):
     passport_number: Optional[str] = None
     uan_number: Optional[str] = None
     esi_number: Optional[str] = None
+    pf_number: Optional[str] = None
     
     # Demographics & Identity
     gender: Optional[str] = None

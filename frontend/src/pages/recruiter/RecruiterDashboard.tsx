@@ -22,6 +22,7 @@ import AnnouncementWidget from '../../components/AnnouncementWidget';
 import CompanyInfoWidget from '../../components/CompanyInfoWidget';
 import WelcomeBanner from '../../components/WelcomeBanner';
 import { syncCompanyProfile } from '../../utils/companyUtils';
+import NoticePeriodBanner from "../../components/NoticePeriodBanner";
 
 const RecruiterDashboard = () => {
     const navigate = useNavigate();
@@ -99,6 +100,8 @@ const RecruiterDashboard = () => {
 
             {/* 1. Shift Activity System */}
             <ShiftActivityWidget />
+
+            <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
 
             {/* 2. Calendar & Announcements at Top */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginTop: '24px', marginBottom: '30px' }}>

@@ -5,6 +5,7 @@ import webSocketService from '../../services/websocketService';
 import { getAttendance, getLeaves, getEmployees } from '../../utils/storage';
 import { FaChartLine, FaUsers, FaCalendarAlt, FaFileAlt, FaClock } from 'react-icons/fa';
 import { AttendanceCorrection } from '../../types/correction.types';
+import api from '../../api/apiClient';
 
 const HRReports = () => {
   const [stats, setStats] = useState({ totalEmployees: 0, presentToday: 0, pendingLeaves: 0, avgWorkHours: 0 });
@@ -58,15 +59,8 @@ const HRReports = () => {
   const loadCorrections = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/v1/hr/attendance/corrections', {
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('token')}`,
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCorrections(data);
-      }
+      const response = await api.get('hr/attendance/corrections');
+      setCorrections(response.data);
     } catch (error) {
       console.error('Failed to load corrections:', error);
     } finally {

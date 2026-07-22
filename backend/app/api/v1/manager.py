@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from datetime import date, datetime
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, get_current_user_with_role
 from app.models.user import User
@@ -76,6 +77,26 @@ async def approve_manager_onboarding_request(request_id: str, approved_by: Optio
     res = await manager_onboarding_service.approve_request(db, request_id, current_user.id, emp.employee_id if emp else None)
     if not res:
         raise HTTPException(status_code=404, detail="Request not found")
+        
+    # Trigger E2E real-time notifications to HR & IT roles
+    try:
+        from app.services.notification_service import notification_service
+        from app.models.user import User
+        
+        # Find all HR and IT users to alert them about onboarding progression
+        recipients = db.query(User).filter(User.role.in_(["hr", "it"])).all()
+        for r_user in recipients:
+            await notification_service.push_notification(
+                db,
+                user_id=r_user.id,
+                employee_id=r_user.employee_id or f"USR-{r_user.id}",
+                title="Onboarding Request Approved",
+                message=f"Manager {effective_approver} approved onboarding request for {res.name or 'New Employee'}. Actions required.",
+                category="Onboarding"
+            )
+    except Exception as e:
+        print(f"[MANAGER APPROVE ONBOARDING NOTIFICATION ERROR] {e}")
+        
     return res
     
 @router.post("/onboarding/{request_id}/reject", response_model=ManagerOnboardingOut)
@@ -160,10 +181,14 @@ def get_manager_offboarding_requests(skip: int = 0, limit: int = 100, db: Sessio
 
 @router.post("/offboarding", response_model=OffboardingOut)
 def initiate_offboarding_by_manager(obj_in: OffboardingCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+    if not obj_in.employee_id:
+        raise HTTPException(status_code=400, detail="employee_id is required")
     return offboarding_service.initiate_offboarding(db, obj_in)
 
 @router.post("/offboarding/complete/{offboard_id}", response_model=OffboardingOut)
-async def manager_complete_offboarding(offboard_id: str, obj_in: OffboardingUpdateByManager, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+async def manager_complete_offboarding(offboard_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+    # Force completed=True so _deactivate_user_identity is always triggered
+    obj_in = OffboardingUpdateByManager(completed=True, manager_approved=True)
     res = await offboarding_service.manager_approve(db, offboard_id, obj_in, changed_by=current_user.username)
     if not res:
         raise HTTPException(status_code=404, detail="Offboarding request not found")
@@ -233,13 +258,15 @@ def _get_recursive_team_ids(db: Session, manager_id: str) -> List[str]:
 @router.get("/offers", response_model=List[OfferOut])
 def get_manager_offers(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     from app.services.job_service import recruitment_service
-    # Returns all offers - visibility logic could be added here to filter by manager's dept
-    return recruitment_service.get_offers(db)
+    from app.repositories.employee_repo import employee_repo
+    emp = employee_repo.get_by_user_id(db, current_user.id)
+    manager_id = emp.employee_id if emp else None
+    return recruitment_service.get_offers(db, manager_id=manager_id)
 
 @router.patch("/offers/{offer_id}/status", response_model=OfferOut)
-def update_offer_status_by_manager(offer_id: str, status: str, reason: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+async def update_offer_status_by_manager(offer_id: str, status: str, reason: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     from app.services.job_service import recruitment_service
-    res = recruitment_service.update_offer_status(db, offer_id, status, reason)
+    res = await recruitment_service.update_offer_status(db, offer_id, status, reason)
     if not res:
         raise HTTPException(status_code=404, detail="Offer not found")
     return res
@@ -247,6 +274,8 @@ def update_offer_status_by_manager(offer_id: str, status: str, reason: Optional[
 @router.get("/workforce")
 def get_manager_workforce(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     try:
+        from app.services.offboarding_service import offboarding_service
+        offboarding_service.check_and_deactivate_expired_offboardings(db)
         from app.repositories.employee_repo import employee_repo
         from app.models.employee import Employee
         from app.models.shift import ShiftSession
@@ -288,6 +317,8 @@ def get_manager_workforce(db: Session = Depends(get_db), current_user: User = De
 @router.get("/dashboard")
 def get_manager_dashboard(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     try:
+        from app.services.offboarding_service import offboarding_service
+        offboarding_service.check_and_deactivate_expired_offboardings(db)
         from app.services.dashboard_service import dashboard_service
         from app.repositories.employee_repo import employee_repo
         emp = employee_repo.get_by_user_id(db, current_user.id)
@@ -452,10 +483,28 @@ def approve_attendance_correction(correction_id: int, status: str, db: Session =
 
 @router.get("/attendance/team", response_model=List[AttendanceOut])
 @router.get("/attendance", response_model=List[AttendanceOut])
-def get_team_attendance_for_manager(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+def get_team_attendance_for_manager(
+    date: Optional[date] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    skip: int = 0,
+    limit: int = 2000,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_role("manager"))
+):
     """Manager sees only his team's attendance from the Attendance table (recursive)."""
     from app.services.attendance_service import attendance_service
-    return attendance_service.get_my_attendance(db, None, 0, 2000, viewer_role="manager", viewer_id=current_user.id)
+    return attendance_service.get_my_attendance(
+        db,
+        None,
+        skip,
+        limit,
+        viewer_role="manager",
+        viewer_id=current_user.id,
+        date_filter=date,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 
 @router.get("/attendance/summary")
@@ -538,14 +587,37 @@ def submit_performance_review(obj_in: PerformanceReviewCreate, db: Session = Dep
 @router.patch("/interviews/{interview_id}/feedback", response_model=InterviewOut)
 def manager_submit_feedback(
     interview_id: int,
-    feedback: str,
+    obj_in: Optional[Dict[str, Any]] = Body(None),
+    feedback: Optional[str] = None,
     rating: Optional[float] = None,
     result: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_with_role("manager"))
 ):
     """Manager submits Interview feedback/scorecard."""
-    res = recruitment_service.update_interview_feedback(db, interview_id, feedback, rating, "completed", result)
+    if obj_in and isinstance(obj_in, dict):
+        fb = obj_in.get("feedback", feedback or "")
+        rt = obj_in.get("overall_rating") or obj_in.get("rating", rating)
+        st = obj_in.get("status", "Completed")
+        res_val = obj_in.get("result", result)
+        tech_score = obj_in.get("technical_score")
+        comm_score = obj_in.get("communication_score")
+        prob_score = obj_in.get("problem_solving_score")
+        cult_score = obj_in.get("culture_fit_score")
+        rec_url = obj_in.get("recording_url")
+        rev = obj_in.get("recruiter_reviewed")
+        
+        res = recruitment_service.update_interview_feedback(
+            db, interview_id, fb, rt, status=st, result=res_val,
+            technical_score=tech_score, communication_score=comm_score,
+            problem_solving_score=prob_score, culture_fit_score=cult_score,
+            recording_url=rec_url, recruiter_reviewed=rev
+        )
+    else:
+        res = recruitment_service.update_interview_feedback(
+            db, interview_id, feedback or "", rating, status="Completed", result=result
+        )
+        
     if not res:
         raise HTTPException(status_code=404, detail="Interview not found")
     return res
@@ -553,3 +625,59 @@ def manager_submit_feedback(
 def get_manager_shifts(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     """Manager: Get all shift definitions for reference."""
     return shift_service.get_shifts(db, skip, limit)
+
+@router.post("/ping-employee/{employee_id}")
+async def ping_employee(employee_id: str, payload: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+    """Direct real-time notification ping to a specific employee's command suite."""
+    try:
+        from app.models.user import User
+        target_user = db.query(User).filter(User.employee_id == employee_id).first()
+        if not target_user:
+            raise HTTPException(status_code=404, detail="Employee user not found")
+            
+        message = payload.get("message") or f"Manager {current_user.full_name or current_user.username} sent you a high-priority operational ping."
+        await notification_service.push_notification(
+            db,
+            user_id=target_user.id,
+            employee_id=employee_id,
+            title="Operational Command Ping",
+            message=message,
+            category="Alert"
+        )
+        return {"status": "success", "message": f"Ping sent to employee {employee_id}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/it-tickets")
+def manager_it_tickets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+    from app.models.ticket import Ticket
+    tickets = db.query(Ticket).filter(Ticket.category == "IT", Ticket.deleted_at == None).offset(skip).limit(limit).all()
+    for t in tickets:
+        if not hasattr(t, 'issue') or t.issue is None:
+            t.issue = t.title
+    return tickets
+
+@router.get("/it-assets")
+def manager_it_assets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
+    from app.repositories.asset_repo import asset_repo
+    return asset_repo.get_multi(db, skip, limit)
+
+@router.post("/finalize-leave")
+async def manager_finalize_leave(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_with_role(["manager", "hr", "admin"]))
+):
+    leave_id = payload.get("leave_id")
+    action = payload.get("action")
+    rejection_reason = payload.get("rejection_reason")
+    return await leave_service.approve_recommendation(
+        db,
+        leave_id,
+        current_user.employee_id or f"USR-{current_user.id}",
+        current_user.role,
+        action,
+        rejection_reason
+    )
+
+

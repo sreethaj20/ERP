@@ -34,8 +34,7 @@ export const getAllLeaves = async () => {
 };
 
 export const approveLeave = async (leaveId: string, action: 'approve' | 'reject') => {
-  // Moved to shared path to bypass persistent /manager/ prefix routing issues
-  const response = await api.post('manager-finalize-leave', {
+  const response = await api.post('manager/finalize-leave', {
     leave_id: leaveId,
     action: action
   });
@@ -128,7 +127,9 @@ export const getInterviews = async () => {
 };
 
 export const updateIdmInterviewFeedback = async (id: number, payload: any) => {
-    const response = await api.patch(`recruiter/interviews/${id}/feedback`, payload);
+    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const endpoint = role === 'manager' ? `manager/interviews/${id}/feedback` : `recruiter/interviews/${id}/feedback`;
+    const response = await api.patch(endpoint, payload);
     return response.data;
 };
 
@@ -144,6 +145,12 @@ export const getITTickets = async () => {
 };
 
 export const getITAssets = async () => {
-    const response = await api.get('manager/it-assets');
-    return response.data;
+  const response = await api.get('manager/it-assets');
+  return response.data;
 };
+
+export const pingEmployee = async (employeeId: string, message: string) => {
+  const response = await api.post(`manager/ping-employee/${employeeId}`, { message });
+  return response.data;
+};
+

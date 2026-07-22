@@ -27,6 +27,7 @@ export default function OnboardingEmployees() {
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastFetchedId, setLastFetchedId] = useState("");
 
   useEffect(() => {
     loadData();
@@ -42,6 +43,9 @@ export default function OnboardingEmployees() {
       const emps = await refreshEmployees();
       setEmployees(Array.isArray(emps) ? emps : []);
 
+      // Reset lastFetchedId to force the selection useEffect to re-run and grab updated master data
+      setLastFetchedId("");
+
       // If something was selected, re-select the enriched version
       if (selected) {
         const updated = enriched.find((r: any) => r.request_id === selected.request_id);
@@ -56,52 +60,116 @@ export default function OnboardingEmployees() {
 
   useEffect(() => {
     if (selected) {
-      const fetchPB = async () => {
-        const pb = await getPreboardingByEmpId(selected.employee_id);
-        
-        // 🔧 ENHANCEMENT: End-to-End Data Pull from Employee Master
-        const empRecord = employees.find(e => e.id === selected.employee_id || e.employee_id === selected.employee_id);
-        
-        if (empRecord) {
-          console.log("[ONBOARDING] Merging Master Record into View...");
-          // Merge master data into the 'selected' view if fields are empty in onboarding record
-          const merged = {
-            ...selected,
-            // Prioritize master data for core identity if missing in onboarding
-            dob: selected.dob || empRecord.dob,
-            gender: selected.gender || empRecord.gender,
-            marital_status: selected.marital_status || empRecord.marital_status,
-            blood_group: selected.blood_group || empRecord.blood_group,
-            nationality: selected.nationality || empRecord.nationality,
-            pan_number: selected.pan_number || empRecord.pan_number || pb?.pan_number,
-            aadhaar_number: selected.aadhaar_number || empRecord.aadhaar_number || pb?.aadhaar_number,
-            passport_number: selected.passport_number || empRecord.passport_number || pb?.passport_number,
-            joining_date: selected.joining_date || empRecord.joining_date,
-            probation_period_days: selected.probation_period_days || empRecord.probation_period_days,
-            official_email: selected.official_email || empRecord.official_email || selected.email,
-            
-            // Sync files from PB if missing in ONB
-            aadhaar_file_url: selected.aadhaar_file_url || pb?.aadhaar_file_url,
-            pan_file_url: selected.pan_file_url || pb?.pan_file_url,
-            bank_proof_url: selected.bank_proof_url || pb?.bank_proof_url,
-            education_certificate_url: selected.education_certificate_url || pb?.education_certificate_url,
-            resume_url: selected.resume_url || pb?.resume_url,
-            previous_company_letter_url: selected.previous_company_letter_url || pb?.previous_company_letter_url
-          };
+      if (selected.request_id !== lastFetchedId || !lastFetchedId) {
+        const fetchPB = async () => {
+          setLastFetchedId(selected.request_id);
+          const pb = await getPreboardingByEmpId(selected.employee_id);
           
-          // Only update if something changed (avoid infinite loop if selected is dependency, though it's not here)
-          if (JSON.stringify(merged) !== JSON.stringify(selected)) {
-             setSelected(merged);
+          // 🔧 ENHANCEMENT: End-to-End Data Pull from Employee Master
+          let empRecord = null;
+          if (selected.employee_id) {
+            try {
+              console.log(`[ONBOARDING] Fetching full employee master record for ${selected.employee_id}...`);
+              const res = await api.get(`employee/${selected.employee_id}`);
+              empRecord = res.data;
+            } catch (e) {
+              console.warn("[ONBOARDING] Full employee lookup failed, falling back to directory:", e);
+              empRecord = employees.find(e => e.id === selected.employee_id || e.employee_id === selected.employee_id);
+            }
           }
-        }
-        
-        setPreboardingData(pb);
-      };
-      fetchPB();
+          
+          if (empRecord) {
+            console.log("[ONBOARDING] Merging Master Record into View...");
+            // Merge master data into the 'selected' view if fields are empty in onboarding record
+            const merged = {
+              ...selected,
+              first_name: selected.first_name || empRecord.first_name,
+              last_name: selected.last_name || empRecord.last_name,
+              // Prioritize master data for core identity if missing in onboarding
+              dob: selected.dob || empRecord.dob,
+              gender: selected.gender || empRecord.gender,
+              marital_status: selected.marital_status || empRecord.marital_status,
+              blood_group: selected.blood_group || empRecord.blood_group,
+              nationality: selected.nationality || empRecord.nationality,
+              personal_email: selected.personal_email || empRecord.personal_email || empRecord.email,
+              personal_mobile: selected.personal_mobile || empRecord.personal_mobile || empRecord.phone,
+              alternate_mobile: selected.alternate_mobile || empRecord.alternate_mobile,
+              pincode: selected.pincode || empRecord.pincode || empRecord.postal_code,
+              
+              designation: selected.designation || empRecord.designation,
+              department: selected.department || empRecord.department,
+              reporting_manager_id: selected.reporting_manager_id || empRecord.manager_id || empRecord.reporting_manager_id,
+              reporting_manager: selected.reporting_manager || empRecord.reporting_manager || empRecord.reporting_to,
+              team_leader_id: selected.team_leader_id || empRecord.team_leader_id,
+              joining_location: selected.joining_location || selected.work_location || empRecord.work_location,
+              work_location: selected.work_location || selected.joining_location || empRecord.work_location,
+              joining_date: selected.joining_date || empRecord.joining_date,
+              probation_period_days: selected.probation_period_days || empRecord.probation_period_days,
+              official_email: selected.official_email || empRecord.official_email || selected.email,
+              
+              pan_number: selected.pan_number || empRecord.pan_number || pb?.pan_number,
+              aadhaar_number: selected.aadhaar_number || empRecord.aadhaar_number || pb?.aadhaar_number,
+              passport_number: selected.passport_number || empRecord.passport_number || pb?.passport_number,
+              uan_number: selected.uan_number || empRecord.uan_number || pb?.uan_number,
+              esi_number: selected.esi_number || empRecord.esi_number || pb?.esi_number,
+              pf_number: selected.pf_number || empRecord.pf_number || pb?.pf_number,
+              
+              // Sync files from PB/Employee Master if missing in ONB
+              aadhaar_file_url: selected.aadhaar_file_url || empRecord.aadhaar_file_url || pb?.aadhaar_file_url,
+              pan_file_url: selected.pan_file_url || empRecord.pan_file_url || pb?.pan_file_url,
+              bank_proof_url: selected.bank_proof_url || empRecord.bank_proof_url || pb?.bank_proof_url,
+              education_certificate_url: selected.education_certificate_url || empRecord.education_certificate_url || pb?.education_certificate_url,
+              resume_url: selected.resume_url || empRecord.resume_url || pb?.resume_url,
+              offer_letter_signed_url: selected.offer_letter_signed_url || empRecord.offer_letter_signed_url || pb?.offer_letter_signed_url,
+              previous_company_letter_url: selected.previous_company_letter_url || pb?.previous_company_letter_url
+            };
+            
+            // Only update if something changed (avoid infinite loop if selected is dependency, though it's not here)
+            if (JSON.stringify(merged) !== JSON.stringify(selected)) {
+               setSelected(merged);
+            }
+          }
+          
+          // Merge address and bank details from empRecord to pb if missing in pb, or create initial if not existing
+          const updatedPb = pb ? {
+            ...pb,
+            bank_account_number: pb.bank_account_number || empRecord?.bank_account_number || empRecord?.bank_account_no || "",
+            bank_name: pb.bank_name || empRecord?.bank_name || "",
+            bank_ifsc_code: pb.bank_ifsc_code || empRecord?.bank_ifsc_code || empRecord?.ifsc_code || "",
+            current_address: pb.current_address || empRecord?.current_address || empRecord?.address || "",
+            permanent_address: pb.permanent_address || empRecord?.permanent_address || "",
+            city: pb.city || empRecord?.city || "",
+            state: pb.state || empRecord?.state || "",
+            pincode: pb.pincode || empRecord?.pincode || empRecord?.postal_code || "",
+            country: pb.country || empRecord?.country || ""
+          } : (empRecord ? {
+            preboard_id: `PRE-HR-${selected.request_id}`,
+            employee_id: selected.employee_id,
+            onboarding_request_id: selected.request_id,
+            bank_account_number: empRecord.bank_account_number || empRecord.bank_account_no || "",
+            bank_name: empRecord.bank_name || "",
+            bank_ifsc_code: empRecord.bank_ifsc_code || empRecord.ifsc_code || "",
+            current_address: empRecord.current_address || empRecord.address || "",
+            permanent_address: empRecord.permanent_address || "",
+            city: empRecord.city || "",
+            state: empRecord.state || "",
+            pincode: empRecord.pincode || empRecord.postal_code || "",
+            country: empRecord.country || "",
+            nda_signed: false,
+            code_of_conduct_signed: false,
+            policy_acknowledged: false,
+            isMock: true
+          } : null);
+          
+          setPreboardingData(updatedPb);
+        };
+        fetchPB();
+      }
     } else {
       setPreboardingData(null);
+      setLastFetchedId("");
     }
-  }, [selected?.request_id, employees]); // Use request_id to avoid loop on 'selected' change
+  }, [selected?.request_id, employees, lastFetchedId]);
 
   const getEmpName = (req: any) => {
     const emp = employees.find((e: any) => e.id === req.employee_id || e.employee_id === req.employee_id);
@@ -121,13 +189,24 @@ export default function OnboardingEmployees() {
       // 1. Update Onboarding
       await updateOnboardingRequest(selected.request_id, selected);
 
-      // 2. Update Preboarding if linked
-      if (preboardingData) {
+      // 2. Update Preboarding if linked and not a mock record
+      if (preboardingData && !preboardingData.isMock) {
         await updatePreboarding(preboardingData.preboard_id, preboardingData);
       }
 
-      // 3. Sync to Core Employee Record
-      const empRecord = employees.find(e => e.id === selected.employee_id || e.employee_id === selected.employee_id);
+      // 3. Sync to Core Employee Record (query directly from backend for full master data)
+      let empRecord = null;
+      if (selected.employee_id) {
+        try {
+          console.log(`[ONBOARDING] Fetching latest employee master for sync: ${selected.employee_id}`);
+          const res = await api.get(`employee/${selected.employee_id}`);
+          empRecord = res.data;
+        } catch (e) {
+          console.warn("[ONBOARDING] Employee lookup during save failed, using cache:", e);
+          empRecord = employees.find(e => e.id === selected.employee_id || e.employee_id === selected.employee_id);
+        }
+      }
+
       if (empRecord) {
         const { reporting_manager, reporting_manager_id } = selected;
         const updates = {
@@ -176,13 +255,17 @@ export default function OnboardingEmployees() {
             esi_number: preboardingData.esi_number || selected.esi_number || empRecord.esi_number,
             pf_number: preboardingData.pf_number || selected.pf_number || empRecord.pf_number,
             address: preboardingData.current_address || empRecord.address,
+            permanent_address: preboardingData.permanent_address || empRecord.permanent_address,
+            current_address: preboardingData.current_address || empRecord.current_address,
             city: preboardingData.city || empRecord.city,
             state: preboardingData.state || empRecord.state,
+            pincode: preboardingData.pincode || empRecord.pincode,
+            country: preboardingData.country || empRecord.country,
             emergency_contact_name: preboardingData.emergency_contact_name || empRecord.emergency_contact_name,
             emergency_contact_phone: preboardingData.emergency_contact_phone || empRecord.emergency_contact_phone
           } : {})
         };
-        await updateEmployee(empRecord.id, updates);
+        await updateEmployee(empRecord.employee_id || empRecord.id, updates);
       }
 
       // 4. Notify IT if hardware is requested and not yet fully assigned
@@ -231,12 +314,22 @@ export default function OnboardingEmployees() {
           
           // Call the existing comprehensive handleUpdate logic
           await updateOnboardingRequest(request_id, updatedSelected);
-          if (preboardingData) {
+          if (preboardingData && !preboardingData.isMock) {
             await updatePreboarding(preboardingData.preboard_id, preboardingData);
           }
           
           // Sync to Employee Master (Logic from handleUpdate)
-          const empRecord = employees.find(e => e.id === selected.employee_id || e.employee_id === selected.employee_id);
+          let empRecord = null;
+          if (selected.employee_id) {
+            try {
+              const res = await api.get(`employee/${selected.employee_id}`);
+              empRecord = res.data;
+            } catch (e) {
+              console.warn("[ONBOARDING] Employee lookup during status change failed, using cache:", e);
+              empRecord = employees.find(e => e.id === selected.employee_id || e.employee_id === selected.employee_id);
+            }
+          }
+
           if (empRecord) {
             const { reporting_manager, reporting_manager_id } = selected;
             const updates = {
@@ -261,9 +354,26 @@ export default function OnboardingEmployees() {
               probation_period_days: selected.probation_period_days || empRecord.probation_period_days,
               aadhaar_number: selected.aadhaar_number || empRecord.aadhaar_number,
               pan_number: selected.pan_number || empRecord.pan_card || empRecord.pan_number,
-              status: status === 'approved' ? 'Onboarding' : empRecord.status // Sync status if approving
+              status: status === 'approved' ? 'Onboarding' : empRecord.status, // Sync status if approving
+              ...(preboardingData ? {
+                bank_name: preboardingData.bank_name || empRecord.bank_name,
+                bank_account_number: preboardingData.bank_account_number || empRecord.account_number || empRecord.bank_account_number,
+                bank_ifsc_code: preboardingData.bank_ifsc_code || empRecord.ifsc_code || empRecord.bank_ifsc_code,
+                uan_number: preboardingData.uan_number || selected.uan_number || empRecord.uan_number,
+                esi_number: preboardingData.esi_number || selected.esi_number || empRecord.esi_number,
+                pf_number: preboardingData.pf_number || selected.pf_number || empRecord.pf_number,
+                address: preboardingData.current_address || empRecord.address,
+                permanent_address: preboardingData.permanent_address || empRecord.permanent_address,
+                current_address: preboardingData.current_address || empRecord.current_address,
+                city: preboardingData.city || empRecord.city,
+                state: preboardingData.state || empRecord.state,
+                pincode: preboardingData.pincode || empRecord.pincode,
+                country: preboardingData.country || empRecord.country,
+                emergency_contact_name: preboardingData.emergency_contact_name || empRecord.emergency_contact_name,
+                emergency_contact_phone: preboardingData.emergency_contact_phone || empRecord.emergency_contact_phone
+              } : {})
             };
-            await updateEmployee(empRecord.id, updates);
+            await updateEmployee(empRecord.employee_id || empRecord.id, updates);
           }
         } else {
           // Just a quick status update from the sidebar list
@@ -659,7 +769,12 @@ export default function OnboardingEmployees() {
                     <InputGroup label="Bank Acc No" value={preboardingData.bank_account_number} onChange={(v: any) => setPreboardingData({ ...preboardingData, bank_account_number: v })} />
                     <InputGroup label="Bank Name" value={preboardingData.bank_name} onChange={(v: any) => setPreboardingData({ ...preboardingData, bank_name: v })} />
                     <InputGroup label="IFSC Code" value={preboardingData.bank_ifsc_code} onChange={(v: any) => setPreboardingData({ ...preboardingData, bank_ifsc_code: v })} />
-                    <InputGroup label="Comm. Address" value={preboardingData.current_address} onChange={(v: any) => setPreboardingData({ ...preboardingData, current_address: v })} />
+                    <InputGroup label="Current Address" value={preboardingData.current_address} onChange={(v: any) => setPreboardingData({ ...preboardingData, current_address: v })} />
+                    <InputGroup label="Permanent Address" value={preboardingData.permanent_address} onChange={(v: any) => setPreboardingData({ ...preboardingData, permanent_address: v })} />
+                    <InputGroup label="City" value={preboardingData.city} onChange={(v: any) => setPreboardingData({ ...preboardingData, city: v })} />
+                    <InputGroup label="State" value={preboardingData.state} onChange={(v: any) => setPreboardingData({ ...preboardingData, state: v })} />
+                    <InputGroup label="Pincode" value={preboardingData.pincode} onChange={(v: any) => setPreboardingData({ ...preboardingData, pincode: v })} />
+                    <InputGroup label="Country" value={preboardingData.country} onChange={(v: any) => setPreboardingData({ ...preboardingData, country: v })} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px', gridColumn: 'span 2' }}>
                       <DocCheck label="NDA Signed" checked={preboardingData.nda_signed} onChange={(v: any) => setPreboardingData({ ...preboardingData, nda_signed: v })} />
                       <DocCheck label="COC Signed" checked={preboardingData.code_of_conduct_signed} onChange={(v: any) => setPreboardingData({ ...preboardingData, code_of_conduct_signed: v })} />

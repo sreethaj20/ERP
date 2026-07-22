@@ -34,7 +34,6 @@ class EmployeeBase(BaseModel):
     offer_date: Optional[date] = None
     exit_date: Optional[date] = None
     resignation_date: Optional[date] = None
-    status: Optional[str] = "Active"
     role: Optional[str] = "employee"
     role_type: Optional[str] = None
     access_level: Optional[str] = None

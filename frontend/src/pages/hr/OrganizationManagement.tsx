@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import GlassButton from "../../components/GlassButton";
-import { FaBullhorn, FaBuilding, FaSitemap, FaCheckCircle, FaTrash, FaPlus, FaSave, FaGlobe, FaEnvelope, FaPhone } from "react-icons/fa";
+import { FaBullhorn, FaBuilding, FaSitemap, FaCheckCircle, FaTrash, FaPlus, FaSave, FaGlobe, FaEnvelope, FaPhone, FaShieldAlt } from "react-icons/fa";
 import api from "../../api/apiClient";
 
 export default function OrganizationManagement() {
@@ -21,16 +21,29 @@ export default function OrganizationManagement() {
     const [deptName, setDeptName] = useState("");
     const [deptCode, setDeptCode] = useState("");
 
+    // Role Management States
+    const [rolesList, setRolesList] = useState<any[]>([]);
+    const [employeesReference, setEmployeesReference] = useState<any[]>([]);
+    const [selectedEmpForRole, setSelectedEmpForRole] = useState("");
+    const [selectedRoleName, setSelectedRoleName] = useState("employee");
+    const [roleLoginEnabled, setRoleLoginEnabled] = useState(true);
+    const [roleNotes, setRoleNotes] = useState("");
+    const [isSavingRole, setIsSavingRole] = useState(false);
+
     const loadData = async () => {
         setLoading(true);
         try {
-            const [annRes, compRes, deptRes] = await Promise.all([
+            const [annRes, compRes, deptRes, rolesRes, empsRes] = await Promise.all([
                 api.get("announcements"),
                 api.get("hr/company-profile"),
-                api.get("hr/shifts") // Reuse shifts or get real depts
+                api.get("hr/shifts"), // Reuse shifts or get real depts
+                api.get("hr/roles").catch(() => ({ data: [] })),
+                api.get("employees/reference").catch(() => ({ data: [] }))
             ]);
             setAnnouncements(annRes.data);
             setCompany(compRes.data);
+            setRolesList(rolesRes.data || []);
+            setEmployeesReference(empsRes.data || []);
             
             // Getting real departments
             const dRes = await api.get("hr/departments").catch(() => ({ data: [] }));
@@ -98,6 +111,40 @@ export default function OrganizationManagement() {
         }
     };
 
+    const handleAssignRole = async () => {
+        if (!selectedEmpForRole) return alert("Select an employee");
+        setIsSavingRole(true);
+        try {
+            const targetEmp = employeesReference.find(e => e.employee_id === selectedEmpForRole);
+            await api.post("hr/roles", {
+                employee_id: selectedEmpForRole,
+                role_name: selectedRoleName,
+                login_enabled: roleLoginEnabled,
+                assigned_by: sessionStorage.getItem("userName") || "HR Admin",
+                notes: roleNotes,
+                is_active: true
+            });
+            alert("Role assigned successfully!");
+            setSelectedEmpForRole("");
+            setRoleNotes("");
+            loadData();
+        } catch (err: any) {
+            alert(err.response?.data?.detail || "Failed to assign role");
+        } finally {
+            setIsSavingRole(false);
+        }
+    };
+
+    const handleUpdateRole = async (assignmentId: number | string, payload: any) => {
+        try {
+            await api.put(`hr/roles/${assignmentId}`, payload);
+            alert("Role assignment updated!");
+            loadData();
+        } catch (err) {
+            alert("Failed to update role assignment");
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <Header role="HR" title="Organization Governance" />
@@ -106,6 +153,7 @@ export default function OrganizationManagement() {
                 <TabButton active={activeTab === 'announcements'} onClick={() => setActiveTab('announcements')} icon={<FaBullhorn />} label="Announcements" />
                 <TabButton active={activeTab === 'company'} onClick={() => setActiveTab('company')} icon={<FaBuilding />} label="Company Profile" />
                 <TabButton active={activeTab === 'departments'} onClick={() => setActiveTab('departments')} icon={<FaSitemap />} label="Departments" />
+                <TabButton active={activeTab === 'roles'} onClick={() => setActiveTab('roles')} icon={<FaShieldAlt />} label="Role Gating" />
             </div>
 
             {activeTab === 'announcements' && (
@@ -223,9 +271,144 @@ export default function OrganizationManagement() {
                     </GlassCard>
                 </div>
             )}
+
+            {activeTab === 'roles' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+                    <GlassCard title="Assign Permission" subtitle="Gate access for employee roles">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Select Employee</label>
+                                <select 
+                                    className="apple-input" 
+                                    value={selectedEmpForRole} 
+                                    onChange={(e) => setSelectedEmpForRole(e.target.value)}
+                                >
+                                    <option value="">-- Choose Employee --</option>
+                                    {employeesReference.map((e: any) => (
+                                        <option key={e.id} value={e.employee_id}>
+                                            {e.name} ({e.employee_id})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Assign Role</label>
+                                <select 
+                                    className="apple-input" 
+                                    value={selectedRoleName} 
+                                    onChange={(e) => setSelectedRoleName(e.target.value)}
+                                >
+                                    <option value="employee">Standard Employee</option>
+                                    <option value="teamleader">Team Leader</option>
+                                    <option value="recruiter">Recruiter</option>
+                                    <option value="it">IT Department</option>
+                                    <option value="hr">HR Manager</option>
+                                    <option value="manager">General Manager</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    id="role-login-chk"
+                                    checked={roleLoginEnabled} 
+                                    onChange={(e) => setRoleLoginEnabled(e.target.checked)} 
+                                />
+                                <label htmlFor="role-login-chk" style={{ fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>Login Enabled</label>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Assignment Notes</label>
+                                <input 
+                                    className="apple-input" 
+                                    placeholder="e.g. Promoted to Team Leader" 
+                                    value={roleNotes} 
+                                    onChange={(e) => setRoleNotes(e.target.value)} 
+                                />
+                            </div>
+
+                            <GlassButton onClick={handleAssignRole} disabled={isSavingRole}>
+                                <FaPlus /> {isSavingRole ? "Assigning..." : "Assign Permission"}
+                            </GlassButton>
+                        </div>
+                    </GlassCard>
+
+                    <GlassCard title="Active Role Assignments" subtitle="Authorized company roles & access levels">
+                        <div style={{ marginTop: '15px', maxHeight: '550px', overflowY: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border-light)', textAlign: 'left', color: 'var(--text-tertiary)' }}>
+                                        <th style={{ padding: '10px' }}>Employee</th>
+                                        <th style={{ padding: '10px' }}>Role</th>
+                                        <th style={{ padding: '10px' }}>Login</th>
+                                        <th style={{ padding: '10px' }}>Status</th>
+                                        <th style={{ padding: '10px' }}>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rolesList.map((r: any) => (
+                                        <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                            <td style={{ padding: '10px' }}>
+                                                <div style={{ fontWeight: '600' }}>{r.employee_name || "N/A"}</div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{r.employee_id}</div>
+                                            </td>
+                                            <td style={{ padding: '10px' }}>
+                                                <select 
+                                                    value={r.role_name} 
+                                                    onChange={(e) => handleUpdateRole(r.assignment_id || r.id, { role_name: e.target.value })}
+                                                    style={{ background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', borderRadius: '6px', padding: '4px' }}
+                                                >
+                                                    <option value="employee">employee</option>
+                                                    <option value="teamleader">teamleader</option>
+                                                    <option value="recruiter">recruiter</option>
+                                                    <option value="it">it</option>
+                                                    <option value="hr">hr</option>
+                                                    <option value="manager">manager</option>
+                                                </select>
+                                            </td>
+                                            <td style={{ padding: '10px' }}>
+                                                <button 
+                                                    onClick={() => handleUpdateRole(r.assignment_id || r.id, { login_enabled: !r.login_enabled })}
+                                                    style={{ 
+                                                        background: 'none', border: 'none', cursor: 'pointer',
+                                                        color: r.login_enabled ? '#30d158' : '#ff453a', fontWeight: 'bold' 
+                                                    }}
+                                                >
+                                                    {r.login_enabled ? "Enabled" : "Disabled"}
+                                                </button>
+                                            </td>
+                                            <td style={{ padding: '10px' }}>
+                                                <button 
+                                                    onClick={() => handleUpdateRole(r.assignment_id || r.id, { is_active: !r.is_active })}
+                                                    style={{ 
+                                                        background: 'none', border: 'none', cursor: 'pointer',
+                                                        color: r.is_active ? '#30d158' : '#ff9f0a', fontWeight: 'bold' 
+                                                    }}
+                                                >
+                                                    {r.is_active ? "Active" : "Suspended"}
+                                                </button>
+                                            </td>
+                                            <td style={{ padding: '10px', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+                                                {r.notes || "—"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {rolesList.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} style={{ textAlign: 'center', padding: '20px', color: 'var(--text-tertiary)' }}>No active role assignments found.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </GlassCard>
+                </div>
+            )}
         </div>
     );
 }
+
 
 const TabButton = ({ active, onClick, icon, label }: any) => (
     <button

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Optional, List, Any, Dict
 from datetime import date, datetime, time
 from decimal import Decimal
@@ -78,6 +78,14 @@ class CandidateBase(BaseModel):
     created_by: Optional[str] = None
     recruiter_name: Optional[str] = None
 
+    @field_validator('job_id', mode='before')
+    @classmethod
+    def coerce_job_id_to_str(cls, v):
+        """Coerce numeric job_id (integer) to string to match DB schema expectations."""
+        if v is None:
+            return v
+        return str(v)
+
     @field_validator('total_experience_years', 'relevant_experience_years', 'current_ctc', 'expected_ctc', mode='before')
     @classmethod
     def parse_candidate_numeric(cls, v):
@@ -131,6 +139,20 @@ class ScreeningLogOut(ScreeningLogBase):
 class InterviewBase(BaseModel):
     candidate_id: str
     job_id: str
+
+    @model_validator(mode='before')
+    @classmethod
+    def pre_validate_interview(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            date_val = values.get("interview_date")
+            if isinstance(date_val, str) and 'T' in date_val:
+                parts = date_val.split('T')
+                values["interview_date"] = parts[0]
+                # If interview_time is not provided, or is empty/defaults to 10:00 but there is a time in date, extract it
+                time_val = values.get("interview_time")
+                if not time_val or time_val == "10:00":
+                    values["interview_time"] = parts[1]
+        return values
     round_number: Optional[int] = 1
     interview_type: Optional[str] = "Technical"
     interview_date: date
@@ -171,6 +193,14 @@ class InterviewUpdate(BaseModel):
     interview_round: Optional[str] = None
     interviewer_names: Optional[str] = None
     duration_minutes: Optional[int] = None
+    
+    technical_score: Optional[int] = None
+    communication_score: Optional[int] = None
+    problem_solving_score: Optional[int] = None
+    culture_fit_score: Optional[int] = None
+    overall_rating: Optional[Decimal] = None
+    recording_url: Optional[str] = None
+    recruiter_reviewed: Optional[bool] = None
 
 class InterviewOut(InterviewBase):
     id: int
@@ -181,6 +211,15 @@ class InterviewOut(InterviewBase):
     candidate_name: Optional[str] = None # Joined field
     job_title: Optional[str] = None      # Joined field
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    
+    technical_score: Optional[int] = None
+    communication_score: Optional[int] = None
+    problem_solving_score: Optional[int] = None
+    culture_fit_score: Optional[int] = None
+    overall_rating: Optional[Decimal] = None
+    recording_url: Optional[str] = None
+    recruiter_reviewed: Optional[bool] = False
 
     model_config = {"from_attributes": True}
 
@@ -233,12 +272,13 @@ class OfferCreate(OfferBase):
     status: Optional[str] = "sent"
 
 class OfferUpdate(BaseModel):
-    status: str # sent, accepted, declined
+    status: Optional[str] = "accepted" # sent, accepted, declined
     rejection_reason: Optional[str] = None
     joining_date: Optional[date] = None
     department: Optional[str] = None
     employment_type: Optional[str] = None
     reporting_manager_id: Optional[str] = None
+    manager_id: Optional[str] = None
 
 class OfferOut(OfferBase):
     id: int

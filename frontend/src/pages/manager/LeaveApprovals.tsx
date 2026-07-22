@@ -153,13 +153,13 @@ export default function LeaveApprovals() {
                         {showAction ? (
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button
-                              onClick={() => handleAction(leave.id, 'approve')}
+                              onClick={() => handleAction(leave.leave_id || leave.id, 'approve')}
                               style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(48,209,88,0.15)', color: '#30d158', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
                             >
                               <FaCheck size={10} /> Approve
                             </button>
                             <button
-                              onClick={() => handleAction(leave.id, 'reject')}
+                              onClick={() => handleAction(leave.leave_id || leave.id, 'reject')}
                               style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(255,69,58,0.15)', color: '#ff453a', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
                             >
                               <FaTimes size={10} /> Reject

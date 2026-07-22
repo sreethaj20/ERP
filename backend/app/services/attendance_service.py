@@ -58,7 +58,7 @@ class AttendanceService:
             status="Present"
         ))
 
-    def get_my_attendance(self, db: Session, employee_id: str = None, skip: int = 0, limit: int = 2000, viewer_role: str = "hr", viewer_id: int = None, date_filter: date = None):
+    def get_my_attendance(self, db: Session, employee_id: str = None, skip: int = 0, limit: int = 2000, viewer_role: str = "hr", viewer_id: int = None, date_filter: date = None, start_date: date = None, end_date: date = None):
         """Get attendance records scoped by viewer's role.
         Optimized to fetch team hierarchy in a single pass to avoid N+1 query overhead.
         """
@@ -68,27 +68,54 @@ class AttendanceService:
 
         if date_filter:
             query = query.filter(attn_models.Attendance.date == date_filter)
+        if start_date:
+            query = query.filter(attn_models.Attendance.date >= start_date)
+        if end_date:
+            query = query.filter(attn_models.Attendance.date <= end_date)
 
         if employee_id:
             query = query.filter(attn_models.Attendance.employee_id == employee_id, attn_models.Attendance.deleted_at == None)
-        elif viewer_role and viewer_role.lower() == "manager" and viewer_id:
+        elif viewer_role and viewer_role.lower() in ["manager", "teamleader", "tl"] and viewer_id:
             # 🚀 PRODUCTION OPTIMIZATION: Use a single flat fetch for hierarchy check
-            all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id, emp_models.Employee.reporting_to_id).all()
+            all_emps = db.query(
+                emp_models.Employee.id,
+                emp_models.Employee.employee_id,
+                emp_models.Employee.user_id,
+                emp_models.Employee.manager_id,
+                emp_models.Employee.reporting_manager_id,
+                emp_models.Employee.team_leader_id,
+                emp_models.Employee.reporting_to_id
+            ).all()
             
-            manager_emp = db.query(emp_models.Employee).filter(emp_models.Employee.user_id == viewer_id).first()
+            manager_emp = db.query(emp_models.Employee).filter(
+                emp_models.Employee.user_id == viewer_id,
+                emp_models.Employee.deleted_at == None
+            ).first()
+            if not manager_emp:
+                manager_emp = db.query(emp_models.Employee).filter(
+                    or_(
+                        emp_models.Employee.id == viewer_id,
+                        emp_models.Employee.employee_id == str(viewer_id)
+                    ),
+                    emp_models.Employee.deleted_at == None
+                ).first()
+            
             if manager_emp:
-                m_id = manager_emp.employee_id
-                team_ids = {m_id}
+                team_ids = {
+                    str(x).strip() for x in [manager_emp.employee_id, manager_emp.id, manager_emp.user_id, viewer_id] if x
+                }
                 
-                # Single-pass hierarchy resolution (O(N) vs recursive O(N^D))
                 added = True
                 while added:
                     added = False
                     current_count = len(team_ids)
-                    for e_id, mgr, rep_mgr, tl, rep_to in all_emps:
-                        if e_id not in team_ids and (mgr in team_ids or rep_mgr in team_ids or tl in team_ids or rep_to in team_ids):
-                            team_ids.add(e_id)
-                            added = True
+                    for db_id, emp_code, u_id, mgr, rep_mgr, tl, rep_to in all_emps:
+                        refs = {str(r).strip() for r in [mgr, rep_mgr, tl, rep_to] if r}
+                        if refs.intersection(team_ids):
+                            for new_id in [db_id, emp_code, u_id]:
+                                if new_id and str(new_id).strip() not in team_ids:
+                                    team_ids.add(str(new_id).strip())
+                                    added = True
                     if len(team_ids) == current_count: break
                 
                 query = query.filter(attn_models.Attendance.employee_id.in_(list(team_ids)))
@@ -105,6 +132,9 @@ class AttendanceService:
                     d["department"] = dept
                     d["login_time"] = attn.check_in if attn else None
                     d["logout_time"] = attn.check_out if attn else None
+                    # Explicitly serialize date as YYYY-MM-DD string for frontend consistency
+                    if d.get("date") and hasattr(d["date"], "isoformat"):
+                        d["date"] = d["date"].isoformat()
                     # Convert Decimals to float for JSON
                     for k, v in d.items():
                         if hasattr(v, '__float__') and not isinstance(v, (int, float)):
@@ -140,7 +170,7 @@ class AttendanceService:
             .join(emp_models.Employee, attn_models.AttendanceCorrection.employee_id == emp_models.Employee.employee_id)\
             .filter(attn_models.AttendanceCorrection.deleted_at == None, emp_models.Employee.deleted_at == None)
         
-        if user_role and user_role.lower() == "manager" and user_id:
+        if user_role and user_role.lower() in ["manager", "teamleader"] and user_id:
             # 🚀 PRODUCTION OPTIMIZATION: Use a single flat fetch for hierarchy check
             all_emps = db.query(emp_models.Employee.employee_id, emp_models.Employee.manager_id, emp_models.Employee.reporting_manager_id, emp_models.Employee.team_leader_id, emp_models.Employee.reporting_to_id).all()
             
@@ -442,15 +472,26 @@ class ShiftService:
         if not shift_id or shift_id == 0:
             assigned = shift_assignment_repo.get_by_employee(db, employee_id)
             if not assigned:
+                # Resolve Team Leader and Manager IDs
+                tl_id = (getattr(emp, 'team_leader_id', None) or getattr(emp, 'reporting_to_id', None))
                 mgr_id = (getattr(emp, 'reporting_manager_id', None) or getattr(emp, 'manager_id', None))
                 
-                # Check for inherited shift from reporting hierarchy
-                if mgr_id:
-                    manager_emp = employee_repo.get(db, str(mgr_id))
-                    if manager_emp:
-                        tl_assigned = shift_assignment_repo.get_by_employee(db, manager_emp.employee_id)
+                # Check for inherited shift from Team Leader
+                if tl_id:
+                    tl_emp = employee_repo.get(db, str(tl_id))
+                    if tl_emp:
+                        tl_assigned = shift_assignment_repo.get_by_employee(db, tl_emp.employee_id)
                         if tl_assigned:
                             shift_id = tl_assigned.shift_id
+                
+                # Fallback to inherited shift from Manager
+                if not shift_id or shift_id == 0:
+                    if mgr_id:
+                        manager_emp = employee_repo.get(db, str(mgr_id))
+                        if manager_emp:
+                            mgr_assigned = shift_assignment_repo.get_by_employee(db, manager_emp.employee_id)
+                            if mgr_assigned:
+                                shift_id = mgr_assigned.shift_id
             else:
                 shift_id = assigned.shift_id
                 is_explicitly_assigned = True

@@ -5,6 +5,7 @@ import GlassCard from "../../components/GlassCard";
 import { FaCalendarAlt, FaCheck, FaTimes, FaFileDownload, FaInfoCircle, FaEdit } from "react-icons/fa";
 import api from "../../api/apiClient";
 import { getLeavePolicies, updateLeavePolicy } from "../../utils/storage";
+import webSocketService from "../../services/websocketService";
 
 export default function LeaveManagement() {
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
@@ -35,6 +36,17 @@ export default function LeaveManagement() {
 
   useEffect(() => {
     fetchData();
+
+    const handleRealtimeUpdate = (msg: any) => {
+      if (msg.event === "data_updated" && (msg.data.type === "leaves" || msg.data.type === "attendance")) {
+        fetchData();
+      }
+    };
+    webSocketService.on("data_updated", handleRealtimeUpdate);
+
+    return () => {
+      webSocketService.off("data_updated", handleRealtimeUpdate);
+    };
   }, [location.pathname]);
 
   const handleSavePolicy = async () => {

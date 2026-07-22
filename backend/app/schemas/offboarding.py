@@ -3,8 +3,8 @@ from typing import Optional, List, Any
 from datetime import date, datetime
 
 class OffboardingBase(BaseModel):
-    offboard_id: str
-    employee_id: str
+    offboard_id: Optional[str] = None
+    employee_id: Optional[str] = None
     employeeName: Optional[str] = None
     department: Optional[str] = None
     last_working_day: Optional[date] = None

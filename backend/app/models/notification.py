@@ -80,5 +80,5 @@ class AuditLog(Base):
     old_value = Column(Text)
     new_value = Column(Text)
     # Store user id or employee id as string (avoid duplicate model / FK mismatch with audit_service)
-    changed_by = Column(String(50), nullable=True)
+    changed_by = Column(Integer, nullable=True)
     created_at = Column(DateTime, server_default=func.now())

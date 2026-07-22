@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { FaCalendarAlt, FaCircle, FaChevronDown, FaChevronRight } from "react-icons/fa";
-import { refreshAttendance, getEmployeesAsync, refreshPresence, getWorkingDaysInMonth, getEmployeeShift } from "../../utils/storage";
+import { FaCalendarAlt, FaCircle, FaChevronDown, FaChevronRight, FaClock } from "react-icons/fa";
+import { refreshAttendance, getEmployeesAsync, refreshPresence, getWorkingDaysInMonth, getEmployeeShift, refreshAttendanceCorrections, approveAttendanceCorrection } from "../../utils/storage";
+import api from "../../api/apiClient";
 
 export default function MonthlyAttendance() {
     const [records, setRecords] = useState<any[]>([]);
@@ -13,6 +14,8 @@ export default function MonthlyAttendance() {
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
     const [expandedTL, setExpandedTL] = useState<string | null>(null);
+    const [summary, setSummary] = useState<any>(null);
+    const [corrections, setCorrections] = useState<any[]>([]);
     const todayStr = new Date().toISOString().split('T')[0];
 
     const adminRoles = ['hr', 'teamleader', 'team leader', 'recruiter', 'it'];
@@ -27,10 +30,12 @@ export default function MonthlyAttendance() {
         setLoading(true);
         try {
             console.log("[Attendance] Fetching data for", month, year);
-            const [empResult, attResult, presResult] = await Promise.all([
+            const [empResult, attResult, presResult, corrResult, summaryResult] = await Promise.all([
                 getEmployeesAsync('manager'),
                 refreshAttendance(),
-                refreshPresence()
+                refreshPresence(),
+                refreshAttendanceCorrections(),
+                api.get('manager/attendance/summary').then(r => r.data).catch(() => null)
             ]);
 
             const filteredAtt = (attResult || []).filter((r: any) => {
@@ -43,6 +48,8 @@ export default function MonthlyAttendance() {
             setRecords(filteredAtt);
             setEmployees(empResult || []);
             setPresence(presResult || []);
+            setCorrections(corrResult || []);
+            setSummary(summaryResult);
         } catch (err) {
             console.error("Failed to load attendance data via active fetch:", err);
         } finally {
@@ -84,6 +91,16 @@ export default function MonthlyAttendance() {
         return map[r] || { bg: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)', label: role?.toUpperCase() || 'STAFF' };
     };
 
+    const handleCorrectionApprove = async (id: any, status: string) => {
+        try {
+            await approveAttendanceCorrection(id, status);
+            alert(`Correction request ${status.toLowerCase()} successfully!`);
+            fetchData();
+        } catch (e: any) {
+            alert("Failed to update correction: " + (e.response?.data?.detail || e.message));
+        }
+    };
+
     return (
         <div className="dashboard-container">
             <Header role="Manager" title="Attendance Analytics" />
@@ -93,9 +110,27 @@ export default function MonthlyAttendance() {
                     <h1 style={{ fontSize: "28px", fontWeight: "700" }}>Staff Attendance Center</h1>
                     <p style={{ color: "var(--text-secondary)" }}>Real-time & monthly attendance for HR, IT, Recruiting, and TL modules</p>
                 </div>
+            </div>
 
-                <div style={{ display: "flex", gap: "12px", alignItems: 'center' }}>
-                    {/* View Toggle */}
+            {/* Presence Summary Dashboard */}
+            {summary && (
+                <div style={{ display: 'flex', gap: '16px', marginBottom: '30px' }}>
+                    {[
+                        { label: 'Total Team Size', value: summary.total_team, color: '#bf5af2', desc: 'Direct & indirect reports' },
+                        { label: 'Active Today', value: summary.present_count, color: '#30d158', desc: 'Clocked in at unit level' },
+                        { label: 'Absent/LOP Today', value: summary.absent_count, color: '#ff453a', desc: 'Expected but inactive' },
+                    ].map(stat => (
+                        <GlassCard key={stat.label} style={{ flex: 1, borderLeft: `3px solid ${stat.color}`, padding: '16px' }}>
+                            <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff' }}>{stat.value}</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: '700', marginTop: '4px' }}>{stat.label}</div>
+                            <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>{stat.desc}</div>
+                        </GlassCard>
+                    ))}
+                </div>
+            )}
+
+            <div style={{ display: "flex", gap: "12px", alignItems: 'center', marginBottom: '20px' }}>
+                {/* View Toggle */}
                     <div style={{ display: 'flex', background: 'rgba(255,255,255,0.05)', borderRadius: '12px', padding: '4px' }}>
                         <button onClick={() => setView("daily")} style={{ padding: '8px 16px', borderRadius: '10px', border: 'none', background: view === 'daily' ? '#0a84ff' : 'transparent', color: '#fff', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>
                             Today's Status
@@ -124,9 +159,8 @@ export default function MonthlyAttendance() {
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* ─── DAILY VIEW: Today's Login/Logout Status ─── */}
+            {/* DAILY VIEW: Today's Login/Logout Status */}
             {view === 'daily' && (
                 <GlassCard title="🟢 Today's Login & Logout Status" subtitle={`Live presence for ${new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}`}>
                     <div style={{ overflowX: 'auto', marginTop: '15px' }}>
@@ -426,6 +460,66 @@ export default function MonthlyAttendance() {
                     </div>
                 </GlassCard>
             )}
+
+            {/* Clock Correction Approvals */}
+            <div style={{ marginTop: '30px' }}>
+                <GlassCard title="Team Clock Correction Requests" subtitle="Review and authorize team check-in/out adjustments">
+                    <div style={{ overflowX: 'auto', marginTop: '15px' }}>
+                        {corrections.filter(c => c.status === 'Pending').length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-tertiary)' }}>
+                                No pending correction requests.
+                            </div>
+                        ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                                <thead>
+                                    <tr style={{ borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
+                                        {['Employee', 'Date', 'Original Status', 'Corrected Shift Times', 'Reason', 'Action'].map(h => (
+                                            <th key={h} style={{ padding: '10px 14px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {corrections.filter(c => c.status === 'Pending').map((c: any) => (
+                                        <tr key={c.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                            <td style={{ padding: '12px 14px' }}>
+                                                <div style={{ fontWeight: '600' }}>{c.employee_name}</div>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{c.employee_id}</div>
+                                            </td>
+                                            <td style={{ padding: '12px 14px', fontFamily: 'monospace' }}>{c.date}</td>
+                                            <td style={{ padding: '12px 14px', color: 'var(--text-secondary)' }}>
+                                                {c.original_status || 'Absent'}
+                                            </td>
+                                            <td style={{ padding: '12px 14px', color: 'var(--accent-blue)', fontWeight: '600' }}>
+                                                In: {c.requested_check_in ? new Date(c.requested_check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}<br />
+                                                Out: {c.requested_check_out ? new Date(c.requested_check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </td>
+                                            <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', maxWidth: '200px', wordBreak: 'break-word' }}>{c.reason}</td>
+                                            <td style={{ padding: '12px 14px' }}>
+                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                    <button 
+                                                        onClick={() => handleCorrectionApprove(c.id, 'Approved')}
+                                                        className="apple-btn"
+                                                        style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--accent-green)', height: '28px' }}
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleCorrectionApprove(c.id, 'Rejected')}
+                                                        className="apple-btn"
+                                                        style={{ padding: '4px 10px', fontSize: '11px', background: 'var(--accent-red)', height: '28px' }}
+                                                    >
+                                                        Reject
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </GlassCard>
+            </div>
         </div>
     );
 }

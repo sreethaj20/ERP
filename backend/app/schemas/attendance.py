@@ -22,7 +22,7 @@ class AttendanceBase(BaseModel):
     notes: Optional[str] = None
     source: Optional[str] = "Manual"
 
-    @field_validator('check_in', 'check_out', 'created_at', 'updated_at', 'login_time', 'logout_time', 'current_break_start', 'date', mode='before', check_fields=False)
+    @field_validator('check_in', 'check_out', 'created_at', 'updated_at', 'login_time', 'logout_time', 'current_break_start', mode='before', check_fields=False)
     @classmethod
     def sanitize_zero_dt(cls, v):
         """MySQL sentinel '0000-00-00 00:00:00' → None. Also robustly parse strings to dt objects."""
@@ -34,9 +34,11 @@ class AttendanceBase(BaseModel):
         if str_v.startswith('0000') or str_v == '0000-00-00 00:00:00':
             return None
             
-        # If it's already a dt (or date), return as is
-        if isinstance(v, (dt, DateType)):
+        # If it's already a dt (or DateType), return as is (prefer dt)
+        if isinstance(v, dt):
             return v
+        if isinstance(v, DateType):
+            return dt.combine(v, time.min)
             
         # If it's a string, try to parse it
         if isinstance(v, str):
@@ -49,6 +51,32 @@ class AttendanceBase(BaseModel):
                 try:
                     from dateutil import parser
                     return parser.parse(v)
+                except:
+                    return None
+        return v
+
+    @field_validator('date', mode='before', check_fields=False)
+    @classmethod
+    def sanitize_zero_date(cls, v):
+        """MySQL sentinel '0000-00-00' → None. Parse date strings properly."""
+        if v is None:
+            return None
+        str_v = str(v)
+        if str_v.startswith('0000') or str_v == '0000-00-00':
+            return None
+        if isinstance(v, dt):
+            return v.date()
+        if isinstance(v, DateType):
+            return v
+        if isinstance(v, str):
+            try:
+                # Parse as date (e.g. YYYY-MM-DD)
+                clean_v = v.split(' ')[0].split('T')[0]
+                return DateType.fromisoformat(clean_v)
+            except ValueError:
+                try:
+                    from dateutil import parser
+                    return parser.parse(v).date()
                 except:
                     return None
         return v

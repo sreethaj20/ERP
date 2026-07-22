@@ -109,3 +109,9 @@ export const getEmployeesForReference = async () => {
     const response = await api.get("employees/reference");
     return response.data;
 };
+
+export const requestAttendanceCorrection = async (payload: any) => {
+  const response = await api.post("employee/attendance/correction", payload);
+  return response.data;
+};
+

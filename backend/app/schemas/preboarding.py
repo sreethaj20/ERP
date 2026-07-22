@@ -88,7 +88,7 @@ class PreboardingUpdateByEmployee(BaseModel):
 
 class PreboardingUpdateByHR(BaseModel):
     documents_verified_by_hr: Optional[bool] = None
-    background_verification_status: Optional[bool] = None
+    background_verification_status: Optional[str] = None
     form_status: Optional[str] = None
     hr_review_status: Optional[str] = None
     remarks: Optional[str] = None
@@ -98,6 +98,19 @@ class PreboardingUpdateByHR(BaseModel):
     bank_name: Optional[str] = None
     bank_account_number: Optional[str] = None
     bank_ifsc_code: Optional[str] = None
+    permanent_address: Optional[str] = None
+    current_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
+    # Additional compliance/preboarding fields editable by HR
+    nda_signed: Optional[bool] = None
+    code_of_conduct_signed: Optional[bool] = None
+    policy_acknowledged: Optional[bool] = None
+    uan_number: Optional[str] = None
+    esi_number: Optional[str] = None
+    pf_number: Optional[str] = None
 
 class PreboardingUpdate(BaseModel):
     employee_name: Optional[str] = None
@@ -148,7 +161,6 @@ class PreboardingUpdate(BaseModel):
     blood_group: Optional[str] = None
     marital_status: Optional[str] = None
     nationality: Optional[str] = None
-
 class PreboardingUpdateByManager(BaseModel):
     manager_review_status: Optional[str] = None
     asset_ready: Optional[bool] = None
@@ -162,8 +174,15 @@ class PreboardingUpdateByManager(BaseModel):
     bank_account_number: Optional[str] = None
     bank_ifsc_code: Optional[str] = None
     address: Optional[str] = None
+    permanent_address: Optional[str] = None
+    current_address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
     documents_verified_by_hr: Optional[bool] = None
     self_onboarding_status: Optional[str] = None
+
 
 
 class PreboardingOut(PreboardingBase):

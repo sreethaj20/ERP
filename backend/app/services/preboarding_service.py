@@ -51,6 +51,12 @@ class PreboardingService:
         if hasattr(pb_data, 'pincode') and pb_data.pincode:
             emp.postal_code = pb_data.pincode
             emp.pincode = pb_data.pincode
+        if hasattr(pb_data, 'city') and pb_data.city:
+            emp.city = pb_data.city
+        if hasattr(pb_data, 'state') and pb_data.state:
+            emp.state = pb_data.state
+        if hasattr(pb_data, 'country') and pb_data.country:
+            emp.country = pb_data.country
 
         # Demographics & Identity Sync
         if hasattr(pb_data, 'pan_number') and pb_data.pan_number:
@@ -81,6 +87,14 @@ class PreboardingService:
             emp.bank_ifsc_code = pb_data.bank_ifsc_code
             emp.ifsc_code = pb_data.bank_ifsc_code
         
+        # Compliance government IDs sync
+        if hasattr(pb_data, 'uan_number') and pb_data.uan_number:
+            emp.uan_number = pb_data.uan_number
+        if hasattr(pb_data, 'esi_number') and pb_data.esi_number:
+            emp.esi_number = pb_data.esi_number
+        if hasattr(pb_data, 'pf_number') and pb_data.pf_number:
+            emp.pf_number = pb_data.pf_number
+
         # Sync compliance flags
         if getattr(pb_data, 'policy_acknowledged', False): emp.identity_verified = True
         if getattr(pb_data, 'documents_verified_by_hr', False): emp.identity_verified = True
@@ -183,6 +197,10 @@ class PreboardingService:
                  db.add(emp)
         
         res = preboarding_repo.update(db, db_obj, obj_in)
+        
+        # Sync details to Employee Master immediately
+        self._sync_to_employee(db, db_obj.employee_id, res)
+        db.commit()
         
         # Ensure name and email are attached for the response schema
         if emp:

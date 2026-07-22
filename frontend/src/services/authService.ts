@@ -1,9 +1,9 @@
 import api from "../api/apiClient";
 
-export const loginUser = async (email: string, password: string) => {
+export const loginUser = async (username: string, password: string) => {
   try {
     const params = new URLSearchParams();
-    params.append("username", email);
+    params.append("username", username);
     params.append("password", password);
 
     const response = await api.post("auth/login", params, {
@@ -20,7 +20,7 @@ export const loginUser = async (email: string, password: string) => {
 
     return response.data; // Return full data so LoginPage can also read it
   } catch (error: any) {
-    const message = error.response?.data?.detail || "Invalid email or password";
+    const message = error.response?.data?.detail || "Invalid username or password";
     throw new Error(message);
   }
 };

@@ -174,7 +174,31 @@ def apply_leave(obj_in: LeaveCreate, db: Session = Depends(get_db), current_user
     emp = employee_service.get_profile(db, current_user.id)
     # Enforce ownership
     obj_in.employee_id = emp.employee_id
-    return leave_service.apply_leave(db, obj_in)
+    res = leave_service.apply_leave(db, obj_in)
+    
+    # Trigger E2E real-time notification to the Team Leader / Manager
+    try:
+        from app.services.notification_service import notification_service
+        from app.models.user import User
+        import asyncio
+        
+        approver_emp_id = res.team_leader_id or res.manager_id
+        if approver_emp_id:
+            approver_user = db.query(User).filter(User.employee_id == approver_emp_id).first()
+            if approver_user:
+                loop = asyncio.get_event_loop()
+                loop.create_task(notification_service.push_notification(
+                    db,
+                    user_id=approver_user.id,
+                    employee_id=approver_emp_id,
+                    title="New Leave Request",
+                    message=f"{emp.name} requested {res.leave_type} leave from {res.start_date} to {res.end_date}.",
+                    category="Leave"
+                ))
+    except Exception as e:
+        print(f"[LEAVE NOTIFICATION TRIGGER ERROR] {e}")
+        
+    return res
 @router.post("/leaves/{leave_id}/cancel", response_model=LeaveOut)
 def cancel_my_leave(leave_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     emp = employee_service.get_profile(db, current_user.id)
@@ -225,7 +249,7 @@ def get_my_tickets(db: Session = Depends(get_db), current_user: User = Depends(g
 # --- Employee Lifecycle ---
 from app.schemas.manager_onboarding import ManagerOnboardingOut
 from app.schemas.preboarding import PreboardingOut
-from app.schemas.offboarding import OffboardingOut
+from app.schemas.offboarding import OffboardingOut, OffboardingCreate
 from app.services.manager_onboarding_service import manager_onboarding_service
 from app.services.preboarding_service import preboarding_service
 from app.services.offboarding_service import offboarding_service
@@ -247,6 +271,14 @@ def get_my_offboarding(db: Session = Depends(get_db), current_user: User = Depen
     emp = employee_service.get_profile(db, current_user.id)
     res = offboarding_service.get_by_employee_id(db, emp.employee_id)
     return res if isinstance(res, list) else ([res] if res else [])
+
+@router.post("/offboarding", response_model=OffboardingOut)
+def initiate_offboarding_by_employee(obj_in: OffboardingCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    emp = employee_service.get_profile(db, current_user.id)
+    if not emp:
+        raise HTTPException(status_code=404, detail="Employee profile not found")
+    obj_in.employee_id = emp.employee_id
+    return offboarding_service.initiate_offboarding(db, obj_in)
 
 
 from app.schemas.task import TaskOut

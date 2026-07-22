@@ -26,7 +26,7 @@ class Ticket(Base):
     type = Column(String(50), nullable=True)
     issue = Column(Text, nullable=True)
     department = Column(String(100), nullable=True)
-    attachment_url = Column(String(255), nullable=True)
+    attachment_url = Column(Text, nullable=True)
     attachments = Column(Text, nullable=True)
     author = Column(String(150), nullable=True)
     reply = Column(Text, nullable=True)

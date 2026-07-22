@@ -87,7 +87,28 @@ async def raise_shared_ticket(obj_in: TicketCreate, db: Session = Depends(get_db
         emp = employee_service.get_profile(db, current_user.id)
         obj_in.employee_id = emp.employee_id
         
-    return await ticket_service.create_ticket(db, obj_in)
+    res = await ticket_service.create_ticket(db, obj_in)
+    
+    # Trigger E2E real-time notification to IT or HR Admins
+    try:
+        from app.services.notification_service import notification_service
+        from app.models.user import User
+        
+        target_role = "it" if res.category == "IT" else "hr"
+        recipients = db.query(User).filter(User.role == target_role).all()
+        for r_user in recipients:
+            await notification_service.push_notification(
+                db,
+                user_id=r_user.id,
+                employee_id=r_user.employee_id or f"USR-{r_user.id}",
+                title="New Support Ticket",
+                message=f"A new ticket ({res.ticket_id}) has been opened in category {res.category}.",
+                category="Support"
+            )
+    except Exception as e:
+        print(f"[TICKET NOTIFICATION TRIGGER ERROR] {e}")
+        
+    return res
 
 @router.patch("/support-tickets/{id}", response_model=TicketOut)
 async def update_shared_ticket(id: int, obj_in: TicketUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -111,7 +132,45 @@ async def add_ticket_comment(id: int, comment_text: str, db: Session = Depends(g
     author_id = emp.employee_id if emp else f"USR-{current_user.id}"
     author_name = emp.name if emp else (current_user.full_name or current_user.username)
     
-    return ticket_service.add_comment(db, id, author_id, author_name, comment_text)
+    res = ticket_service.add_comment(db, id, author_id, author_name, comment_text)
+    
+    # Trigger E2E real-time comment notification
+    try:
+        from app.services.notification_service import notification_service
+        from app.models.user import User
+        from app.models.ticket import Ticket
+        
+        ticket = db.query(Ticket).filter(Ticket.id == id).first()
+        if ticket:
+            # If standard user commented, notify IT or HR roles
+            if current_user.role not in ["hr", "it", "manager", "admin"]:
+                target_role = "it" if ticket.category == "IT" else "hr"
+                recipients = db.query(User).filter(User.role == target_role).all()
+                for r_user in recipients:
+                    await notification_service.push_notification(
+                        db,
+                        user_id=r_user.id,
+                        employee_id=r_user.employee_id or f"USR-{r_user.id}",
+                        title="New Ticket Comment",
+                        message=f"New comment on ticket {ticket.ticket_id} by {author_name}.",
+                        category="Support"
+                    )
+            else:
+                # If HR/IT commented, notify the ticket owner (employee)
+                owner_user = db.query(User).filter(User.employee_id == ticket.employee_id).first()
+                if owner_user:
+                    await notification_service.push_notification(
+                        db,
+                        user_id=owner_user.id,
+                        employee_id=ticket.employee_id,
+                        title="Ticket Comment Added",
+                        message=f"Support team ({author_name}) commented on your ticket {ticket.ticket_id}.",
+                        category="Support"
+                    )
+    except Exception as e:
+        print(f"[COMMENT NOTIFICATION TRIGGER ERROR] {e}")
+        
+    return res
 
 # --- Activities ---
 
