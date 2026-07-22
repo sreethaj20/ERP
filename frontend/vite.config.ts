@@ -9,19 +9,19 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: 'https://api.signin.mercuresolution.com',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => /^\/api\/v1/.test(path) ? path : path.replace(/^\/api/, '/api/v1')
       },
       '/ws': {
-        target: 'ws://127.0.0.1:8000',
+        target: 'wss://api.signin.mercuresolution.com',
         ws: true,
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'http://127.0.0.1:8000',
+        target: 'https://api.signin.mercuresolution.com',
         changeOrigin: true,
         secure: false
       }

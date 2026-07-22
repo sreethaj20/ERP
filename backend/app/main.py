@@ -79,10 +79,8 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://3.7.68.150",
-        "http://3.7.68.150:80",
-        "http://3.7.68.150:3000",
-        "http://3.7.68.150:5173",
+        "http://signin.mercuresolution.com",
+        "https://signin.mercuresolution.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],

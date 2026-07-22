@@ -170,6 +170,11 @@ select.apple-input {
     padding-right: 45px;
 }
 
+option {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
 .glass-input:focus {
     outline: none;
     border-color: var(--accent-blue);

@@ -46,7 +46,7 @@ api.interceptors.response.use(
             }
         } else if (error.request) {
             // 🐛 API DEBUG: No response received
-            console.error('[API-CLIENT] ERROR: No response received from server. Check if backend is running at http://127.0.0.1:8000');
+            console.error('[API-CLIENT] ERROR: No response received from server. Check if backend is running at https://api.signin.mercuresolution.com');
         } else {
             console.error('[API-CLIENT] ERROR:', error.message);
         }
