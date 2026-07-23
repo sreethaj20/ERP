@@ -670,6 +670,19 @@ class ShiftService:
             
             active.total_work_seconds = max(0, total_seconds - active.total_break_seconds)
             active.total_work_minutes = int(active.total_work_seconds / 60)
+
+            # Enforce half-day (240 mins / 4.0 hours) minimum work time before shift logout is permitted
+            if active.total_work_minutes < 240:
+                from fastapi import HTTPException
+                worked_h = active.total_work_minutes // 60
+                worked_m = active.total_work_minutes % 60
+                needed_mins = 240 - active.total_work_minutes
+                needed_h = needed_mins // 60
+                needed_m = needed_mins % 60
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Shift logout restricted: You cannot end your shift until you complete at least half-day working hours (4.0 hours). Current work time: {worked_h}h {worked_m}m. Remaining needed for half-day: {needed_h}h {needed_m}m."
+                )
             
             # Human readable string
             h = active.total_work_minutes // 60

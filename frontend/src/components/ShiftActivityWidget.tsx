@@ -184,14 +184,20 @@ export default function ShiftActivityWidget() {
             return;
         }
 
-        sessionStorage.setItem("shift_user_logged_out", "true");
-        const res = await endShiftSession(userId);
-        if (res.success || res.message === "Shift ended") {
-            setMessage({ type: 'success', text: "Logged out successfully!" });
-            setTimeout(() => window.location.href = "/login", 1000);
-        } else {
-            setMessage({ type: 'error', text: res.message || "Logout failed" });
-            setTimeout(() => setMessage(null), 5000);
+        try {
+            const res = await endShiftSession(userId);
+            if (res.success || res.message === "Shift ended" || res.status) {
+                sessionStorage.setItem("shift_user_logged_out", "true");
+                setMessage({ type: 'success', text: "Logged out successfully!" });
+                setTimeout(() => window.location.href = "/login", 1000);
+            } else {
+                setMessage({ type: 'error', text: res.message || "Logout failed" });
+                setTimeout(() => setMessage(null), 6000);
+            }
+        } catch (e: any) {
+            const detail = e.response?.data?.detail || e.message || "Logout failed";
+            setMessage({ type: 'error', text: detail });
+            setTimeout(() => setMessage(null), 8000);
         }
     };
 

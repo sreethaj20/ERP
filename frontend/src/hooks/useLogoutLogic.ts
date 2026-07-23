@@ -3,7 +3,7 @@ import { getActiveShiftSession, getEmployeeShift } from '../utils/storage';
 
 export function useLogoutLogic() {
     const [canLogout, setCanLogout] = useState(true);
-    const [showWarning, setShowWarning] = useState(false);
+    const [workInfo, setWorkInfo] = useState<{ totalWorkSec: number; targetSec: number; halfDaySec: number } | null>(null);
 
     useEffect(() => {
         const check = async () => {
@@ -36,16 +36,13 @@ export function useLogoutLogic() {
                 }
                 
                 const targetSec = shiftHours * 3600;
+                const halfDaySec = targetSec / 2;
 
-                setCanLogout(true); // Keep button accessible
-                if (totalWorkSec < targetSec) {
-                    setShowWarning(true);
-                } else {
-                    setShowWarning(false);
-                }
-            } else {
+                setWorkInfo({ totalWorkSec, targetSec, halfDaySec });
                 setCanLogout(true);
-                setShowWarning(false);
+            } else {
+                setWorkInfo(null);
+                setCanLogout(true);
             }
         };
 
@@ -56,21 +53,46 @@ export function useLogoutLogic() {
 
     // Wrapper function to intercept clicks
     const handleSafeLogout = async (originalLogoutAction: () => Promise<void> | void) => {
-        if (showWarning) {
-            const confirmLogout = window.confirm(
-                "⚠️ Warning: Your shift is currently in progress!\n\n" +
-                "• Click 'Cancel' to KEEP WORKING (cancel logout).\n" +
-                "• Click 'OK' ONLY if you really want to end your shift and log out."
-            );
-            if (!confirmLogout) {
-                console.log("[LOGOUT] Logout cancelled by user. Shift timer continues uninterrupted.");
-                return; // User clicked Cancel -> ABORT LOGOUT
+        if (workInfo) {
+            const { totalWorkSec, targetSec, halfDaySec } = workInfo;
+
+            // 1. STRICT BLOCK: Before half-day work duration (4 hours), logout is completely forbidden!
+            if (totalWorkSec < halfDaySec) {
+                const workedH = Math.floor(totalWorkSec / 3600);
+                const workedM = Math.floor((totalWorkSec % 3600) / 60);
+                const neededSec = halfDaySec - totalWorkSec;
+                const neededH = Math.floor(neededSec / 3600);
+                const neededM = Math.floor((neededSec % 3600) / 60);
+
+                window.alert(
+                    `⛔ LOGOUT RESTRICTED:\n\n` +
+                    `You cannot log out from your shift until you complete at least half-day working hours (4.0 hours).\n\n` +
+                    `• Current Work Time: ${workedH}h ${workedM}m\n` +
+                    `• Remaining Time Needed for Half-Day: ${neededH}h ${neededM}m\n\n` +
+                    `Please continue your shift!`
+                );
+                return; // BLOCK LOGOUT COMPLETELY
             }
-        } else {
-            const confirmLogout = window.confirm("Are you sure you want to log out?");
-            if (!confirmLogout) {
-                console.log("[LOGOUT] Logout cancelled by user.");
-                return; // User clicked Cancel -> ABORT LOGOUT
+
+            // 2. HALF-DAY COMPLETED (4h <= work < 8h): Allow logout with explicit Half Day warning
+            if (totalWorkSec >= halfDaySec && totalWorkSec < targetSec) {
+                const workedH = (totalWorkSec / 3600).toFixed(1);
+                const confirmLogout = window.confirm(
+                    `⚠️ Half-Day Completed (${workedH}h worked):\n\n` +
+                    `Logging out now will record your attendance as 'Half Day'.\n\n` +
+                    `• Click 'OK' to confirm Half Day Logout.\n` +
+                    `• Click 'Cancel' to KEEP WORKING and complete your full shift.`
+                );
+                if (!confirmLogout) {
+                    console.log("[LOGOUT] User cancelled half-day logout attempt to keep working.");
+                    return; // ABORT LOGOUT
+                }
+            } else {
+                // 3. FULL SHIFT COMPLETED (>= 8h): Standard confirm
+                const confirmLogout = window.confirm("Are you sure you want to end your shift and log out?");
+                if (!confirmLogout) {
+                    return; // ABORT LOGOUT
+                }
             }
         }
 
