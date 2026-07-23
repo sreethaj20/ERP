@@ -36,10 +36,41 @@ class RoleService:
         # Flatten and attach data
         final_results = []
         need_commit = False
+        from app.models.employee import Employee as EmpModel
+        from app.models.offboarding import OffboardingRequest
+        from app.models.user import User as UserModel
+
         for role, name, email, score, join_date, probation_days in results:
             role.employee_name = name
             role.employee_email = email
             role.performance_score = float(score) if score is not None else None
+
+            # Auto-heal: Active employees with no offboarding must have active role & user accounts
+            emp_rec = db.query(EmpModel).filter(EmpModel.employee_id == role.employee_id, EmpModel.deleted_at == None).first()
+            if emp_rec and emp_rec.status in ["Active", "Onboarding"]:
+                offboard_req = db.query(OffboardingRequest).filter(
+                    OffboardingRequest.employee_id == emp_rec.employee_id,
+                    OffboardingRequest.deleted_at == None,
+                    (OffboardingRequest.completed == True) | (OffboardingRequest.status == "Completed")
+                ).first()
+                
+                if not offboard_req:
+                    if not role.is_active or not role.login_enabled:
+                        role.is_active = True
+                        role.login_enabled = True
+                        db.add(role)
+                        need_commit = True
+                        
+                    user_rec = None
+                    if emp_rec.user_id:
+                        user_rec = db.query(UserModel).filter(UserModel.id == emp_rec.user_id).first()
+                    if not user_rec:
+                        user_rec = db.query(UserModel).filter(UserModel.employee_id == emp_rec.employee_id).first()
+                    if user_rec and not user_rec.is_active:
+                        user_rec.is_active = True
+                        user_rec.deleted_at = None
+                        db.add(user_rec)
+                        need_commit = True
             
             # Calculate if probation/provision period is over (informational only)
             is_probation_over = False
@@ -54,6 +85,12 @@ class RoleService:
             role.is_probation_over = is_probation_over
             final_results.append(role)
             
+        if need_commit:
+            try:
+                db.commit()
+            except Exception as e:
+                db.rollback()
+
         return final_results
 
     def get_by_id(self, db: Session, id: int):
