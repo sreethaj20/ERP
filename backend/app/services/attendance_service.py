@@ -581,29 +581,36 @@ class ShiftService:
         db.add(session)
 
         # 7. Synchronize with Legacy Attendance Audit
-
-        legacy = db.query(attn_models.Attendance).filter(attn_models.Attendance.employee_id == employee_id, attn_models.Attendance.date == today).first()
-        if not legacy:
-            legacy = attn_models.Attendance(
-                employee_id=employee_id, date=today, 
-                check_in=now_dt, check_in_time=now_dt, 
-                status="Present", source="shift_system", is_late=is_late
-            )
-            db.add(legacy)
-        else:
-            legacy.check_in = legacy.check_in or now_dt
-            legacy.check_in_time = legacy.check_in_time or now_dt
-            legacy.status = "Present"
-            legacy.is_late = is_late
-            db.add(legacy)
-
-        # 7. Final Atomic Commit
         try:
+            legacy = db.query(attn_models.Attendance).filter(attn_models.Attendance.employee_id == employee_id, attn_models.Attendance.date == today).first()
+            if not legacy:
+                legacy = attn_models.Attendance(
+                    employee_id=employee_id, date=today, 
+                    month=today.month, year=today.year,
+                    check_in=now_dt, check_in_time=now_dt, 
+                    status="Present", source="shift_system", is_late=is_late
+                )
+                db.add(legacy)
+            else:
+                legacy.check_in = legacy.check_in or now_dt
+                legacy.check_in_time = legacy.check_in_time or now_dt
+                legacy.month = legacy.month or today.month
+                legacy.year = legacy.year or today.year
+                legacy.status = "Present"
+                legacy.is_late = is_late
+                db.add(legacy)
             db.commit()
             db.refresh(session)
         except Exception as e:
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"Database synchronization failed: {str(e)}")
+            print(f"[START SESSION LEGACY SYNC WARNING] {e}")
+            try:
+                db.add(session)
+                db.commit()
+                db.refresh(session)
+            except Exception as e2:
+                db.rollback()
+                raise HTTPException(status_code=500, detail=f"Database synchronization failed: {str(e2)}")
 
         # 8. Async Notification (Non-Critical)
         # 🚀 Real-time Update (Standardized for TL/Admin Dashboards)
