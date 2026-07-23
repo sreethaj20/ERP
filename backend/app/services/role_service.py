@@ -26,9 +26,12 @@ class RoleService:
         )
         
         if manager_id:
-            query = query.filter(Employee.manager_id == manager_id)
-            
-        results = query.offset(skip).limit(limit).all()
+            filtered_query = query.filter(Employee.manager_id == manager_id)
+            results = filtered_query.offset(skip).limit(limit).all()
+            if not results:
+                results = query.offset(skip).limit(limit).all()
+        else:
+            results = query.offset(skip).limit(limit).all()
         
         # Flatten and attach data
         final_results = []

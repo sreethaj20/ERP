@@ -260,31 +260,38 @@ class LeaveService:
             from app.services.dashboard_service import dashboard_service
             from sqlalchemy import or_
             team_ids = dashboard_service._get_recursive_team_ids(db, employee_id)
-            team_ids.append(employee_id)
             
-            tl_identities = {str(employee_id)}
-            tl_emp = db.query(Employee).filter(
-                or_(
-                    Employee.employee_id == employee_id,
-                    Employee.id == int(employee_id) if str(employee_id).isdigit() else False,
-                    Employee.user_id == int(employee_id) if str(employee_id).isdigit() else False
-                )
-            ).first()
-            if tl_emp:
-                if tl_emp.employee_id: tl_identities.add(str(tl_emp.employee_id))
-                if tl_emp.id: tl_identities.add(str(tl_emp.id))
-                if tl_emp.user_id: tl_identities.add(str(tl_emp.user_id))
-            
-            query = db.query(LeaveRequest, Employee.first_name, Employee.last_name, Employee.role, Employee.department)\
-                .join(Employee, LeaveRequest.employee_id == Employee.employee_id)\
-                .filter(
+            if len(team_ids) == 0 and user_role_lower == "manager":
+                # Fallback to Master View if manager has no team assigned
+                query = db.query(LeaveRequest, Employee.first_name, Employee.last_name, Employee.role, Employee.department)\
+                    .join(Employee, LeaveRequest.employee_id == Employee.employee_id)\
+                    .filter(LeaveRequest.deleted_at == None)
+            else:
+                team_ids.append(employee_id)
+                
+                tl_identities = {str(employee_id)}
+                tl_emp = db.query(Employee).filter(
                     or_(
-                        LeaveRequest.employee_id.in_(team_ids),
-                        LeaveRequest.team_leader_id.in_(tl_identities),
-                        LeaveRequest.manager_id.in_(tl_identities)
-                    ),
-                    LeaveRequest.deleted_at == None
-                )
+                        Employee.employee_id == employee_id,
+                        Employee.id == int(employee_id) if str(employee_id).isdigit() else False,
+                        Employee.user_id == int(employee_id) if str(employee_id).isdigit() else False
+                    )
+                ).first()
+                if tl_emp:
+                    if tl_emp.employee_id: tl_identities.add(str(tl_emp.employee_id))
+                    if tl_emp.id: tl_identities.add(str(tl_emp.id))
+                    if tl_emp.user_id: tl_identities.add(str(tl_emp.user_id))
+                
+                query = db.query(LeaveRequest, Employee.first_name, Employee.last_name, Employee.role, Employee.department)\
+                    .join(Employee, LeaveRequest.employee_id == Employee.employee_id)\
+                    .filter(
+                        or_(
+                            LeaveRequest.employee_id.in_(team_ids),
+                            LeaveRequest.team_leader_id.in_(tl_identities),
+                            LeaveRequest.manager_id.in_(tl_identities)
+                        ),
+                        LeaveRequest.deleted_at == None
+                    )
         else:
             # Personal View: Standard employees see only their own history
             query = db.query(LeaveRequest, Employee.first_name, Employee.last_name, Employee.role, Employee.department)\

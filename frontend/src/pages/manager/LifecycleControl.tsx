@@ -863,9 +863,9 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
               <input placeholder="e.g. HR Ops" className="apple-input" value={newHire.department} onChange={e => setNewHire({ ...newHire, department: e.target.value })} required />
             </FormGroup>
             <FormGroup label="Designation"><input className="apple-input" value={newHire.designation} onChange={e => setNewHire({ ...newHire, designation: e.target.value })} /></FormGroup>
-            <FormGroup label="Reports To">
+            <FormGroup label="Reports To (Optional)">
               <select className="apple-input" value={newHire.manager_id} onChange={e => setNewHire({ ...newHire, manager_id: e.target.value })}>
-                <option value="">Select Manager/Team Leader</option>
+                <option value="">Select Manager/Team Leader (Optional)</option>
                 {(employees || []).filter((e: any) => {
                   const r = (e.role || '').toLowerCase();
                   return r.includes('manager') || r.includes('admin') || r.includes('hr') || r.includes('leader');

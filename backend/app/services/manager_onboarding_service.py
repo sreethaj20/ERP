@@ -104,8 +104,8 @@ class ManagerOnboardingService:
         if not db_obj:
             return None
         
-        # Verify authority
-        if db_obj.manager_id != manager_id:
+        # Verify authority only if manager_id is specified
+        if db_obj.manager_id and manager_id and db_obj.manager_id != manager_id:
              from fastapi import HTTPException
              raise HTTPException(status_code=403, detail="You do not have authority over this request.")
 

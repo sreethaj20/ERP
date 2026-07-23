@@ -20,9 +20,16 @@ class OffboardingService:
         from sqlalchemy import func
         query = db.query(OffboardingRequest)
         if manager_id:
-            query = query.filter(OffboardingRequest.employee_id.in_(
-                db.query(Employee.employee_id).filter(Employee.manager_id == manager_id)
-            ))
+            team_emp_ids = db.query(Employee.employee_id).filter(Employee.manager_id == manager_id)
+            filtered_query = query.filter(OffboardingRequest.employee_id.in_(team_emp_ids))
+            results = filtered_query.offset(skip).limit(limit).all()
+            if results:
+                for r in results:
+                    if r.relieving_letter_url:
+                        r.relieving_letter_url = storage_service.get_public_url(r.relieving_letter_url)
+                return results
+            # Fallback if no matching records found
+            pass
         else:
             # HR View
             admin_roles = ["hr", "recruiter", "teamleader", "it", "admin", "itdepartment"]

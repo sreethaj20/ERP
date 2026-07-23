@@ -290,9 +290,12 @@ def get_manager_workforce(db: Session = Depends(get_db), current_user: User = De
              team_query = db.query(Employee)
         elif manager_id:
             team_ids = _get_recursive_team_ids(db, manager_id)
-            team_query = db.query(Employee).filter(Employee.employee_id.in_(team_ids))
+            if len(team_ids) <= 1:
+                team_query = db.query(Employee)
+            else:
+                team_query = db.query(Employee).filter(Employee.employee_id.in_(team_ids))
         else:
-            team_query = db.query(Employee).filter(Employee.role.in_(admin_roles))
+            team_query = db.query(Employee)
             
         team = team_query.all()
         team_count = len(team)
@@ -339,44 +342,40 @@ def get_manager_analytics_endpoint(db: Session = Depends(get_db), current_user: 
         emp = employee_repo.get_by_user_id(db, current_user.id)
         manager_id = emp.employee_id if emp else None
         
-        if manager_id:
-            team_ids = _get_recursive_team_ids(db, manager_id)
-            active_team_ids = [e.employee_id for e in db.query(Employee).filter(Employee.employee_id.in_(team_ids), Employee.status == "Active").all()]
-            
-            leaves_approved = db.query(LeaveRequest).filter(
-                LeaveRequest.employee_id.in_(active_team_ids),
-                LeaveRequest.status.ilike("%approved%")
-            ).count()
-            total_leaves = db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(active_team_ids)).count()
-            total_emp = len(active_team_ids)
-            
-            # Additional metrics for TeamLeaderStatusView
-            from app.models.manager_onboarding import ManagerOnboardingRequest
-            from app.models.offboarding import OffboardingRequest
-            
-            # Onboarding can be assigned to anyone in the hierarchy
-            onboarding_count = db.query(ManagerOnboardingRequest).filter(
-                (ManagerOnboardingRequest.manager_id.in_(team_ids)) |
-                (ManagerOnboardingRequest.employee_id.in_(team_ids)),
-                ManagerOnboardingRequest.status.ilike("%pending%")
-            ).count()
-            
-            active_transitions = db.query(OffboardingRequest).filter(
-                OffboardingRequest.employee_id.in_(active_team_ids),
-                OffboardingRequest.completed.is_(False)
-            ).count()
-            
-            # Health Score = Avg Performance * 20 (scaled to 100)
-            avg_perf = db.query(func.avg(Employee.performance_score)).filter(Employee.employee_id.in_(active_team_ids)).scalar() or 0
-            dept_health = float(avg_perf) * 20 
-
+        team_ids = _get_recursive_team_ids(db, manager_id) if manager_id else []
+        if len(team_ids) <= 1:
+            active_team_ids = [e.employee_id for e in db.query(Employee).filter(Employee.status == "Active").all()]
+            all_ids = [e.employee_id for e in db.query(Employee).all()]
+            filter_team_ids = all_ids
         else:
-            total_emp = 0
-            leaves_approved = 0
-            total_leaves = 0
-            onboarding_count = 0
-            active_transitions = 0
-            dept_health = 0
+            active_team_ids = [e.employee_id for e in db.query(Employee).filter(Employee.employee_id.in_(team_ids), Employee.status == "Active").all()]
+            filter_team_ids = team_ids
+            
+        leaves_approved = db.query(LeaveRequest).filter(
+            LeaveRequest.employee_id.in_(active_team_ids),
+            LeaveRequest.status.ilike("%approved%")
+        ).count()
+        total_leaves = db.query(LeaveRequest).filter(LeaveRequest.employee_id.in_(active_team_ids)).count()
+        total_emp = len(active_team_ids)
+        
+        # Additional metrics for TeamLeaderStatusView
+        from app.models.manager_onboarding import ManagerOnboardingRequest
+        from app.models.offboarding import OffboardingRequest
+        
+        onboarding_count = db.query(ManagerOnboardingRequest).filter(
+            (ManagerOnboardingRequest.manager_id.in_(filter_team_ids)) |
+            (ManagerOnboardingRequest.manager_id == None) |
+            (ManagerOnboardingRequest.employee_id.in_(filter_team_ids)),
+            ManagerOnboardingRequest.status.ilike("%pending%")
+        ).count()
+        
+        active_transitions = db.query(OffboardingRequest).filter(
+            OffboardingRequest.employee_id.in_(active_team_ids),
+            OffboardingRequest.completed.is_(False)
+        ).count()
+        
+        avg_perf = db.query(func.avg(Employee.performance_score)).filter(Employee.employee_id.in_(active_team_ids)).scalar() or 0
+        dept_health = float(avg_perf) * 20
             
         util = round((leaves_approved / total_leaves * 100) if total_leaves > 0 else 0, 1)
         

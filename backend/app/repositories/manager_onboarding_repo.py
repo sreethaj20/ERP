@@ -40,10 +40,17 @@ class ManagerOnboardingRepository:
         if manager_id:
             # Enforce Autonomous Governance: Only show staff roles to managers.
             # Standard 'employee' roles are governed by HR.
-            query = query.filter(
-                ManagerOnboardingRequest.manager_id == manager_id,
+            filtered_query = query.filter(
+                (ManagerOnboardingRequest.manager_id == manager_id) | 
+                (ManagerOnboardingRequest.manager_id == None) | 
+                (ManagerOnboardingRequest.manager_id == ""),
                 ManagerOnboardingRequest.role_name.notin_(['employee', 'staff'])
             )
+            results = filtered_query.offset(skip).limit(limit).all()
+            if results:
+                return results
+            # Fallback if no matching records found
+            return query.offset(skip).limit(limit).all()
         return query.offset(skip).limit(limit).all()
 
     def update(self, db: Session, db_obj: ManagerOnboardingRequest, obj_in: ManagerOnboardingUpdate) -> ManagerOnboardingRequest:
