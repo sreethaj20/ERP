@@ -122,11 +122,27 @@ class DashboardService:
     def _get_profile_basic(self, db: Session, user_id: int):
         if not user_id:
             return None
-        emp = db.query(Employee).filter(Employee.user_id == user_id, Employee.deleted_at == None).first()
+        from sqlalchemy import or_
+        emp = db.query(Employee).filter(
+            or_(
+                Employee.user_id == user_id,
+                Employee.id == (user_id if isinstance(user_id, int) or (isinstance(user_id, str) and str(user_id).isdigit()) else -1)
+            ),
+            Employee.deleted_at == None
+        ).first()
+
+        if not emp:
+            from app.models.user import User
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.email:
+                emp = db.query(Employee).filter(Employee.email == user.email, Employee.deleted_at == None).first()
+
         if not emp:
             return None
         
-        # Safe extraction for JSON serialization
+        joining_val = emp.joining_date or emp.join_date or emp.joining_date_v2 or (emp.created_at.date() if emp.created_at else "")
+        j_str = str(joining_val)[:10] if joining_val else str(date.today())
+
         return {
             "name": emp.name or f"{emp.first_name} {emp.last_name or ''}".strip(),
             "employee_id": emp.employee_id,
@@ -134,7 +150,7 @@ class DashboardService:
             "designation": emp.designation or "Staff",
             "status": emp.status or "Active",
             "department": emp.department or "Not Assigned",
-            "joining_date": str(emp.joining_date or emp.join_date or emp.joining_date_v2 or ""),
+            "joining_date": j_str,
             "reporting_to": emp.reporting_to or "Management",
             "profile_photo_url": storage_service.get_public_url(emp.profile_photo_url or emp.photo) if (emp.profile_photo_url or emp.photo) else None
         }
@@ -225,14 +241,28 @@ class DashboardService:
         today = date.today()
         first_day = today.replace(day=1)
         
-        # Get employee profile to check joining date
+        # Get employee profile to check joining date with robust resolution
         from app.models.employee import Employee
+        from sqlalchemy import or_
         emp = db.query(Employee).filter(
-            or_(Employee.user_id == user_id, Employee.employee_id == employee_id),
+            or_(
+                Employee.user_id == user_id,
+                Employee.employee_id == employee_id,
+                Employee.id == (user_id if isinstance(user_id, int) or (isinstance(user_id, str) and str(user_id).isdigit()) else -1)
+            ),
             Employee.deleted_at == None
         ).first()
+
+        if not emp and user_id:
+            from app.models.user import User
+            user = db.query(User).filter(User.id == user_id).first()
+            if user and user.email:
+                emp = db.query(Employee).filter(Employee.email == user.email, Employee.deleted_at == None).first()
         
         joining_raw = (emp.joining_date or emp.join_date or emp.joining_date_v2) if emp else None
+        if not joining_raw and emp and emp.created_at:
+            joining_raw = emp.created_at.date()
+
         joining_date = None
         if joining_raw:
             if isinstance(joining_raw, str):
@@ -241,8 +271,11 @@ class DashboardService:
                     joining_date = dt_cls.strptime(str(joining_raw)[:10], "%Y-%m-%d").date()
                 except:
                     joining_date = None
-            elif isinstance(joining_raw, date):
-                joining_date = joining_raw
+            elif isinstance(joining_raw, (date, datetime)):
+                joining_date = joining_raw if isinstance(joining_raw, date) else joining_raw.date()
+
+        if not joining_date:
+            joining_date = emp.created_at.date() if (emp and emp.created_at) else today
 
         start_date = first_day
         if joining_date and joining_date > first_day:
