@@ -68,34 +68,35 @@ class RoleService:
         
         db_obj = role_repo.create(db, obj_in)
         
-        # Audit Log
-        changer = db.query(User).filter(User.username == assigned_by).first()
-        
-        import json
-        new_val_str = json.dumps(obj_in.dict(), default=str)
-        
-        audit = AuditLog(
-            table_name="role_assignments",
-            record_id=str(db_obj.id),
-            action="CREATE",
-            new_value=new_val_str,
-            changed_by=changer.id if changer else None
-        )
-        db.add(audit)
-        
-        # Activity
-        act = Activity(
-            user_id=changer.id if changer else None,
-            username=assigned_by,
-            action="Assigned Role",
-            module="Auth",
-            type="General",
-            target_id=db_obj.employee_id,
-            description=f"Assigned role {db_obj.role_name} to {db_obj.employee_id}",
-            message=f"Assigned role {db_obj.role_name} to {db_obj.employee_id}"
-        )
-
-        db.add(act)
+        # Audit Log & Activity (Non-blocking)
+        try:
+            changer = db.query(User).filter(User.username == assigned_by).first()
+            
+            import json
+            new_val_str = json.dumps(obj_in.dict(), default=str)
+            
+            audit = AuditLog(
+                table_name="role_assignments",
+                record_id=str(db_obj.id),
+                action="CREATE",
+                new_value=new_val_str,
+                changed_by=changer.id if changer else None
+            )
+            db.add(audit)
+            
+            act = Activity(
+                user_id=changer.id if changer else None,
+                username=assigned_by,
+                action="Assigned Role",
+                module="Auth",
+                type="General",
+                target_id=db_obj.employee_id,
+                description=f"Assigned role {db_obj.role_name} to {db_obj.employee_id}",
+                message=f"Assigned role {db_obj.role_name} to {db_obj.employee_id}"
+            )
+            db.add(act)
+        except Exception as audit_err:
+            print(f"[AUDIT LOG WARNING] Failed to record audit/activity for role assign: {audit_err}")
         
         db.commit()
         db.refresh(db_obj)
@@ -122,23 +123,26 @@ class RoleService:
             res.login_enabled = False
             db.add(res)
             
-        # Audit Log
-        changer = db.query(User).filter(User.username == assigned_by).first()
-        
-        # Serialize dictionaries to JSON strings since AuditLog columns are Text
-        import json
-        old_val_str = json.dumps(old_val, default=str)
-        new_val_str = json.dumps(obj_in.dict(exclude_unset=True), default=str)
-        
-        audit = AuditLog(
-            table_name="role_assignments",
-            record_id=str(db_obj.id),
-            action="UPDATE",
-            old_value=old_val_str,
-            new_value=new_val_str,
-            changed_by=changer.id if changer else None
-        )
-        db.add(audit)
+        # Audit Log (Non-blocking)
+        try:
+            changer = db.query(User).filter(User.username == assigned_by).first()
+            
+            # Serialize dictionaries to JSON strings since AuditLog columns are Text
+            import json
+            old_val_str = json.dumps(old_val, default=str)
+            new_val_str = json.dumps(obj_in.dict(exclude_unset=True), default=str)
+            
+            audit = AuditLog(
+                table_name="role_assignments",
+                record_id=str(db_obj.id),
+                action="UPDATE",
+                old_value=old_val_str,
+                new_value=new_val_str,
+                changed_by=changer.id if changer else None
+            )
+            db.add(audit)
+        except Exception as audit_err:
+            print(f"[AUDIT LOG WARNING] Failed to record audit log for role update: {audit_err}")
         
         db.commit()
         db.refresh(res)
