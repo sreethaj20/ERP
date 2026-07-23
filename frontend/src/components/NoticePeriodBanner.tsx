@@ -20,12 +20,12 @@ export default function NoticePeriodBanner({ noticePeriod }: Props) {
 
   const np = noticePeriod;
   const totalDays = np.notice_period_days || 60;
-  const remaining = np.remaining_days;
-  const elapsed = totalDays - remaining;
-  const progress = Math.min((elapsed / totalDays) * 100, 100);
+  const remaining = np.remaining_days !== undefined ? np.remaining_days : 0;
+  const elapsed = Math.max(0, totalDays - remaining);
+  const progress = Math.min(Math.max(0, (elapsed / totalDays) * 100), 100);
   const isUrgent = remaining <= 7;
   const lastDay = np.last_working_day
-    ? new Date(np.last_working_day).toLocaleDateString("en-IN", {
+    ? new Date(np.last_working_day + "T00:00:00").toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
         year: "numeric",

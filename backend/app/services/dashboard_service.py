@@ -141,46 +141,85 @@ class DashboardService:
 
     def _get_notice_period_info(self, db: Session, user_id: int):
         """Get notice period info for the currently logged-in user."""
+        from datetime import timedelta
         today = date.today()
-        emp = db.query(Employee).filter(Employee.user_id == user_id, Employee.deleted_at == None).first()
+
+        # 1. Resolve employee using all possible identifiers
+        emp = db.query(Employee).filter(
+            or_(
+                Employee.user_id == user_id,
+                Employee.id == (user_id if isinstance(user_id, int) or (isinstance(user_id, str) and user_id.isdigit()) else -1),
+                Employee.employee_id == str(user_id)
+            ),
+            Employee.deleted_at == None
+        ).first()
+
         if not emp:
             return None
-        
+
+        # Build list of possible ID strings for matching OffboardingRequest
+        emp_ids = {str(emp.id)}
+        if emp.employee_id: emp_ids.add(str(emp.employee_id))
+        if emp.user_id: emp_ids.add(str(emp.user_id))
+
+        # 2. Query OffboardingRequest
         offboard_req = db.query(OffboardingRequest).filter(
-            OffboardingRequest.employee_id == emp.employee_id,
+            OffboardingRequest.employee_id.in_(list(emp_ids)),
             OffboardingRequest.deleted_at == None
         ).order_by(OffboardingRequest.id.desc()).first()
-        
-        if not offboard_req:
+
+        # 3. Check if on notice
+        emp_status = (getattr(emp, 'status', '') or '').lower()
+        is_on_notice = emp_status in ['on notice', 'resigned', 'offboarding'] or (offboard_req is not None)
+
+        if not is_on_notice:
             return None
-        
-        last_working_day = offboard_req.last_working_day or offboard_req.exit_date
+
+        # 4. Resolve Notice Period Days
+        notice_days = (offboard_req.notice_period_days if offboard_req and offboard_req.notice_period_days else None) \
+            or getattr(emp, 'notice_period', None) \
+            or getattr(emp, 'notice_period_days', None) \
+            or 60
+
+        # 5. Resolve Last Working Day
+        last_working_day = None
+        if offboard_req and (offboard_req.last_working_day or offboard_req.exit_date):
+            last_working_day = offboard_req.last_working_day or offboard_req.exit_date
+        elif getattr(emp, 'last_working_day', None) or getattr(emp, 'exit_date', None):
+            last_working_day = getattr(emp, 'last_working_day', None) or getattr(emp, 'exit_date', None)
+
         if last_working_day:
-            remaining_days = (last_working_day - today).days
-            info = {
-                "is_on_notice": True,
-                "last_working_day": str(last_working_day),
-                "remaining_days": max(remaining_days, 0),
-                "notice_period_days": offboard_req.notice_period_days or 0,
-                "reason": offboard_req.reason or offboard_req.reason_for_leaving or "",
-                "status": offboard_req.status,
-                "is_expired": remaining_days < 0
-            }
-            # Auto-deactivate if notice period expired
-            if remaining_days < 0:
+            if isinstance(last_working_day, str):
+                from datetime import datetime as dt_cls
+                try:
+                    last_working_day = dt_cls.strptime(last_working_day[:10], "%Y-%m-%d").date()
+                except:
+                    last_working_day = today + timedelta(days=notice_days)
+        else:
+            # Fallback: request date / updated_at + notice_days
+            start_date = (offboard_req.request_date.date() if offboard_req and offboard_req.request_date else None) \
+                or (emp.updated_at.date() if emp and emp.updated_at else today)
+            last_working_day = start_date + timedelta(days=notice_days)
+
+        remaining_days = (last_working_day - today).days
+
+        # Auto-deactivate if notice period expired
+        if remaining_days < 0:
+            try:
                 from app.services.offboarding_service import offboarding_service
                 offboarding_service.check_and_deactivate_expired_offboardings(db)
-            return info
-        else:
-            return {
-                "is_on_notice": True,
-                "last_working_day": None,
-                "remaining_days": offboard_req.notice_remaining_days or 0,
-                "notice_period_days": offboard_req.notice_period_days or 0,
-                "reason": offboard_req.reason or offboard_req.reason_for_leaving or "",
-                "status": offboard_req.status,
-                "is_expired": False
-            }
+            except Exception as e:
+                print(f"[OFFBOARDING] Auto-deactivate check warning: {e}")
+
+        return {
+            "is_on_notice": True,
+            "last_working_day": str(last_working_day),
+            "remaining_days": max(0, remaining_days),
+            "notice_period_days": notice_days,
+            "reason": (offboard_req.reason if offboard_req else "") or getattr(emp, 'reason_for_leaving', '') or "Resignation / Separation",
+            "status": (offboard_req.status if offboard_req else "On Notice"),
+            "is_expired": remaining_days < 0
+        }
 
     def get_employee_dashboard(self, db: Session, employee_id: str, user_id: int):
         today = date.today()
