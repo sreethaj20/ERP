@@ -228,14 +228,25 @@ class DashboardService:
         # Get employee profile to check joining date
         from app.models.employee import Employee
         emp = db.query(Employee).filter(
-            Employee.user_id == user_id,
+            or_(Employee.user_id == user_id, Employee.employee_id == employee_id),
             Employee.deleted_at == None
         ).first()
         
-        joining_date = emp.joining_date if emp else None
+        joining_raw = (emp.joining_date or emp.join_date or emp.joining_date_v2) if emp else None
+        joining_date = None
+        if joining_raw:
+            if isinstance(joining_raw, str):
+                from datetime import datetime as dt_cls
+                try:
+                    joining_date = dt_cls.strptime(str(joining_raw)[:10], "%Y-%m-%d").date()
+                except:
+                    joining_date = None
+            elif isinstance(joining_raw, date):
+                joining_date = joining_raw
+
         start_date = first_day
         if joining_date and joining_date > first_day:
-            start_date = max(first_day, joining_date)
+            start_date = min(joining_date, today)
 
         attendance_records = db.query(Attendance).filter(
             Attendance.employee_id == employee_id,

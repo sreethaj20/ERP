@@ -185,6 +185,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         if (holiday) return 'holiday';
         if (weekOffs.includes(dayName)) return 'weekend';
         if (dateObj > today) return 'future';
+
+        // Check if date is before employee joining date
+        const empJoinDateStr = sessionStorage.getItem("joinDate") || (employees.find(e => String(e.employee_id) === String(employeeId) || String(e.id) === String(userId))?.joining_date);
+        if (empJoinDateStr) {
+            const joinDateObj = new Date(empJoinDateStr.substring(0, 10) + "T00:00:00");
+            joinDateObj.setHours(0, 0, 0, 0);
+            if (dateObj < joinDateObj) return 'future';
+        }
         
         // 4. Default to absent if past date with no work record
         return 'absent';

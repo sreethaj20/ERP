@@ -76,9 +76,13 @@ export default function EmployeeDashboard() {
     let lop = 0;
     let halfDay = 0;
 
+    const joinDateStr = dashboardData?.employee_profile?.joining_date || sessionStorage.getItem("joinDate");
+    const joinDateObj = joinDateStr ? new Date(joinDateStr.substring(0, 10) + "T00:00:00") : null;
+
     for (let day = 1; day <= daysInMonth; day++) {
       const dateObj = new Date(year, month, day);
       if (dateObj > today) continue;
+      if (joinDateObj && dateObj < joinDateObj) continue; // Do NOT mark LOP for days before joining date!
       if (dateObj.getDay() === 0 || dateObj.getDay() === 6) continue;
 
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

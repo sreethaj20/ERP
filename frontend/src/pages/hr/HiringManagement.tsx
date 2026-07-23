@@ -44,11 +44,17 @@ export default function HiringManagement() {
         if (!confirmHire) return;
 
         try {
+            const manualId = window.prompt(`Enter Employee ID for ${cand.name || cand.first_name}:`, "");
+            if (!manualId || !manualId.trim()) {
+                alert("⚠️ Employee ID is required to finalize hiring.");
+                return;
+            }
+            const empId = manualId.trim();
+
             // 1. Mark as Hired
             await updateCandidateStage(cand.candidate_id || cand.id, "Hired");
 
             // 2. Create Employee Record
-            const { employee_id: empId } = await getNextEmployeeId();
             const newEmployee = {
                 id: empId,
                 employee_id: empId,

@@ -34,6 +34,7 @@ export default function EmployeeMaster() {
   const [bankIfsc, setBankIfsc] = useState("");
   const [emergencyName, setEmergencyName] = useState("");
   const [emergencyPhone, setEmergencyPhone] = useState("");
+  const [customEmpId, setCustomEmpId] = useState("");
   const [employees, setEmployees] = useState<any[]>([]);
   const [allEmployees, setAllEmployees] = useState<any[]>([]);
   const [selectedEmp, setSelectedEmp] = useState<any>(null);
@@ -111,6 +112,11 @@ export default function EmployeeMaster() {
   });
 
   const handleSave = async () => {
+    if (!customEmpId.trim()) {
+      alert("⚠️ Employee ID Required: Please enter the Employee ID manually.");
+      return;
+    }
+
     if (!name || !email) {
       alert("Please fill in name and email.");
       return;
@@ -121,7 +127,7 @@ export default function EmployeeMaster() {
       return;
     }
 
-    const { employee_id: employeeCode } = await getNextEmployeeId();
+    const employeeCode = customEmpId.trim();
 
     const managerEmp = reportingManagers.find((e: any) =>
       String(e.user_id) === String(reportingTo) ||
@@ -178,6 +184,7 @@ export default function EmployeeMaster() {
 
     setName("");
     setEmail("");
+    setCustomEmpId("");
     setReportingTo("");
     setTeamLeaderId("");
     setCity("");
@@ -596,6 +603,10 @@ export default function EmployeeMaster() {
         {!selectedEmp ? (
           <GlassCard title="Register Talent" subtitle="Add new hire to the system">
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px" }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <label style={{ fontSize: '10px', color: 'var(--accent-blue)', fontWeight: 'bold' }}>EMPLOYEE ID (ENTER MANUALLY) *</label>
+                <input placeholder="e.g. EMP-001 or 1001" className="apple-input" value={customEmpId} onChange={(e) => setCustomEmpId(e.target.value)} />
+              </div>
               <div style={{ position: "relative" }}>
                 <FaUserPlus style={{ position: "absolute", right: "15px", top: "15px", color: "var(--text-tertiary)" }} />
                 <input placeholder="Full Name" className="apple-input" value={name} onChange={(e) => setName(e.target.value)} />
