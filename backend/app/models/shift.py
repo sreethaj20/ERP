@@ -109,6 +109,14 @@ class ShiftSession(Base):
     def logout_time(self, value):
         self.ended_at = value
 
+    @property
+    def total_shift_seconds(self):
+        start = self.started_at
+        if not start:
+            return 0
+        end = self.ended_at or datetime.now()
+        return max(0, int((end - start).total_seconds()))
+
     break_logs = relationship("BreakLog", primaryjoin="ShiftSession.session_id == BreakLog.session_id", foreign_keys="BreakLog.session_id", backref="session", uselist=True)
 
 class BreakLog(Base):

@@ -205,6 +205,7 @@ class ShiftSessionOut(ShiftSessionBase):
     is_early_login: Optional[bool] = False
     early_approval_status: Optional[str] = None
     
+    total_shift_seconds: Optional[int] = None
     total_work_seconds: Optional[int] = None
     total_break_seconds: Optional[int] = None
     total_work_minutes: Optional[int] = 0

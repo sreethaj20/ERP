@@ -7,7 +7,7 @@ import {
 } from "react-icons/fa";
 import shiftService, { ShiftSession, ShiftDefinition, BreakLog } from "../../services/shiftService";
 import { getWorkingDaysInMonth, getEmployees, getEmployeeShift, getHolidays } from "../../utils/storage";
-import { formatLocalTime } from "../../utils/formatters";
+import { formatLocalTime, parseISOToLocalDate } from "../../utils/formatters";
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
     'Present': { color: '#30d158', bg: 'rgba(48,209,88,0.1)' },
@@ -454,25 +454,30 @@ export default function ShiftTimesheetPage() {
                             
                             const displayStatus = session.remark === 'Shift Extension' ? 'Shift Extension' : session.status;
                             const statusStyle = STATUS_STYLES[displayStatus] || STATUS_STYLES[session.status] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)' };
-                            const isActive = !session.logout_time;
+                            const isActive = !session.logout_time && !session.ended_at;
                             const onBreak = session.on_break;
 
-                            let workSec = session.total_work_seconds || 0;
-                            let breakSec = session.total_break_seconds || 0;
+                            const loginRaw = session.login_time || session.started_at;
+                            const logoutRaw = session.logout_time || session.ended_at;
 
-                            if (isActive) {
-                                const now = Date.now();
-                                const loginMs = new Date(session.login_time).getTime();
-                                const totalSec = Math.max(0, Math.floor((now - loginMs) / 1000));
-                                let curBreak = 0;
-                                if (onBreak && session.current_break_start) {
-                                    curBreak = Math.max(0, Math.floor((now - new Date(session.current_break_start).getTime()) / 1000));
-                                }
-                                breakSec = (session.total_break_seconds || 0) + curBreak;
-                                workSec = Math.max(0, totalSec - breakSec);
+                            const loginMs = loginRaw ? parseISOToLocalDate(loginRaw).getTime() : 0;
+                            const logoutMs = logoutRaw ? parseISOToLocalDate(logoutRaw).getTime() : Date.now();
+
+                            // Total Shift Duration (seconds from login to logout or current time)
+                            const totalShiftSec = session.total_shift_seconds || (loginMs > 0 ? Math.max(0, Math.floor((logoutMs - loginMs) / 1000)) : 0);
+
+                            // Total Break Time
+                            let breakSec = session.total_break_seconds || 0;
+                            if (isActive && onBreak && session.current_break_start) {
+                                const curBreak = Math.max(0, Math.floor((Date.now() - parseISOToLocalDate(session.current_break_start).getTime()) / 1000));
+                                breakSec += curBreak;
                             }
 
-                            const totalShiftSec = session.total_shift_seconds || (isActive ? Math.floor((Date.now() - new Date(session.login_time).getTime()) / 1000) : 0);
+                            // Total Work Time (Shift Duration - Break Time)
+                            let workSec = session.total_work_seconds || 0;
+                            if (isActive || !workSec || workSec <= 0) {
+                                workSec = Math.max(0, totalShiftSec - breakSec);
+                            }
                             const roleKey = (session.role || '').toLowerCase().replace(/[\s_]+/g, '');
                             const roleBadge = ROLE_BADGE[roleKey];
                             const empShift = getShiftForEmployee(session.employee_id, allShifts);
