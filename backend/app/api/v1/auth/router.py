@@ -109,6 +109,45 @@ def login(
                         print(f"[OFFBOARDING ERROR] Dynamic deactivation during login failed: {e}")
 
     if not user.is_active:
+        # Dynamic Auto-Healing: If employee is active with no offboarding, auto-reactivate account upon login
+        try:
+            from app.models.employee import Employee
+            from app.models.offboarding import OffboardingRequest
+            from app.models.role_assignment import RoleAssignment
+            
+            emp = db.query(Employee).filter(
+                (Employee.user_id == user.id) | (Employee.employee_id == user.employee_id),
+                Employee.deleted_at == None
+            ).first()
+            
+            if emp and emp.status in ["Active", "Onboarding"]:
+                offboard_req = db.query(OffboardingRequest).filter(
+                    OffboardingRequest.employee_id == emp.employee_id,
+                    OffboardingRequest.deleted_at == None,
+                    OffboardingRequest.completed == False
+                ).first()
+                
+                if not offboard_req:
+                    user.is_active = True
+                    user.deleted_at = None
+                    emp.status = "Active"
+                    db.add(user)
+                    db.add(emp)
+                    
+                    roles = db.query(RoleAssignment).filter(RoleAssignment.employee_id == emp.employee_id).all()
+                    for r in roles:
+                        r.is_active = True
+                        r.login_enabled = True
+                        db.add(r)
+                    
+                    db.commit()
+                    db.refresh(user)
+                    print(f"[AUTH AUTO-HEAL] Automatically reactivated active employee user '{user.username}' (employee_id={emp.employee_id}) during login.")
+        except Exception as e:
+            db.rollback()
+            print(f"[AUTH AUTO-HEAL WARNING] Failed auto-heal during login: {e}")
+
+    if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="User account is inactive. Please contact admin."

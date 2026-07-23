@@ -163,3 +163,46 @@ async def operational_error_handler(request: Request, exc: OperationalError):
 def on_startup():
     routes_info = [(getattr(r, 'methods', None), getattr(r, 'path', None)) for r in app.routes]
     logger.info(f"[STARTUP] {len(routes_info)} routes registered.")
+    
+    # Auto-heal active employee user accounts on startup
+    try:
+        from app.db.session import SessionLocal
+        from app.models.employee import Employee
+        from app.models.user import User
+        from app.models.role_assignment import RoleAssignment
+        from app.models.offboarding import OffboardingRequest
+        
+        db = SessionLocal()
+        inactive_users = db.query(User).filter(User.is_active == False).all()
+        healed_count = 0
+        for u in inactive_users:
+            emp = db.query(Employee).filter(
+                (Employee.user_id == u.id) | (Employee.employee_id == u.employee_id),
+                Employee.deleted_at == None
+            ).first()
+            if emp and emp.status in ["Active", "Onboarding"]:
+                offboard_req = db.query(OffboardingRequest).filter(
+                    OffboardingRequest.employee_id == emp.employee_id,
+                    OffboardingRequest.deleted_at == None,
+                    OffboardingRequest.completed == False
+                ).first()
+                
+                if not offboard_req:
+                    u.is_active = True
+                    u.deleted_at = None
+                    emp.status = "Active"
+                    db.add(u)
+                    db.add(emp)
+                    
+                    roles = db.query(RoleAssignment).filter(RoleAssignment.employee_id == emp.employee_id).all()
+                    for r in roles:
+                        r.is_active = True
+                        r.login_enabled = True
+                        db.add(r)
+                    healed_count += 1
+        db.commit()
+        db.close()
+        if healed_count > 0:
+            logger.info(f"[STARTUP AUTO-HEAL] Automatically reactivated {healed_count} user accounts for active employees.")
+    except Exception as e:
+        logger.warning(f"[STARTUP AUTO-HEAL WARNING] {e}")
