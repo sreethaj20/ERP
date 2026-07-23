@@ -693,12 +693,6 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
     // Generate Request ID
     const reqId = `ONB-${empId}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    // Validation: Enforce company domain for login email
-    if (!newHire.email.toLowerCase().endsWith('@mercuresolution.com')) {
-      alert('❌ Error: Only @mercuresolution.com emails are allowed for portal login.');
-      return;
-    }
-
     // Convert date strings to proper format
     const employeeData = {
       request_id: reqId,
@@ -849,7 +843,7 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
           </div>
 
           <div className="grid-2">
-            <FormGroup label="Official Email (Login User)"><input type="email" className="apple-input" value={newHire.email} onChange={e => setNewHire({ ...newHire, email: e.target.value })} required placeholder="name@mercure.com" /></FormGroup>
+            <FormGroup label="Official Email (Login User)"><input type="email" className="apple-input" value={newHire.email} onChange={e => setNewHire({ ...newHire, email: e.target.value })} required placeholder="e.g. employee@company.com" /></FormGroup>
             <FormGroup label="Personal Email"><input type="email" className="apple-input" value={newHire.personal_email} onChange={e => setNewHire({ ...newHire, personal_email: e.target.value })} placeholder="gmail/outlook..." /></FormGroup>
           </div>
 

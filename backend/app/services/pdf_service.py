@@ -43,7 +43,7 @@ class PDFService:
         
         text = (
             f"We are pleased to offer you the position of <b>{data.get('designation', 'Employee')}</b> "
-            f"at Antigravity HRMS. We were impressed with your skills and experience and believe "
+            f"at Mercure HRMS. We were impressed with your skills and experience and believe "
             f"you will be a valuable addition to our team."
         )
         story.append(Paragraph(text, body_style))
@@ -87,7 +87,7 @@ class PDFService:
         hr_sig_data = [
             [Paragraph("Sincerely,", body_style)],
             [""], # Spacer
-            [Paragraph("<b>HR Management Team</b><br/>Antigravity HRMS Portel", body_style)]
+            [Paragraph("<b>HR Management Team</b><br/>Mercure HRMS Portal", body_style)]
         ]
         hr_sig_table = Table(hr_sig_data, colWidths=[180], rowHeights=[15, 25, 25])
         hr_sig_table.setStyle(TableStyle([
@@ -147,7 +147,7 @@ class PDFService:
         
         text = (
             f"This is to certify that <b>{data.get('name', 'Employee')}</b> (Employee ID: {data.get('employee_id')}) "
-            f"was employed with Antigravity HRMS from <b>{data.get('joining_date', 'N/A')}</b> to <b>{data.get('exit_date', 'N/A')}</b>. "
+            f"was employed with Mercure HRMS from <b>{data.get('joining_date', 'N/A')}</b> to <b>{data.get('exit_date', 'N/A')}</b>. "
             f"They were serving as <b>{data.get('designation', 'Employee')}</b> in the <b>{data.get('department', 'N/A')}</b> department."
         )
         story.append(Paragraph(text, body_style))
@@ -160,7 +160,7 @@ class PDFService:
         ))
 
         story.append(Spacer(1, 0.3 * inch))
-        story.append(Paragraph("For Antigravity HRMS,", body_style))
+        story.append(Paragraph("For Mercure HRMS,", body_style))
         story.append(Spacer(1, 0.1 * inch))
         story.append(Paragraph("<b>Authorized Signatory</b>", body_style))
         story.append(Paragraph("HR Management Team", body_style))

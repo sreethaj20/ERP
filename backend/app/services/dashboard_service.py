@@ -22,7 +22,7 @@ class DashboardService:
         profile = db.query(CompanyProfile).first()
         logo = profile.logo_url if profile else None
         return {
-            "company_name": profile.company_name if profile else "Antigravity HRMS",
+            "company_name": profile.company_name if profile else "Mercure HRMS",
             "company_logo": storage_service.get_public_url(logo) if logo else None
         }
 

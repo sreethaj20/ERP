@@ -433,14 +433,14 @@ export const refreshCompanyProfile = async () => {
         } else {
             // Safe failure fallback
             _companyProfile = {
-                company_name: "Antigravity HRMS",
-                company_tagline: "Connecting your business",
+                company_name: "Mercure HRMS",
+                company_tagline: "Accelerating Innovation, Delivering Solutions",
             };
         }
     } catch (e) {
         console.warn("Failed to refresh company profile globally:", e);
         _companyProfile = {
-            company_name: "Antigravity HRMS (Offline)",
+            company_name: "Mercure HRMS (Offline)",
             company_tagline: "System temporarily unavailable"
         };
     }
