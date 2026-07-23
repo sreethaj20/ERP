@@ -101,7 +101,7 @@ export default function ManagerDashboard() {
 
   const departmentalViews = [
     { title: "IT Ticket Pulse", subtitle: "System support health", path: "/manager/it-tickets", icon: <FaWrench color="#a2845e" /> },
-    { title: "HR Governance Hub", subtitle: "Workforce & attendance health", path: "/hr/dashboard", icon: <FaUserTie color="#0a84ff" /> },
+    { title: "HR Governance Hub", subtitle: "Under Maintenance 🛠️", isMaintenance: true, path: "/hr/dashboard", icon: <FaUserTie color="#ff9f0a" /> },
     { title: "Recruiting Funnel", subtitle: "Pipeline & job health", path: "/manager/pipeline", icon: <FaSearch color="#ff2d55" /> },
     { title: "Leadership Status", subtitle: "TL & team connectivity", path: "/manager/team-status", icon: <FaUserShield color="#5e5ce6" /> },
     { title: "Staff Timesheets", subtitle: "All roles shift activity", path: "/manager/staff-timesheet", icon: <FaClock color="#30d158" /> },
@@ -206,11 +206,11 @@ export default function ManagerDashboard() {
           >
             <div style={modalHeaderStyle}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700' }}>
-                  {activeModal === 'presence' ? 'Global Presence' : 'Emergency Control'}
+                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: activeModal === 'hr-maintenance' ? '#ff9f0a' : '#fff' }}>
+                  {activeModal === 'presence' ? 'Global Presence' : activeModal === 'hr-maintenance' ? '🛠️ HR Governance Hub — Under Maintenance' : 'Emergency Control'}
                 </h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                  {activeModal === 'presence' ? 'Real-time company-wide availability map' : 'Manage system-wide portal permissions'}
+                  {activeModal === 'presence' ? 'Real-time company-wide availability map' : activeModal === 'hr-maintenance' ? 'Scheduled system upgrades in progress' : 'Manage system-wide portal permissions'}
                 </p>
               </div>
               <button
@@ -224,6 +224,48 @@ export default function ManagerDashboard() {
             <div style={{ padding: '24px' }}>
               {activeModal === 'presence' ? (
                 <AttendanceCalendar type="team" />
+              ) : activeModal === 'hr-maintenance' ? (
+                <div style={{ textAlign: 'center', padding: '30px 20px' }}>
+                  <div style={{
+                    width: '80px', height: '80px', borderRadius: '24px',
+                    background: 'rgba(255, 159, 10, 0.12)', border: '1px solid rgba(255, 159, 10, 0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    margin: '0 auto 24px auto', boxShadow: '0 0 30px rgba(255, 159, 10, 0.2)'
+                  }}>
+                    <FaWrench size={36} color="#ff9f0a" />
+                  </div>
+
+                  <span style={{ background: 'rgba(255, 159, 10, 0.15)', color: '#ff9f0a', padding: '6px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', letterSpacing: '0.8px', border: '1px solid rgba(255, 159, 10, 0.3)' }}>
+                    🛠️ SYSTEM UNDER MAINTENANCE
+                  </span>
+
+                  <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginTop: '16px', marginBottom: '8px' }}>
+                    HR Governance Hub is Temporarily Unavailable
+                  </h2>
+
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '14px', lineHeight: '1.6', maxWidth: '520px', margin: '0 auto 24px auto' }}>
+                    The HR Governance Hub is currently undergoing scheduled system upgrades and optimization. Existing HR dashboard features have been temporarily restricted from the Manager Portal.
+                  </p>
+
+                  <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-light)', borderRadius: '16px', padding: '16px 20px', maxWidth: '480px', margin: '0 auto 30px auto', textAlign: 'left' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#ff9f0a', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Maintenance Status:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                      <li>Governance & attendance health modules undergoing upgrade</li>
+                      <li>System administrators working on enhancement rollout</li>
+                      <li>All other Manager Portal modules remain operational</li>
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => setActiveModal(null)}
+                    className="apple-btn"
+                    style={{ background: 'linear-gradient(135deg, #ff9f0a 0%, #d97706 100%)', color: '#fff', padding: '12px 32px' }}
+                  >
+                    Return to Command Center
+                  </button>
+                </div>
               ) : (
                 <div className="emergency-control-container">
                   <div style={{ marginBottom: '20px', color: 'var(--accent-red)', fontSize: '12px', background: 'rgba(255,69,58,0.08)', padding: '16px', borderRadius: '16px', border: '1px solid rgba(255,69,58,0.15)', display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -292,7 +334,13 @@ export default function ManagerDashboard() {
 
       <SectionHeader title="Departmental Dashboards" />
       <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-        {departmentalViews.map((mod, i) => <ModuleCard key={i} {...mod} onClick={() => navigate(mod.path)} />)}
+        {departmentalViews.map((mod: any, i: number) => (
+          <ModuleCard
+            key={i}
+            {...mod}
+            onClick={() => mod.isMaintenance ? setActiveModal('hr-maintenance') : navigate(mod.path)}
+          />
+        ))}
       </div>
     </>
   );
@@ -306,24 +354,31 @@ export default function ManagerDashboard() {
               </div>
               );
 
-              const ModuleCard = ({title, subtitle, icon, onClick}: any) => (
-              <div onClick={onClick} className="glass-module-card">
+              const ModuleCard = ({title, subtitle, icon, isMaintenance, onClick}: any) => (
+              <div onClick={onClick} className="glass-module-card" style={isMaintenance ? { border: '1px solid rgba(255, 159, 10, 0.3)' } : {}}>
                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-                  <div style={{ opacity: 0.9, marginBottom: '20px' }}>
-                    {React.cloneElement(icon, { size: 32 })}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+                    <div style={{ opacity: 0.9 }}>
+                      {React.cloneElement(icon, { size: 32 })}
+                    </div>
+                    {isMaintenance && (
+                      <span style={{ background: 'rgba(255, 159, 10, 0.15)', color: '#ff9f0a', padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', border: '1px solid rgba(255, 159, 10, 0.3)' }}>
+                        🛠️ MAINTENANCE
+                      </span>
+                    )}
                   </div>
                   <div>
                     <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px' }}>{title}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '20px' }}>{subtitle}</div>
+                    <div style={{ fontSize: '13px', color: isMaintenance ? '#ff9f0a' : 'var(--text-secondary)', marginBottom: '20px' }}>{subtitle}</div>
                   </div>
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: '6px',
                     fontSize: '12px', fontWeight: '600',
-                    color: 'var(--accent-blue)',
-                    background: 'rgba(14, 165, 233, 0.1)',
+                    color: isMaintenance ? '#ff9f0a' : 'var(--accent-blue)',
+                    background: isMaintenance ? 'rgba(255, 159, 10, 0.1)' : 'rgba(14, 165, 233, 0.1)',
                     padding: '8px 16px', borderRadius: '12px', alignSelf: 'flex-start'
                   }}>
-                    Command Center →
+                    {isMaintenance ? 'Under Maintenance 🛠️' : 'Command Center →'}
                   </div>
                 </div>
               </div>
