@@ -685,8 +685,8 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
 
     const empId = newHire.employee_id.trim();
 
-    if (!empId.startsWith('E0')) {
-      alert('❌ Invalid Employee ID: Must start with E0 format (e.g. E001, E002, E010)');
+    if (!empId.match(/^[a-zA-Z0-9_-]+$/)) {
+      alert('❌ Invalid Employee ID: Must be alphanumeric (letters, numbers, hyphens, and underscores only)');
       return;
     }
 
@@ -819,7 +819,7 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '15px' }}>
           <div style={sectionDivider}>Employee Identity</div>
           <div className="grid-3">
-            <FormGroup label="Employee ID (Enter Manually) *"><input placeholder="e.g. E001 or E010" className="apple-input" value={newHire.employee_id} onChange={e => setNewHire({ ...newHire, employee_id: e.target.value })} required /></FormGroup>
+            <FormGroup label="Employee ID (Enter Manually) *"><input placeholder="e.g. E001, A123, EMP100" className="apple-input" value={newHire.employee_id} onChange={e => setNewHire({ ...newHire, employee_id: e.target.value })} required /></FormGroup>
             <FormGroup label="First Name"><input className="apple-input" value={newHire.first_name} onChange={e => setNewHire({ ...newHire, first_name: e.target.value })} required /></FormGroup>
             <FormGroup label="Last Name"><input className="apple-input" value={newHire.last_name} onChange={e => setNewHire({ ...newHire, last_name: e.target.value })} required /></FormGroup>
           </div>

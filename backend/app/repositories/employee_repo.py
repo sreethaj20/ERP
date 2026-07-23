@@ -11,13 +11,17 @@ class EmployeeRepository:
         if not include_deleted:
             query = query.filter(Employee.deleted_at == None)
             
-        if str(identifier).startswith("E0") or str(identifier).startswith("E") or str(identifier).startswith("EMP-"):
-            return query.filter(Employee.employee_id == identifier).first()
+        # Try finding by employee_id first
+        emp = query.filter(Employee.employee_id == identifier).first()
+        if emp:
+            return emp
+            
+        # Fallback to numeric database id if identifier is an integer
         try:
             numeric_id = int(str(identifier))
             return query.filter(Employee.id == numeric_id).first()
         except (ValueError, TypeError):
-            return query.filter(Employee.employee_id == identifier).first()
+            return None
 
     def get_by_user_id(self, db: Session, user_id: int) -> Optional[Employee]:
         return db.query(Employee).filter(Employee.user_id == user_id, Employee.deleted_at == None).first()
