@@ -7,6 +7,7 @@ import {
 } from "react-icons/fa";
 import shiftService, { ShiftSession, ShiftDefinition, BreakLog } from "../../services/shiftService";
 import { getWorkingDaysInMonth, getEmployees, getEmployeeShift, getHolidays } from "../../utils/storage";
+import { formatLocalTime } from "../../utils/formatters";
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
     'Present': { color: '#30d158', bg: 'rgba(48,209,88,0.1)' },
@@ -27,8 +28,6 @@ const ROLE_BADGE: Record<string, { color: string; label: string }> = {
 };
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-import { formatLocalTime } from "../../utils/formatters";
 
 function fmtTime(iso: string | null) {
     return formatLocalTime(iso);

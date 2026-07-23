@@ -20,6 +20,7 @@ import ShiftActivityWidget from "../../components/ShiftActivityWidget";
 import WelcomeBanner from "../../components/WelcomeBanner";
 import { syncCompanyProfile } from "../../utils/companyUtils";
 import NoticePeriodBanner from "../../components/NoticePeriodBanner";
+import { formatLocalTime } from "../../utils/formatters";
 
 export default function TeamLeaderDashboard() {
     const navigate = useNavigate();
@@ -76,8 +77,6 @@ export default function TeamLeaderDashboard() {
         { label: "On Leave Today", value: onLeaveToday.toString(), color: "#ff9f0a" },
         { label: "Pending Approvals", value: (dashboardData?.pending_approvals || 0).toString(), color: "#bf5af2" },
     ];
-
-import { formatLocalTime } from "../../utils/formatters";
 
     function fmtTime(iso: string | null) {
         return formatLocalTime(iso);

@@ -7,6 +7,7 @@ import {
     FaMoon, FaUsers, FaSearch, FaBuilding, FaHistory
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { formatLocalTime } from "../../utils/formatters";
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
     'Present': { color: '#30d158', bg: 'rgba(48,209,88,0.1)' },
@@ -22,8 +23,6 @@ const ROLE_CONFIG: Record<string, { color: string; label: string; icon: string }
     'recruiter': { color: '#bf5af2', label: 'Recruiter', icon: '📋' },
     'it': { color: '#64d2ff', label: 'IT', icon: '💻' },
 };
-
-import { formatLocalTime } from "../../utils/formatters";
 
 function fmtTime(iso: string | null) {
     return formatLocalTime(iso);
