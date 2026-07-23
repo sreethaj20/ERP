@@ -11,7 +11,7 @@ class EmployeeRepository:
         if not include_deleted:
             query = query.filter(Employee.deleted_at == None)
             
-        if str(identifier).startswith("EMP-"):
+        if str(identifier).startswith("E0") or str(identifier).startswith("E") or str(identifier).startswith("EMP-"):
             return query.filter(Employee.employee_id == identifier).first()
         try:
             numeric_id = int(str(identifier))

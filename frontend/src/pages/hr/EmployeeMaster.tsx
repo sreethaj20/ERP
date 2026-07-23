@@ -207,8 +207,8 @@ export default function EmployeeMaster() {
     const targetId = selectedEmp.employee_id || String(selectedEmp.id);
     console.log('[EMPLOYEE MASTER] UPDATE employee:', targetId, 'Full object:', selectedEmp);
 
-    if (!targetId.startsWith('EMP-') && !targetId.match(/^\d+$/)) {
-      alert(`❌ Invalid Employee ID: ${targetId}\nMust be EMP-XXXX format or numeric`);
+    if (!targetId.startsWith('E0') && !targetId.startsWith('E') && !targetId.startsWith('EMP-') && !targetId.match(/^\d+$/)) {
+      alert(`❌ Invalid Employee ID: ${targetId}\nMust start with E0 format or numeric (e.g. E001)`);
       return;
     }
 
@@ -605,7 +605,7 @@ export default function EmployeeMaster() {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "10px" }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontSize: '10px', color: 'var(--accent-blue)', fontWeight: 'bold' }}>EMPLOYEE ID (ENTER MANUALLY) *</label>
-                <input placeholder="e.g. EMP-001 or 1001" className="apple-input" value={customEmpId} onChange={(e) => setCustomEmpId(e.target.value)} />
+                <input placeholder="e.g. E001 or E010" className="apple-input" value={customEmpId} onChange={(e) => setCustomEmpId(e.target.value)} />
               </div>
               <div style={{ position: "relative" }}>
                 <FaUserPlus style={{ position: "absolute", right: "15px", top: "15px", color: "var(--text-tertiary)" }} />

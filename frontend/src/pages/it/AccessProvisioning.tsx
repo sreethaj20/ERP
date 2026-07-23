@@ -83,7 +83,7 @@ export default function AccessProvisioning() {
       <div className="grid-3">
         <GlassCard title="Grant Access" subtitle="Enable email/VPN/software">
           <input
-            placeholder="Employee ID (e.g. EMP-101)"
+            placeholder="Employee ID (e.g. E001)"
             value={empId}
             onChange={(e) => setEmpId(e.target.value)}
             style={inputStyle}

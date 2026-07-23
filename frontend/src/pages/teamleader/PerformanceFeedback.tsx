@@ -121,7 +121,7 @@ export default function PerformanceFeedback() {
                 <label style={labelStyle}>Employee ID</label>
                 <input
                   type="text"
-                  placeholder="EX: EMP-001"
+                  placeholder="EX: E001"
                   style={inputStyle}
                   value={selectedEmp}
                   onChange={(e) => setSelectedEmp(e.target.value.toUpperCase())}

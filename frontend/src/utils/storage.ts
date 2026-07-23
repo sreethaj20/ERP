@@ -971,8 +971,8 @@ export const deleteEmployee = async (id: any) => {
 export const updateEmployee = async (id: string | number, updates: any) => {
     // 🔧 FIXED EMPLOYEE UPDATE - Always use employee_id (EMP-XXXX string format)
     const targetId = String(id);
-    if (!targetId.startsWith('EMP-') && !targetId.match(/^\d+$/)) {
-        console.warn('[STORAGE] Invalid employee ID format:', targetId, '- expected EMP-XXXX or numeric');
+    if (!targetId.startsWith('E0') && !targetId.startsWith('E') && !targetId.startsWith('EMP-') && !targetId.match(/^\d+$/)) {
+        console.warn('[STORAGE] Invalid employee ID format:', targetId, '- expected E001 or numeric');
     }
 
     console.log('[EMPLOYEE UPDATE] Using ID:', targetId, 'Payload keys:', Object.keys(updates));

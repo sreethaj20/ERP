@@ -1877,7 +1877,7 @@ function OffboardingTab({ refresh, employees, offboardingData, onViewLetter }: a
             </div>
             <div className="grid-2">
               <FormGroup label="Notice Period (Days)"><input type="number" className="apple-input" value={form.notice_period_days} onChange={e => setForm({ ...form, notice_period_days: parseInt(e.target.value) || 0 })} /></FormGroup>
-              <FormGroup label="Handover To (Employee ID)"><input className="apple-input" placeholder="EMP-XXX" value={form.handover_to} onChange={e => setForm({ ...form, handover_to: e.target.value })} /></FormGroup>
+              <FormGroup label="Handover To (Employee ID)"><input className="apple-input" placeholder="E001" value={form.handover_to} onChange={e => setForm({ ...form, handover_to: e.target.value })} /></FormGroup>
             </div>
 
             <div style={sectionDivider}>Clearance Checklist (JSON)</div>

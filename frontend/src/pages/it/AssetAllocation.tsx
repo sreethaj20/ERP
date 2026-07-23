@@ -137,7 +137,7 @@ export default function AssetAllocation() {
             <div>
               <label style={labelStyle}>Employee ID</label>
               <input
-                placeholder="EMP-001"
+                placeholder="E001"
                 value={empId}
                 onChange={(e) => setEmpId(e.target.value)}
                 style={inputStyle}
