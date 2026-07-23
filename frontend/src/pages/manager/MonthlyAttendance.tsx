@@ -3,6 +3,7 @@ import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import { FaCalendarAlt, FaCircle, FaChevronDown, FaChevronRight, FaClock } from "react-icons/fa";
 import { refreshAttendance, getEmployeesAsync, refreshPresence, getWorkingDaysInMonth, getEmployeeShift, refreshAttendanceCorrections, approveAttendanceCorrection } from "../../utils/storage";
+import { formatLocalTime } from "../../utils/formatters";
 import api from "../../api/apiClient";
 
 export default function MonthlyAttendance() {
@@ -218,11 +219,11 @@ export default function MonthlyAttendance() {
                                                 </td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '13px' }}>{emp.department || '—'}</td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                                                    {att?.login_time ? new Date(att.login_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : <span style={{ color: 'var(--text-tertiary)' }}>Not logged in</span>}
+                                                    {att?.login_time ? formatLocalTime(att.login_time) : <span style={{ color: 'var(--text-tertiary)' }}>Not logged in</span>}
                                                 </td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                                                     {att?.logout_time
-                                                        ? new Date(att.logout_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                                                        ? formatLocalTime(att.logout_time)
                                                         : p?.is_online ? <span style={{ color: '#30d158' }}>Active</span>
                                                             : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                                                 </td>
@@ -295,10 +296,10 @@ export default function MonthlyAttendance() {
                                                                                             </div>
                                                                                         </td>
                                                                                         <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                                                                                            {matt?.login_time ? new Date(matt.login_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : '—'}
+                                                                                            {formatLocalTime(matt?.login_time)}
                                                                                         </td>
                                                                                         <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                                                                                            {matt?.logout_time ? new Date(matt.logout_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+                                                                                            {matt?.logout_time ? formatLocalTime(matt.logout_time)
                                                                                                 : mp?.is_online ? <span style={{ color: '#30d158' }}>Active</span> : '—'}
                                                                                         </td>
                                                                                         <td style={{ padding: '8px' }}>

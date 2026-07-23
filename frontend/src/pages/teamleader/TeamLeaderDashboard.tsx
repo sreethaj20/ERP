@@ -77,9 +77,10 @@ export default function TeamLeaderDashboard() {
         { label: "Pending Approvals", value: (dashboardData?.pending_approvals || 0).toString(), color: "#bf5af2" },
     ];
 
+import { formatLocalTime } from "../../utils/formatters";
+
     function fmtTime(iso: string | null) {
-        if (!iso) return '—';
-        return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        return formatLocalTime(iso);
     }
     function fmtSecs(s: number) {
         if (!s || s <= 0) return '0h 0m';

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import GlassCard from "./GlassCard";
 import { FaSync, FaCircle } from "react-icons/fa";
 import { getEmployees, getUserPresence } from "../utils/storage";
+import { formatLocalTime } from "../utils/formatters";
 
 interface PresenceRecord {
     employee_id: string;
@@ -81,7 +82,7 @@ export default function OrganizationAttendanceWidget() {
         );
 
         const latestIn = sortedPresence.length > 0 && sortedPresence[0].login_time
-            ? new Date(sortedPresence[0].login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })
+            ? formatLocalTime(sortedPresence[0].login_time)
             : "—";
 
         return {

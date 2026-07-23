@@ -27,7 +27,7 @@ import {
   FaArrowRight
 } from "react-icons/fa";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
-import { downloadCSV } from "../../utils/formatters";
+import { downloadCSV, formatLocalTime } from "../../utils/formatters";
 
 interface Toast {
   id: string;
@@ -228,8 +228,8 @@ export default function AttendanceManagement() {
       Employee: a.employee_name,
       ID: a.employee_id,
       Role: a.role,
-      Login: a.login_time ? new Date(a.login_time).toLocaleTimeString() : 'N/A',
-      Logout: a.logout_time ? new Date(a.logout_time).toLocaleTimeString() : 'N/A',
+      Login: formatLocalTime(a.login_time),
+      Logout: formatLocalTime(a.logout_time),
       Hours: a.hours_worked || 0,
       Status: a.status
     }));
@@ -251,8 +251,8 @@ export default function AttendanceManagement() {
         "Employee Name": m.name,
         Department: m.department || 'N/A',
         Role: m.role || 'N/A',
-        Login: a?.login_time ? new Date(a.login_time).toLocaleTimeString() : 'N/A',
-        Logout: a?.logout_time ? new Date(a.logout_time).toLocaleTimeString() : 'N/A',
+        Login: formatLocalTime(a?.login_time),
+        Logout: formatLocalTime(a?.logout_time),
         Hours: a?.hours_worked || 0,
         Status: a ? a.status : 'Absent'
       };
@@ -477,7 +477,7 @@ export default function AttendanceManagement() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: att?.login_time ? '#30d158' : 'var(--text-tertiary)' }}>
             <FaSignInAlt size={12} style={{ opacity: att?.login_time ? 1 : 0.4 }} />
             <span style={{ fontSize: '13px', fontWeight: '500' }}>
-              {att?.login_time ? new Date(att.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+              {formatLocalTime(att?.login_time)}
             </span>
           </div>
         </td>
@@ -485,7 +485,7 @@ export default function AttendanceManagement() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: att?.logout_time ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
             <FaSignOutAlt size={12} style={{ opacity: att?.logout_time ? 1 : 0.4 }} />
             <span style={{ fontSize: '13px', fontWeight: '500' }}>
-              {att?.logout_time ? new Date(att.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+              {formatLocalTime(att?.logout_time)}
             </span>
           </div>
         </td>

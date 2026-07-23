@@ -4,7 +4,7 @@ import GlassCard from "../../components/GlassCard";
 import { getEmployees, getUserPresence, isOnLeave, getAttendanceByEmployee, getLeaves } from "../../utils/storage";
 import { HiUsers, HiDocumentArrowDown } from "react-icons/hi2";
 import { HiOutlineX, HiOutlineMail, HiOutlinePhone, HiOutlineBriefcase, HiOutlineCalendar } from "react-icons/hi";
-import { downloadCSV } from "../../utils/formatters";
+import { downloadCSV, formatLocalTime } from "../../utils/formatters";
 
 const MemberRow = ({ m, presence, onClick }: any) => {
   const p = presence.find((px: any) => px.employee_id === (m.employee_id || m.id));
@@ -48,9 +48,7 @@ const MemberRow = ({ m, presence, onClick }: any) => {
 
       {/* Login Time */}
       <td style={{ padding: "12px", fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '13px' }}>
-        {p?.login_time
-          ? new Date(p.login_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
-          : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+        {formatLocalTime(p?.login_time)}
       </td>
 
       {/* Status */}

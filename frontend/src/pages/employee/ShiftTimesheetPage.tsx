@@ -28,9 +28,10 @@ const ROLE_BADGE: Record<string, { color: string; label: string }> = {
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
+import { formatLocalTime } from "../../utils/formatters";
+
 function fmtTime(iso: string | null) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return formatLocalTime(iso);
 }
 function fmtSeconds(s: number) {
     if (!s || s <= 0) return '0h 0m';

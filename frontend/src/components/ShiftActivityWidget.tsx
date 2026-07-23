@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FaClock, FaCoffee, FaSignOutAlt, FaHistory, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import GlassCard from "./GlassCard";
 import { getActiveShiftSession, takeBreak, endBreak, endShiftSession, startShiftSession, getEmployeeShift, requestEarlyLogin, getEmployees } from "../utils/storage";
+import { parseISOToLocalDate, formatLocalTime } from "../utils/formatters";
 import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
 function calcShiftHours(start: string | undefined, end: string | undefined): number {
@@ -60,7 +61,7 @@ export default function ShiftActivityWidget() {
         if (!session) return;
 
         const now = new Date();
-        const loginDate = new Date(session.login_time || session.started_at);
+        const loginDate = parseISOToLocalDate(session.login_time || session.started_at);
 
         // Total Shift (Elapsed since login)
         const totalShiftSec = Math.floor((now.getTime() - loginDate.getTime()) / 1000);

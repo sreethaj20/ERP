@@ -224,3 +224,42 @@ export const downloadCSV = (data: any[], filename: string): void => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 };
+
+/**
+ * Safely parses ISO date/time string from backend into a JavaScript Date object,
+ * handling UTC vs local timezone offsets correctly.
+ */
+export const parseISOToLocalDate = (isoStr: string | null | undefined): Date => {
+    if (!isoStr) return new Date();
+    let str = String(isoStr).trim();
+    if (!str) return new Date();
+    // Handle time-only string e.g. "11:00" or "11:00:00"
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        str = `${todayStr}T${str}`;
+    }
+    // Handle space formatted dates e.g. "2026-07-23 06:00:00"
+    if (str.includes(' ') && !str.includes('T')) {
+        str = str.replace(' ', 'T');
+    }
+    // Append 'Z' if naive ISO string without timezone indicator so JS converts UTC to local time
+    if (str.includes('T') && !str.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(str)) {
+        str += 'Z';
+    }
+    const d = new Date(str);
+    return isNaN(d.getTime()) ? new Date(isoStr as string) : d;
+};
+
+/**
+ * Formats an ISO datetime string or time string into 12-hour local time (e.g., "11:00 AM")
+ */
+export const formatLocalTime = (isoStr: string | null | undefined): string => {
+    if (!isoStr || isoStr === '—' || isoStr === 'N/A') return '—';
+    try {
+        const d = parseISOToLocalDate(isoStr);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+        return '—';
+    }
+};

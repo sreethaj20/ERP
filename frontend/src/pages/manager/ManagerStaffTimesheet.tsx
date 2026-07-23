@@ -23,9 +23,10 @@ const ROLE_CONFIG: Record<string, { color: string; label: string; icon: string }
     'it': { color: '#64d2ff', label: 'IT', icon: '💻' },
 };
 
+import { formatLocalTime } from "../../utils/formatters";
+
 function fmtTime(iso: string | null) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return formatLocalTime(iso);
 }
 
 function fmtSecs(s: number) {

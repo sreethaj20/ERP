@@ -4,7 +4,7 @@ import GlassCard from "../../components/GlassCard";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
 import { getTeamMembers, getTeamAttendanceRecords } from "../../services/teamleaderService";
 import { FaClock, FaCalendarCheck, FaUserFriends, FaSignOutAlt, FaSignInAlt, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
-import { downloadCSV } from "../../utils/formatters";
+import { downloadCSV, formatLocalTime } from "../../utils/formatters";
 import { refreshAttendanceCorrections, approveAttendanceCorrection } from "../../utils/storage";
 
 export default function TeamAttendance() {
@@ -169,7 +169,7 @@ export default function TeamAttendance() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: todayAtt?.login_time ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
                           <FaSignInAlt size={12} />
                           <span style={{ fontSize: '13px', fontWeight: '500' }}>
-                            {todayAtt?.login_time ? new Date(todayAtt.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Pending'}
+                            {todayAtt?.login_time ? formatLocalTime(todayAtt.login_time) : 'Pending'}
                           </span>
                         </div>
                       </td>
@@ -177,7 +177,7 @@ export default function TeamAttendance() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: todayAtt?.logout_time ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
                           <FaSignOutAlt size={12} />
                           <span style={{ fontSize: '13px', fontWeight: '500' }}>
-                            {todayAtt?.logout_time ? new Date(todayAtt.logout_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                            {todayAtt?.logout_time ? formatLocalTime(todayAtt.logout_time) : '—'}
                           </span>
                         </div>
                       </td>
