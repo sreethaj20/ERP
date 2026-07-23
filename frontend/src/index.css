@@ -522,3 +522,98 @@ input:checked+.slider-premium {
 input:checked+.slider-premium:before {
     transform: translateX(22px);
 }
+
+/* === MOBILE COMPATIBILITY & RESPONSIVE DESIGN === */
+
+@media (max-width: 1024px) {
+    .dashboard-container {
+        padding: 20px 24px 80px;
+    }
+    
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+    
+    .grid-3 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-container {
+        padding: 16px 14px 80px;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+
+    .top-header {
+        margin-bottom: 20px !important;
+        padding-bottom: 12px !important;
+        flex-wrap: wrap;
+        gap: 12px !important;
+    }
+
+    .top-header-link {
+        display: none !important;
+    }
+
+    .glass-card {
+        padding: 16px !important;
+        border-radius: 16px !important;
+    }
+
+    .glass-module-card {
+        padding: 16px !important;
+        border-radius: 16px !important;
+    }
+
+    /* Responsive tables */
+    .table-responsive,
+    div[style*="overflowX"],
+    div[style*="overflow-x"] {
+        width: 100%;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Modal responsiveness */
+    div[style*="position: fixed"] > div[style*="maxWidth"],
+    div[style*="position: fixed"] > div[style*="max-width"] {
+        width: 95% !important;
+        max-height: 92vh !important;
+        margin: 10px !important;
+        border-radius: 16px !important;
+    }
+
+    /* Touch-friendly buttons */
+    .apple-btn,
+    .apple-btn-secondary {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+    }
+
+    .dashboard-container {
+        padding: 12px 10px 70px;
+    }
+
+    .card-title {
+        font-size: 17px !important;
+    }
+
+    .card-subtitle {
+        font-size: 12px !important;
+    }
+}

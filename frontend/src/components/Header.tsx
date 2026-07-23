@@ -119,6 +119,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         <a
+          className="top-header-link"
           href="https://mercuresolution.com"
           target="_blank"
           rel="noopener noreferrer"
