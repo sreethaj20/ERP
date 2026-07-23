@@ -115,6 +115,8 @@ export default function LoginPage() {
       const token = authData.access_token || authData.token;
 
       // Store session data
+      sessionStorage.removeItem("shift_user_logged_out");
+      sessionStorage.removeItem("shift_autostarted");
       sessionStorage.setItem("token", token);
       sessionStorage.setItem("isLoggedIn", "true");
       sessionStorage.setItem("userId", String(user.id));

@@ -69,8 +69,6 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const displayTitle = title || `${displayRole} Portal`;
 
   const executeLogout = async () => {
-    if (!window.confirm('Are you sure you want to logout?')) return;
-
     // logoutUser is async: records checkout → clears session → redirects to /login
     await logoutUser();
   };

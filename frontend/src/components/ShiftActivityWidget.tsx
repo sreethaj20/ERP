@@ -106,8 +106,11 @@ export default function ShiftActivityWidget() {
             const res = await getActiveShiftSession();
             setSession(res?.active ? res.session : null);
 
-            // AUTO-START LOGIC: If no active session and shift is assigned
-            if (!res?.active && !autoStarted) {
+            // AUTO-START LOGIC: Only attempt if no active session, shift not already started, and user hasn't logged out
+            const userLoggedOut = sessionStorage.getItem("shift_user_logged_out") === "true";
+            const shiftAutostarted = sessionStorage.getItem("shift_autostarted") === "true";
+
+            if (!res?.active && !shiftAutostarted && !userLoggedOut && !autoStarted) {
                 const targetId = sessionStorage.getItem("employeeId") || userId;
                 const myShift = getEmployeeShift(targetId);
                 const isOperationalRole = ['employee', 'tl', 'teamleader', 'recruiter', 'hr', 'it', 'itdepartment'].includes(role.toLowerCase().replace(/[\s_]+/g, ''));
@@ -115,9 +118,9 @@ export default function ShiftActivityWidget() {
                 if (isOperationalRole) {
                     console.log("[SHIFT] Attempting auto-start for staff login...");
                     try {
-                        // Use assigned shift if exists, otherwise fallback to General Shift (0)
                         const targetShiftId = myShift ? myShift.id : 0;
                         await startShiftSession(targetShiftId);
+                        sessionStorage.setItem("shift_autostarted", "true");
                         setAutoStarted(true);
                         await syncData();
                     } catch (e) {
@@ -176,11 +179,12 @@ export default function ShiftActivityWidget() {
     };
 
     const executeLogout = async () => {
-        if (session.on_break) {
+        if (session && session.on_break) {
             setMessage({ type: 'error', text: "Cannot logout while on break!" });
             return;
         }
 
+        sessionStorage.setItem("shift_user_logged_out", "true");
         const res = await endShiftSession(userId);
         if (res.success || res.message === "Shift ended") {
             setMessage({ type: 'success', text: "Logged out successfully!" });

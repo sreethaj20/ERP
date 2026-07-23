@@ -36,46 +36,44 @@ export function useLogoutLogic() {
                 }
                 
                 const targetSec = shiftHours * 3600;
-                const halfDaySec = targetSec / 2;
 
-                if (totalWorkSec < halfDaySec) {
-                    setCanLogout(false); // Disappear before half day
-                    setShowWarning(false);
-                } else if (totalWorkSec >= halfDaySec && totalWorkSec < targetSec) {
-                    setCanLogout(true);  // Appear after half day, but with warning
+                setCanLogout(true); // Keep button accessible
+                if (totalWorkSec < targetSec) {
                     setShowWarning(true);
                 } else {
-                    setCanLogout(true);  // Normal logout after shift completes
                     setShowWarning(false);
                 }
             } else {
-                // If not on shift, allow normal logout
                 setCanLogout(true);
                 setShowWarning(false);
             }
         };
 
         check();
-        const int = setInterval(check, 5000); // Check every 5s
+        const int = setInterval(check, 5000);
         return () => clearInterval(int);
     }, []);
 
     // Wrapper function to intercept clicks
     const handleSafeLogout = async (originalLogoutAction: () => Promise<void> | void) => {
         if (showWarning) {
-            const proceed = window.confirm("You are trying to logout early! Keep working?");
-            // If they click "OK" on "Keep working?", we ABORT logout.
-            // If they click "Cancel", they PROCEED to logout.
-            // Actually, a better phrasing for standard confirm:
-            // "You are trying to logout early. Click OK to KEEP IT (continue working), or Cancel to Force Logout."
-            // Wait, the user said: "message to user trying to logout keepit if keepit is press continuue"
-            // Let's use a standard JS confirm:
-            // "You are trying to logout before your shift is fully completed. Press Cancel to 'Keep it' and continue working. Press OK to force logout anyway."
-            const keepIt = window.confirm("⚠️ You are trying to logout early!\n\nPress OK to FORCE LOGOUT anyway.\nPress Cancel to KEEP IT and continue working.");
-            if (!keepIt) {
-                return; // User cancelled the logout (Kept it)
+            const confirmLogout = window.confirm(
+                "⚠️ Warning: Your shift is currently in progress!\n\n" +
+                "• Click 'Cancel' to KEEP WORKING (cancel logout).\n" +
+                "• Click 'OK' ONLY if you really want to end your shift and log out."
+            );
+            if (!confirmLogout) {
+                console.log("[LOGOUT] Logout cancelled by user. Shift timer continues uninterrupted.");
+                return; // User clicked Cancel -> ABORT LOGOUT
+            }
+        } else {
+            const confirmLogout = window.confirm("Are you sure you want to log out?");
+            if (!confirmLogout) {
+                console.log("[LOGOUT] Logout cancelled by user.");
+                return; // User clicked Cancel -> ABORT LOGOUT
             }
         }
+
         await originalLogoutAction();
     };
 

@@ -19,9 +19,6 @@ export default function Sidebar() {
     const currentRole = pathSegments[0] || 'employee';
 
     const executeLogout = async () => {
-        if (!window.confirm('Are you sure you want to logout of the portal?')) return;
-
-        // logoutUser is async: records checkout → clears session → redirects to /login
         await logoutUser();
     };
 
