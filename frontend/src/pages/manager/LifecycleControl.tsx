@@ -1583,25 +1583,25 @@ function RoleAssignmentsTab({ refresh, employees, roleAssignmentsData }: any) {
                   isProbationOver = new Date() > probationEndDate;
                 }
 
-                const isInactive = isProbationOver || !a.is_active;
-                const displayLoginEnabled = isInactive ? false : a.login_enabled;
+                const isRevoked = !a.is_active;
+                const displayLoginEnabled = !isRevoked && a.login_enabled;
 
                 let statusLabel = 'ACTIVE';
                 let statusBg = 'rgba(48,209,88,0.1)';
                 let statusColor = '#30d158';
 
-                if (isProbationOver) {
-                  statusLabel = 'INACTIVE (PROBATION OVER)';
-                  statusBg = 'rgba(255,69,58,0.1)';
-                  statusColor = '#ff453a';
-                } else if (!a.is_active) {
+                if (isRevoked) {
                   statusLabel = 'REVOKED';
                   statusBg = 'rgba(255,69,58,0.1)';
                   statusColor = '#ff453a';
+                } else if (isProbationOver) {
+                  statusLabel = 'CONFIRMED (PROBATION PASSED)';
+                  statusBg = 'rgba(48,209,88,0.1)';
+                  statusColor = '#30d158';
                 }
 
                 return (
-                  <tr key={a.assignment_id || a.id} style={{ borderBottom: '1px solid var(--border-light)', fontSize: '13px', opacity: isInactive ? 0.6 : 1 }}>
+                  <tr key={a.assignment_id || a.id} style={{ borderBottom: '1px solid var(--border-light)', fontSize: '13px', opacity: isRevoked ? 0.6 : 1 }}>
                     <td style={tdStyle}>
                       <div style={{ fontWeight: '700' }}>{displayName}</div>
                       <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>{(a.role_name || 'STAFF').toUpperCase()}</div>
@@ -1627,36 +1627,34 @@ function RoleAssignmentsTab({ refresh, employees, roleAssignmentsData }: any) {
                     <td style={tdStyle}>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button 
-                          onClick={() => !isInactive && toggleLogin(a.assignment_id, displayLoginEnabled)} 
+                          onClick={() => !isRevoked && toggleLogin(a.assignment_id, displayLoginEnabled)} 
                           className="apple-btn" 
-                          disabled={isInactive}
+                          disabled={isRevoked}
                           style={{ 
                             padding: '6px 10px', 
                             fontSize: '10px', 
                             background: displayLoginEnabled ? 'rgba(255,69,58,0.1)' : 'rgba(48,209,88,0.1)', 
                             color: displayLoginEnabled ? '#ff453a' : '#30d158',
-                            opacity: isInactive ? 0.5 : 1,
-                            cursor: isInactive ? 'not-allowed' : 'pointer'
+                            opacity: isRevoked ? 0.5 : 1,
+                            cursor: isRevoked ? 'not-allowed' : 'pointer'
                           }}
                         >
                           {displayLoginEnabled ? <><FaToggleOff /> Lock</> : <><FaToggleOn /> Grant</>}
                         </button>
-                        {a.is_active && !isProbationOver ? (
+                        {a.is_active ? (
                           <button onClick={() => revokeAccess(a.assignment_id)} className="apple-btn" style={{ padding: '6px 10px', fontSize: '10px', background: 'rgba(255,69,58,0.1)', color: '#ff453a' }}>
                             <FaBan /> Revoke
                           </button>
                         ) : (
                           <button 
-                            onClick={() => !isProbationOver && reinstateAccess(a.assignment_id)} 
+                            onClick={() => reinstateAccess(a.assignment_id)} 
                             className="apple-btn" 
-                            disabled={isProbationOver}
                             style={{ 
                               padding: '6px 10px', 
                               fontSize: '10px', 
                               background: 'rgba(48,209,88,0.1)', 
                               color: '#30d158',
-                              opacity: isProbationOver ? 0.5 : 1,
-                              cursor: isProbationOver ? 'not-allowed' : 'pointer'
+                              cursor: 'pointer'
                             }}
                           >
                             <FaCheckCircle /> Reinstate

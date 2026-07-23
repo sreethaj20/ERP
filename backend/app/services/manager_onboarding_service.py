@@ -185,7 +185,7 @@ class ManagerOnboardingService:
                 designation=db_obj.designation,
                 manager_id=db_obj.manager_id,
                 team_leader_id=db_obj.team_leader_id,
-                joining_date=db_obj.join_date,
+                joining_date=db_obj.join_date or datetime.now().date(),
                 gender=db_obj.gender,
                 date_of_birth=db_obj.dob,
                 blood_group=db_obj.blood_group,

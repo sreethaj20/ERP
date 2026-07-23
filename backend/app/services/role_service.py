@@ -38,7 +38,7 @@ class RoleService:
             role.employee_email = email
             role.performance_score = float(score) if score is not None else None
             
-            # Check if probation/provision period is over
+            # Calculate if probation/provision period is over (informational only)
             is_probation_over = False
             if join_date:
                 if isinstance(join_date, dt.datetime):
@@ -48,34 +48,8 @@ class RoleService:
                 if dt.date.today() > probation_end_date:
                     is_probation_over = True
             
-            # If probation is over, deactivate role and block login
-            if is_probation_over:
-                if role.is_active:
-                    role.is_active = False
-                    need_commit = True
-                    
-            # If role is inactive, remove login access AND deactivate user account
-            if not role.is_active:
-                if role.login_enabled:
-                    role.login_enabled = False
-                    need_commit = True
-                # Also deactivate the user account so auth router blocks login
-                emp_record = db.query(Employee).filter(Employee.employee_id == role.employee_id).first()
-                if emp_record and emp_record.user_id:
-                    user_record = db.query(User).filter(User.id == emp_record.user_id).first()
-                    if user_record and user_record.is_active:
-                        user_record.is_active = False
-                        db.add(user_record)
-                        need_commit = True
-                    
+            role.is_probation_over = is_probation_over
             final_results.append(role)
-            
-        if need_commit:
-            try:
-                db.commit()
-            except Exception as e:
-                db.rollback()
-                print(f"[ROLE SERVICE ERROR] Auto-deactivation commit failed: {e}")
             
         return final_results
 
