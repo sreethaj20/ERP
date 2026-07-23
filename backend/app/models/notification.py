@@ -70,6 +70,31 @@ class Activity(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
+import json
+from sqlalchemy.types import TypeDecorator
+
+class JSONEncodedDict(TypeDecorator):
+    """Enables automatic JSON serialization of dicts/lists into Text columns for psycopg2 compatibility."""
+    impl = Text
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None:
+            if isinstance(value, (dict, list)):
+                return json.dumps(value, default=str)
+            return str(value)
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None:
+            try:
+                if isinstance(value, str):
+                    return json.loads(value)
+                return value
+            except (ValueError, TypeError):
+                return str(value)
+        return {}
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
     
@@ -77,8 +102,8 @@ class AuditLog(Base):
     table_name = Column(String(50), nullable=False)
     record_id = Column(String(50), nullable=False)
     action = Column(String(20), nullable=False) # CREATE, UPDATE, DELETE
-    old_value = Column(Text)
-    new_value = Column(Text)
+    old_value = Column(JSONEncodedDict)
+    new_value = Column(JSONEncodedDict)
     # Store user id or employee id as string (avoid duplicate model / FK mismatch with audit_service)
     changed_by = Column(Integer, nullable=True)
     created_at = Column(DateTime, server_default=func.now())

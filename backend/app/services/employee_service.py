@@ -414,7 +414,8 @@ class EmployeeService:
                 hashed_password=get_password_hash(obj_in.password or "Mercure@123"), # Use provided password or standard default
                 full_name=obj_in.name or f"{obj_in.first_name} {obj_in.last_name or ''}".strip(),
                 role=obj_in.role or "employee",
-                employee_id=obj_in.employee_id
+                employee_id=obj_in.employee_id,
+                is_active=True
             )
             try:
                 db.add(user)
@@ -448,6 +449,24 @@ class EmployeeService:
                 
             res = employee_repo.create(db, obj_in)
             
+            # 🛡️ Auto-provision active RoleAssignment with login_enabled=True
+            from app.models.role_assignment import RoleAssignment
+            from datetime import datetime
+            target_assignment_id = f"RL-{res.employee_id}"
+            existing_role = db.query(RoleAssignment).filter(RoleAssignment.employee_id == res.employee_id).first()
+            if not existing_role:
+                role_req = RoleAssignment(
+                    assignment_id=target_assignment_id,
+                    employee_id=res.employee_id,
+                    role_name=res.role.upper() if res.role else "STAFF",
+                    login_enabled=True,
+                    assigned_by="system",
+                    assigned_at=datetime.now(),
+                    is_active=True,
+                    notes="Auto-provisioned on employee creation"
+                )
+                db.add(role_req)
+
             # 🎁 Provision Default Leave Balance
             from app.models.leave import LeaveBalance
             from decimal import Decimal

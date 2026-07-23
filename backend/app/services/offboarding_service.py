@@ -257,11 +257,13 @@ class OffboardingService:
 
         today = date.today()
         
-        # Query for all active offboarding requests for employees who are not Inactive or Archived
+        # Strict Query: Only process employees explicitly "On Notice" with an approved, uncompleted offboarding request
         active_offboardings = db.query(Employee, OffboardingRequest).join(
             OffboardingRequest, Employee.employee_id == OffboardingRequest.employee_id
         ).filter(
-            ~Employee.status.in_(["Inactive", "Archived"]),
+            Employee.status == "On Notice",
+            OffboardingRequest.completed == False,
+            (OffboardingRequest.manager_approved == True) | (OffboardingRequest.hr_approved == True) | (OffboardingRequest.status.ilike("%approved%")),
             Employee.deleted_at == None,
             OffboardingRequest.deleted_at == None
         ).all()
