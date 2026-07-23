@@ -429,6 +429,9 @@ export const refreshCompanyProfile = async () => {
     try {
         const data = await fetchData('company-profile');
         if (data) {
+            if (data.company_name && /antigravity/i.test(data.company_name)) {
+                data.company_name = "Mercure HRMS";
+            }
             _companyProfile = data;
         } else {
             // Safe failure fallback
@@ -437,6 +440,10 @@ export const refreshCompanyProfile = async () => {
                 company_tagline: "Accelerating Innovation, Delivering Solutions",
             };
         }
+        if (_companyProfile && _companyProfile.company_name && /antigravity/i.test(_companyProfile.company_name)) {
+            _companyProfile.company_name = "Mercure HRMS";
+        }
+        sessionStorage.setItem("companyProfile", JSON.stringify(_companyProfile));
     } catch (e) {
         console.warn("Failed to refresh company profile globally:", e);
         _companyProfile = {

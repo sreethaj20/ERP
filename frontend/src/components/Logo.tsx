@@ -29,9 +29,17 @@ const Logo: React.FC<LogoProps> = ({
             if (storedProfile) {
                 try {
                     const parsed = JSON.parse(storedProfile);
+                    if (parsed.company_name && /antigravity/i.test(parsed.company_name)) {
+                        parsed.company_name = "Mercure HRMS";
+                        sessionStorage.setItem("companyProfile", JSON.stringify(parsed));
+                    }
                     if (parsed.logo_url) setLogoSrc(parsed.logo_url);
                     if (parsed.company_tagline) setTagline(parsed.company_tagline);
-                    if (parsed.company_name) setCompanyName(parsed.company_name);
+                    if (parsed.company_name) {
+                        const cleanName = parsed.company_name.replace(/antigravity/gi, "Mercure");
+                        // If it's standard default Mercure HRMS, suppress extra text since image already has logo text
+                        setCompanyName((cleanName === "Mercure HRMS" || cleanName === "Mercure HRMS (Offline)") ? "" : cleanName);
+                    }
                 } catch (e) {
                     console.error("Error parsing company profile", e);
                 }

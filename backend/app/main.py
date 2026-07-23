@@ -206,6 +206,14 @@ def on_startup():
         for e in all_active_emps:
             shift_service.ensure_default_shift_assignment(db, e.employee_id)
 
+        # Clean legacy company profile name in database
+        from app.models.company_profile import CompanyProfile
+        profiles = db.query(CompanyProfile).all()
+        for p in profiles:
+            if p.company_name and "antigravity" in p.company_name.lower():
+                p.company_name = "Mercure HRMS"
+                db.add(p)
+
         db.commit()
         db.close()
         if healed_count > 0:
