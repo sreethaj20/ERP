@@ -601,7 +601,8 @@ class RecruitmentService:
                         hashed_password=get_password_hash("Mercure@123"),
                         role="employee", # System role (can be upgraded later)
                         full_name=f"{first_name} {last_name}".strip(),
-                        employee_id=new_emp_id
+                        employee_id=new_emp_id,
+                        is_active=True
                     )
                     db.add(new_user)
                     db.flush()
@@ -625,6 +626,20 @@ class RecruitmentService:
                         status="Onboarding"
                     )
                     db.add(new_emp)
+                    
+                    # Provision active RoleAssignment record
+                    from app.models.role_assignment import RoleAssignment
+                    role_req = RoleAssignment(
+                        assignment_id=f"RL-{new_emp_id}",
+                        employee_id=new_emp_id,
+                        role_name=desig.upper() if desig else "STAFF",
+                        login_enabled=True,
+                        assigned_by="system",
+                        assigned_at=datetime.now(),
+                        is_active=True,
+                        notes="Auto-provisioned on offer acceptance"
+                    )
+                    db.add(role_req)
                     db.flush()
 
                     # 3. ROUTING LOGIC: Determine Onboarding Portal
