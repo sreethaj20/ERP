@@ -20,7 +20,7 @@ import ShiftActivityWidget from "../../components/ShiftActivityWidget";
 import WelcomeBanner from "../../components/WelcomeBanner";
 import { syncCompanyProfile } from "../../utils/companyUtils";
 import NoticePeriodBanner from "../../components/NoticePeriodBanner";
-import { formatLocalTime } from "../../utils/formatters";
+import { formatLocalTime, parseISOToLocalDate } from "../../utils/formatters";
 
 export default function TeamLeaderDashboard() {
     const navigate = useNavigate();
@@ -165,23 +165,26 @@ export default function TeamLeaderDashboard() {
                         </div>
 
                         {teamSessions.map((session: any) => {
-                            const isActive = !session.logout_time;
+                            const isActive = !session.logout_time && !session.ended_at;
                             const onBreak = session.on_break;
-                            const workSec = session.total_work_seconds || 0;
-                            const breakSec = session.total_break_seconds || 0;
 
-                            // For active sessions, calculate live durations
-                            let liveWorkSec = workSec, liveBreakSec = breakSec;
-                            if (isActive) {
-                                const now = Date.now();
-                                const loginMs = new Date(session.login_time || session.started_at).getTime();
-                                const totalSec = Math.floor((now - loginMs) / 1000);
-                                let curBreak = 0;
-                                if (onBreak && session.current_break_start) {
-                                    curBreak = Math.floor((now - new Date(session.current_break_start).getTime()) / 1000);
-                                }
-                                liveBreakSec = breakSec + curBreak;
-                                liveWorkSec = totalSec - liveBreakSec;
+                            const loginRaw = session.login_time || session.started_at;
+                            const logoutRaw = session.logout_time || session.ended_at;
+
+                            const loginMs = loginRaw ? parseISOToLocalDate(loginRaw).getTime() : 0;
+                            const logoutMs = logoutRaw ? parseISOToLocalDate(logoutRaw).getTime() : Date.now();
+
+                            const totalShiftSec = session.total_shift_seconds || (loginMs > 0 ? Math.max(0, Math.floor((logoutMs - loginMs) / 1000)) : 0);
+
+                            let liveBreakSec = session.total_break_seconds || 0;
+                            if (isActive && onBreak && session.current_break_start) {
+                                const curBreak = Math.max(0, Math.floor((Date.now() - parseISOToLocalDate(session.current_break_start).getTime()) / 1000));
+                                liveBreakSec += curBreak;
+                            }
+
+                            let liveWorkSec = session.total_work_seconds || 0;
+                            if (isActive || !liveWorkSec || liveWorkSec <= 0) {
+                                liveWorkSec = Math.max(0, totalShiftSec - liveBreakSec);
                             }
 
                             const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
