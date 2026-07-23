@@ -197,6 +197,32 @@ class PreboardingService:
              if emp:
                  emp.status = "Active"
                  db.add(emp)
+                 
+                 from app.models.user import User
+                 user = db.query(User).filter(User.id == emp.user_id).first()
+                 if user:
+                     user.is_active = True
+                     user.deleted_at = None
+                     db.add(user)
+
+                 from app.models.role_assignment import RoleAssignment
+                 role = db.query(RoleAssignment).filter(RoleAssignment.employee_id == emp.employee_id).first()
+                 if role:
+                     role.is_active = True
+                     role.login_enabled = True
+                     db.add(role)
+                 else:
+                     new_role = RoleAssignment(
+                         assignment_id=f"RL-{emp.employee_id}",
+                         employee_id=emp.employee_id,
+                         role_name=(emp.role or emp.designation or "STAFF").upper(),
+                         login_enabled=True,
+                         assigned_by="system",
+                         assigned_at=datetime.now(),
+                         is_active=True,
+                         notes="Auto-provisioned on preboarding verification"
+                     )
+                     db.add(new_role)
         
         res = preboarding_repo.update(db, db_obj, obj_in)
         
@@ -225,10 +251,38 @@ class PreboardingService:
         # Sync all finalized preboarding data to Employee table
         self._sync_to_employee(db, db_obj.employee_id, db_obj)
         
-        # Ensure name and email are attached for the response schema
+        # Ensure name, email, User, and RoleAssignment are activated
         from app.models.employee import Employee
+        from app.models.user import User
+        from app.models.role_assignment import RoleAssignment
         emp = db.query(Employee).filter(Employee.employee_id == db_obj.employee_id).first()
         if emp:
+            emp.status = "Active"
+            db.add(emp)
+            
+            user = db.query(User).filter(User.id == emp.user_id).first()
+            if user:
+                user.is_active = True
+                user.deleted_at = None
+                db.add(user)
+                
+            role = db.query(RoleAssignment).filter(RoleAssignment.employee_id == emp.employee_id).first()
+            if role:
+                role.is_active = True
+                role.login_enabled = True
+                db.add(role)
+            else:
+                new_role = RoleAssignment(
+                    assignment_id=f"RL-{emp.employee_id}",
+                    employee_id=emp.employee_id,
+                    role_name=(emp.role or emp.designation or "STAFF").upper(),
+                    login_enabled=True,
+                    assigned_by="system",
+                    assigned_at=datetime.now(),
+                    is_active=True,
+                    notes="Auto-provisioned on preboarding completion"
+                )
+                db.add(new_role)
             res.employee_name = emp.name
             res.employee_email = emp.email or emp.official_email or emp.personal_email
             

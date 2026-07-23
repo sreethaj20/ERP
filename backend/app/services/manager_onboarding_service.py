@@ -221,10 +221,10 @@ class ManagerOnboardingService:
             )
             db.add(pre_req)
 
-        # Guard Role Assignment Registry record
+        # Guard Role Assignment Registry record (Query by employee_id for reliable lookup)
         target_assignment_id = f"RL-{db_obj.employee_id}"
         from app.models.role_assignment import RoleAssignment
-        existing_role = db.query(RoleAssignment).filter(RoleAssignment.assignment_id == target_assignment_id).first()
+        existing_role = db.query(RoleAssignment).filter(RoleAssignment.employee_id == db_obj.employee_id).first()
         if not existing_role:
             effective_approver = f"User {user_id}"
             role_req = RoleAssignment(
@@ -241,6 +241,8 @@ class ManagerOnboardingService:
         else:
             existing_role.is_active = True
             existing_role.login_enabled = True
+            if db_obj.role_name:
+                existing_role.role_name = db_obj.role_name.upper()
             db.add(existing_role)
 
         # --- WORKFLOW: Guarded Checklist Creation ---

@@ -244,6 +244,27 @@ class HROnboardingService:
             )
             db.add(pre_req)
 
+        # Guard Role Assignment Registry record
+        target_assignment_id = f"RL-{db_obj.employee_id}"
+        from app.models.role_assignment import RoleAssignment
+        existing_role = db.query(RoleAssignment).filter(RoleAssignment.employee_id == db_obj.employee_id).first()
+        if not existing_role:
+            role_req = RoleAssignment(
+                assignment_id=target_assignment_id,
+                employee_id=db_obj.employee_id,
+                role_name=db_obj.role_name.upper() if db_obj.role_name else "STAFF",
+                login_enabled=True,
+                assigned_by=approved_by,
+                assigned_at=datetime.now(),
+                is_active=True,
+                notes="Auto-provisioned via HR Onboarding Approval"
+            )
+            db.add(role_req)
+        else:
+            existing_role.is_active = True
+            existing_role.login_enabled = True
+            db.add(existing_role)
+
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
@@ -291,7 +312,28 @@ class HROnboardingService:
             user = db.query(User).filter(User.id == emp.user_id).first()
             if user:
                 user.is_active = True
+                user.deleted_at = None
                 db.add(user)
+
+            # Ensure RoleAssignment record is active and enabled for login
+            from app.models.role_assignment import RoleAssignment
+            role = db.query(RoleAssignment).filter(RoleAssignment.employee_id == emp.employee_id).first()
+            if role:
+                role.is_active = True
+                role.login_enabled = True
+                db.add(role)
+            else:
+                new_role = RoleAssignment(
+                    assignment_id=f"RL-{emp.employee_id}",
+                    employee_id=emp.employee_id,
+                    role_name=(emp.role or emp.designation or "STAFF").upper(),
+                    login_enabled=True,
+                    assigned_by="system",
+                    assigned_at=datetime.now(),
+                    is_active=True,
+                    notes="Auto-provisioned on HR onboarding completion"
+                )
+                db.add(new_role)
         
         db.add(db_obj)
         db.commit()
