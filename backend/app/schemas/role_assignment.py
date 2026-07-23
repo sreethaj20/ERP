@@ -6,7 +6,7 @@ class RoleAssignmentBase(BaseModel):
     employee_id: str
     shift_id: Optional[int] = None
     role_name: Optional[str] = None
-    login_enabled: Optional[bool] = False
+    login_enabled: Optional[bool] = True
     assigned_by: Optional[str] = None
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None

@@ -9,7 +9,7 @@ class RoleAssignment(Base):
     employee_id = Column(String(30), nullable=False, index=True)
     shift_id = Column(Integer, nullable=True)
     role_name = Column(String(50), nullable=False) # admin, hr, manager, recruiter, it, employee
-    login_enabled = Column(Boolean, default=False)
+    login_enabled = Column(Boolean, default=True)
     assigned_by = Column(String(30)) # employee_id
     assigned_at = Column(DateTime, server_default=func.now())
     effective_from = Column(Date, nullable=True)

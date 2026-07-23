@@ -155,25 +155,7 @@ def login(
             db.rollback()
             print(f"[AUTH LOGIN SYNC ERROR] {e}")
     
-    # Also check if login_enabled is False in role_assignments (probation over or manually locked)
-    try:
-        from app.models.role_assignment import RoleAssignment
-        from app.models.employee import Employee as EmpModel
-        emp_for_role = db.query(EmpModel).filter(EmpModel.user_id == user.id, EmpModel.deleted_at == None).first()
-        if emp_for_role:
-            active_role = db.query(RoleAssignment).filter(
-                RoleAssignment.employee_id == emp_for_role.employee_id,
-                RoleAssignment.is_active == True
-            ).first()
-            if active_role and not active_role.login_enabled:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Login access has been disabled for your account. Please contact your manager or HR."
-                )
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"[AUTH WARNING] Role assignment login check failed: {e}")
+
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
