@@ -637,11 +637,7 @@ export default function EmployeeMaster() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                 <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>DEPARTMENT</label>
-                <select className="apple-input" value={dept || ''} onChange={(e) => setDept(e.target.value)} style={{ appearance: "none" }}>
-                  {departments.map((d: string) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
+                <input placeholder="e.g. Engineering" className="apple-input" value={dept} onChange={(e) => setDept(e.target.value)} />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
@@ -804,11 +800,7 @@ export default function EmployeeMaster() {
                   <InputGroup label="Designation" value={selectedEmp.designation} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, designation: v })} />
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>DEPARTMENT</label>
-                    <select className="apple-input" value={selectedEmp.department || ''} onChange={(e) => setSelectedEmp({ ...selectedEmp, department: e.target.value })} style={{ appearance: "none" }}>
-                      {departments.map((d: string) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </select>
+                    <input placeholder="e.g. Engineering" className="apple-input" value={selectedEmp.department || ''} onChange={(e) => setSelectedEmp({ ...selectedEmp, department: e.target.value })} />
                   </div>
                   <InputGroup label="Cost Center" value={selectedEmp.cost_center} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, cost_center: v })} />
                   <InputGroup label="Business Unit" value={selectedEmp.business_unit} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, business_unit: v })} />

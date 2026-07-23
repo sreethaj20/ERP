@@ -602,6 +602,7 @@ export default function LifecycleControl() {
 // ===================== ONBOARDING TAB =====================
 function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
   const [newHire, setNewHire] = useState({
+    employee_id: '',
     first_name: '', last_name: '', email: '', department: 'HR Ops', designation: '',
     joining_date: '', role_name: 'hr', access_level: 'limited',
     offer_date: new Date().toISOString().split('T')[0],
@@ -677,9 +678,20 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
       return;
     }
 
-    // Generate employee ID & Request ID
-    const empId = `EMP${Math.floor(1000 + Math.random() * 9000)}`;
-    const reqId = `ONB-${Math.floor(1000 + Math.random() * 9000)}`;
+    if (!newHire.employee_id || !newHire.employee_id.trim()) {
+      alert('⚠️ Employee ID Required: Please enter the Employee ID manually.');
+      return;
+    }
+
+    const empId = newHire.employee_id.trim();
+
+    if (!empId.startsWith('E0')) {
+      alert('❌ Invalid Employee ID: Must start with E0 format (e.g. E001, E002, E010)');
+      return;
+    }
+
+    // Generate Request ID
+    const reqId = `ONB-${empId}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Validation: Enforce company domain for login email
     if (!newHire.email.toLowerCase().endsWith('@mercuresolution.com')) {
@@ -786,6 +798,7 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
     }
 
     setNewHire({
+      employee_id: '',
       first_name: '', last_name: '', email: '', department: 'HR Ops', designation: '',
       joining_date: '', role_name: 'hr', access_level: 'limited',
       offer_date: new Date().toISOString().split('T')[0],
@@ -805,7 +818,8 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
       <GlassCard title="New Employee Onboarding" subtitle="Register employee & create portal access">
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px', marginTop: '15px' }}>
           <div style={sectionDivider}>Employee Identity</div>
-          <div className="grid-2">
+          <div className="grid-3">
+            <FormGroup label="Employee ID (Enter Manually) *"><input placeholder="e.g. E001 or E010" className="apple-input" value={newHire.employee_id} onChange={e => setNewHire({ ...newHire, employee_id: e.target.value })} required /></FormGroup>
             <FormGroup label="First Name"><input className="apple-input" value={newHire.first_name} onChange={e => setNewHire({ ...newHire, first_name: e.target.value })} required /></FormGroup>
             <FormGroup label="Last Name"><input className="apple-input" value={newHire.last_name} onChange={e => setNewHire({ ...newHire, last_name: e.target.value })} required /></FormGroup>
           </div>
