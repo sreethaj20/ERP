@@ -860,9 +860,7 @@ function OnboardingTab({ refresh, employees, onboardingRequests }: any) {
           <div style={sectionDivider}>Department & Role</div>
           <div className="grid-3">
             <FormGroup label="Department">
-              <select className="apple-input" value={newHire.department} onChange={e => setNewHire({ ...newHire, department: e.target.value })}>
-                <option>HR Ops</option><option>Recruiting</option><option>Team Operations</option><option>IT Support</option>
-              </select>
+              <input placeholder="e.g. HR Ops" className="apple-input" value={newHire.department} onChange={e => setNewHire({ ...newHire, department: e.target.value })} required />
             </FormGroup>
             <FormGroup label="Designation"><input className="apple-input" value={newHire.designation} onChange={e => setNewHire({ ...newHire, designation: e.target.value })} /></FormGroup>
             <FormGroup label="Reports To">
