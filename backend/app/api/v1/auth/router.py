@@ -65,12 +65,13 @@ def login(
         from datetime import date, datetime, timedelta
         
         emp = db.query(Employee).filter(Employee.user_id == user.id, Employee.deleted_at == None).first()
-        if emp and emp.status != "Inactive":
+        if emp and emp.status == "On Notice":
             offboard_req = db.query(OffboardingRequest).filter(
                 OffboardingRequest.employee_id == emp.employee_id,
-                OffboardingRequest.deleted_at == None
+                OffboardingRequest.deleted_at == None,
+                OffboardingRequest.completed == False
             ).order_by(OffboardingRequest.id.desc()).first()
-            if offboard_req:
+            if offboard_req and (offboard_req.manager_approved or offboard_req.hr_approved):
                 request_date = offboard_req.request_date or offboard_req.created_at
                 notice_days = offboard_req.notice_period_days or 0
                 notice_end_date = None
