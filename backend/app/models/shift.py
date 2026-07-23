@@ -71,10 +71,11 @@ class ShiftSession(Base):
     month = Column(Integer, nullable=True)
     year = Column(Integer, nullable=True)
     
-    # Use started_at and ended_at as primary time markers (matching DB)
     started_at = Column(DateTime, server_default=func.now())
     ended_at = Column(DateTime)
-    
+    login_time = Column(DateTime, nullable=True)
+    logout_time = Column(DateTime, nullable=True)
+
     total_work_minutes = Column(Integer, default=0)
     total_work_seconds = Column(Integer, default=0)
     total_break_minutes = Column(Integer, default=0)
@@ -92,22 +93,6 @@ class ShiftSession(Base):
 
     on_break = Column(Boolean, default=False)
     current_break_start = Column(DateTime, nullable=True)
-
-    @property
-    def login_time(self):
-        return self.started_at
-
-    @login_time.setter
-    def login_time(self, value):
-        self.started_at = value
-
-    @property
-    def logout_time(self):
-        return self.ended_at
-
-    @logout_time.setter
-    def logout_time(self, value):
-        self.ended_at = value
 
     @property
     def total_shift_seconds(self):
