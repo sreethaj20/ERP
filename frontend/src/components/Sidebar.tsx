@@ -134,12 +134,19 @@ export default function Sidebar() {
             </nav>
 
             <div className="sidebar-footer">
-                {canLogout && (
-                    <button onClick={handleLogout} className="logout-btn">
-                        <FaSignOutAlt />
-                        <span>Logout</span>
-                    </button>
-                )}
+                <button
+                    onClick={handleLogout}
+                    disabled={!canLogout}
+                    className="logout-btn"
+                    title={canLogout ? "Logout from shift" : "Logout disabled until 4h half-day work completed"}
+                    style={{
+                        opacity: canLogout ? 1 : 0.45,
+                        cursor: canLogout ? 'pointer' : 'not-allowed'
+                    }}
+                >
+                    <FaSignOutAlt />
+                    <span>{canLogout ? "Logout" : "Locked (Min 4h)"}</span>
+                </button>
             </div>
         </aside>
     );

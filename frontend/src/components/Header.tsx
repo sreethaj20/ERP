@@ -220,29 +220,29 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
             )}
           </div>
 
-          {canLogout && (
-            <button
-              onClick={handleLogout}
-              style={{
-                background: 'rgba(255, 69, 58, 0.1)',
-                border: 'none',
-                color: '#ff453a',
-                width: '40px',
-                height: '40px',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.2s ease'
-              }}
-              title="Logout"
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.2)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'}
-            >
-              <FaSignOutAlt size={18} />
-            </button>
-          )}
+          <button
+            onClick={handleLogout}
+            disabled={!canLogout}
+            style={{
+              background: canLogout ? 'rgba(255, 69, 58, 0.1)' : 'rgba(255, 69, 58, 0.04)',
+              border: 'none',
+              color: canLogout ? '#ff453a' : 'rgba(255, 69, 58, 0.35)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '12px',
+              cursor: canLogout ? 'pointer' : 'not-allowed',
+              opacity: canLogout ? 1 : 0.45,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease'
+            }}
+            title={canLogout ? "Logout from shift" : "Logout disabled until 4h half-day work completed"}
+            onMouseEnter={(e) => { if (canLogout) e.currentTarget.style.background = 'rgba(255, 69, 58, 0.2)'; }}
+            onMouseLeave={(e) => { if (canLogout) e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'; }}
+          >
+            <FaSignOutAlt size={18} />
+          </button>
         </div>
       </div>
     </div>

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getActiveShiftSession, getEmployeeShift } from '../utils/storage';
+import { parseISOToLocalDate } from '../utils/formatters';
 
 export function useLogoutLogic() {
-    const [canLogout, setCanLogout] = useState(true);
+    const [canLogout, setCanLogout] = useState(false);
     const [workInfo, setWorkInfo] = useState<{ totalWorkSec: number; targetSec: number; halfDaySec: number } | null>(null);
 
     useEffect(() => {
@@ -11,12 +12,12 @@ export function useLogoutLogic() {
             if (res?.active && res.session) {
                 const session = res.session;
                 const now = new Date();
-                const loginDate = new Date(session.login_time || session.started_at);
+                const loginDate = parseISOToLocalDate(session.login_time || session.started_at);
                 const totalShiftSec = Math.floor((now.getTime() - loginDate.getTime()) / 1000);
 
                 let currentBreakSec = 0;
                 if (session.on_break && session.current_break_start) {
-                    currentBreakSec = Math.floor((now.getTime() - new Date(session.current_break_start).getTime()) / 1000);
+                    currentBreakSec = Math.floor((now.getTime() - parseISOToLocalDate(session.current_break_start).getTime()) / 1000);
                 }
                 const totalBreakSec = (session.total_break_seconds || 0) + currentBreakSec;
                 const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
@@ -39,15 +40,21 @@ export function useLogoutLogic() {
                 const halfDaySec = targetSec / 2;
 
                 setWorkInfo({ totalWorkSec, targetSec, halfDaySec });
-                setCanLogout(true);
+
+                // STRICT RULE: Logout button is DISABLED until half-day (4h) is completed!
+                if (totalWorkSec >= halfDaySec) {
+                    setCanLogout(true);
+                } else {
+                    setCanLogout(false);
+                }
             } else {
                 setWorkInfo(null);
-                setCanLogout(true);
+                setCanLogout(true); // If not on active shift session, allow normal logout
             }
         };
 
         check();
-        const int = setInterval(check, 5000);
+        const int = setInterval(check, 1000);
         return () => clearInterval(int);
     }, []);
 
@@ -65,11 +72,11 @@ export function useLogoutLogic() {
                 const neededM = Math.floor((neededSec % 3600) / 60);
 
                 window.alert(
-                    `⛔ LOGOUT RESTRICTED:\n\n` +
-                    `You cannot log out from your shift until you complete at least half-day working hours (4.0 hours).\n\n` +
+                    `⛔ LOGOUT DISABLED:\n\n` +
+                    `Logout is disabled until you complete at least half-day working hours (4.0 hours).\n\n` +
                     `• Current Work Time: ${workedH}h ${workedM}m\n` +
                     `• Remaining Time Needed for Half-Day: ${neededH}h ${neededM}m\n\n` +
-                    `Please continue your shift!`
+                    `Logout button will unlock automatically after half-day completion.`
                 );
                 return; // BLOCK LOGOUT COMPLETELY
             }

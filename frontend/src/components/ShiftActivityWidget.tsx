@@ -363,15 +363,21 @@ export default function ShiftActivityWidget() {
                                 <FaClock style={{ marginRight: '8px' }} /> End Break
                             </button>
                         )}
-                        {canLogout && (
-                            <button
-                                onClick={handleLogout}
-                                className="apple-btn"
-                                style={{ background: 'rgba(255, 69, 58, 0.2)', color: '#ff453a', border: '1px solid rgba(255, 69, 58, 0.3)' }}
-                            >
-                                <FaSignOutAlt style={{ marginRight: '8px' }} /> Logout
-                            </button>
-                        )}
+                        <button
+                            onClick={handleLogout}
+                            disabled={!canLogout || loading}
+                            className="apple-btn"
+                            title={canLogout ? "Logout from shift" : "Logout disabled until 4h (half-day) work is completed"}
+                            style={{
+                                background: canLogout ? 'rgba(255, 69, 58, 0.2)' : 'rgba(255, 69, 58, 0.05)',
+                                color: canLogout ? '#ff453a' : 'rgba(255, 69, 58, 0.4)',
+                                border: canLogout ? '1px solid rgba(255, 69, 58, 0.3)' : '1px solid rgba(255, 69, 58, 0.1)',
+                                cursor: canLogout ? 'pointer' : 'not-allowed',
+                                opacity: canLogout ? 1 : 0.45
+                            }}
+                        >
+                            <FaSignOutAlt style={{ marginRight: '8px' }} /> {canLogout ? "Logout" : "Locked (Min 4h)"}
+                        </button>
                     </div>
                 </div>
 
