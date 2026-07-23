@@ -21,8 +21,10 @@ class AttendanceService:
         now_dt = check_in_dt or datetime.now()
         db_obj = attendance_repo.get(db, employee_id, today)
         if db_obj:
-            # Already checked in today — update if re-submitted
-            return attendance_repo.update(db, db_obj, AttendanceUpdate(check_in=now_dt))
+            # Already checked in today — preserve original first check_in time if set
+            if not db_obj.check_in:
+                return attendance_repo.update(db, db_obj, AttendanceUpdate(check_in=now_dt, check_in_time=now_dt))
+            return db_obj
         
         # New check-in
         obj_in = AttendanceCreate(
@@ -447,13 +449,23 @@ class ShiftService:
         employee_id = obj_in.employee_id
         requested_shift_id = obj_in.shift_id
         
-        # 1. Early Guard: Prevent double-starting if session exists
-        active = shift_session_repo.get_active(db, employee_id)
-        if active:
-            return active
-        
         today = date.today()
         now_dt = datetime.now()
+
+        # 1. Early Guard: Prevent double-starting if session exists TODAY; auto-close stale sessions from past days
+        active = shift_session_repo.get_active(db, employee_id)
+        if active:
+            active_date = active.date or (active.started_at.date() if getattr(active, 'started_at', None) else None) or (active.login_time.date() if getattr(active, 'login_time', None) else None)
+            if active_date == today:
+                return active
+            else:
+                # Active session is from a previous date - close stale session automatically
+                close_dt = datetime.combine(active_date or (today - timedelta(days=1)), time(23, 59, 59))
+                active.ended_at = active.ended_at or close_dt
+                active.logout_time = active.logout_time or close_dt
+                active.status = "closed"
+                db.add(active)
+                db.flush()
         
         # 2. Resolve Employee & Role for Gating (Canonicalize ID)
         from app.repositories.employee_repo import employee_repo

@@ -89,13 +89,13 @@ export default function ShiftActivityWidget() {
         const logoutTime = new Date(loginDate.getTime() + (shiftHours + 1) * 3600 * 1000);
 
         setTimers({
-            loginTime: loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            loginTime: loginDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
             workDuration: formatSeconds(totalWorkSec),
             breakDuration: formatSeconds(currentBreakSec),
             totalBreak: formatSeconds(totalBreakSec),
             remainingWork: formatSeconds(remainingSec),
             totalShift: formatSeconds(totalShiftSec),
-            expectedLogout: logoutTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            expectedLogout: logoutTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true }),
             halfDayRemaining: formatSeconds(halfDaySec)
         });
     };
