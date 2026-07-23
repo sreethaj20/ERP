@@ -59,99 +59,101 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if user and user.is_active:
-        from app.models.employee import Employee
-        from app.models.offboarding import OffboardingRequest
-        from datetime import date, datetime, timedelta
-        
-        emp = db.query(Employee).filter(Employee.user_id == user.id, Employee.deleted_at == None).first()
-        if emp and emp.status == "On Notice":
-            offboard_req = db.query(OffboardingRequest).filter(
-                OffboardingRequest.employee_id == emp.employee_id,
-                OffboardingRequest.deleted_at == None,
-                OffboardingRequest.completed == False
-            ).order_by(OffboardingRequest.id.desc()).first()
-            if offboard_req and (offboard_req.manager_approved or offboard_req.hr_approved):
-                request_date = offboard_req.request_date or offboard_req.created_at
-                notice_days = offboard_req.notice_period_days or 0
-                notice_end_date = None
-                if request_date:
-                    req_date_val = request_date.date() if isinstance(request_date, datetime) else request_date
-                    notice_end_date = req_date_val + timedelta(days=notice_days)
-                
-                exit_date = offboard_req.exit_date or offboard_req.last_working_day
-                exit_date_val = None
-                if exit_date:
-                    if isinstance(exit_date, str):
-                        try:
-                            exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
-                        except Exception:
-                            pass
-                    elif isinstance(exit_date, datetime):
-                        exit_date_val = exit_date.date()
-                    else:
-                        exit_date_val = exit_date
-                
-                deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
-                if deactivate_date and (deactivate_date - date.today()).days < 0:
-                    emp.status = "Inactive"
-                    user.is_active = False
-                    offboard_req.status = "Completed"
-                    offboard_req.completed = True
-                    db.add(emp)
-                    db.add(user)
-                    db.add(offboard_req)
-                    try:
-                        db.commit()
-                        print(f"[OFFBOARDING] User '{user.username}' (employee_id={emp.employee_id}) has been DEACTIVATED dynamically during login attempt.")
-                    except Exception as e:
-                        db.rollback()
-                        print(f"[OFFBOARDING ERROR] Dynamic deactivation during login failed: {e}")
+    # Check offboarding status
+    from app.models.employee import Employee
+    from app.models.offboarding import OffboardingRequest
+    from app.models.role_assignment import RoleAssignment
+    from datetime import date, datetime, timedelta
 
+    target_emp_id = user.employee_id
+    emp = db.query(Employee).filter(
+        (Employee.user_id == user.id) | (Employee.employee_id == target_emp_id if target_emp_id else False),
+        Employee.deleted_at == None
+    ).first()
+    
+    if emp and not target_emp_id:
+        target_emp_id = emp.employee_id
+
+    # Check if user has an expired / completed offboarding
+    is_offboarded = False
+    if target_emp_id:
+        offboard_req = db.query(OffboardingRequest).filter(
+            OffboardingRequest.employee_id == target_emp_id,
+            OffboardingRequest.deleted_at == None
+        ).order_by(OffboardingRequest.id.desc()).first()
+
+        if offboard_req and (offboard_req.completed or offboard_req.status == "Completed"):
+            is_offboarded = True
+        elif offboard_req and emp and emp.status == "On Notice" and (offboard_req.manager_approved or offboard_req.hr_approved):
+            request_date = offboard_req.request_date or offboard_req.created_at
+            notice_days = offboard_req.notice_period_days or 0
+            req_date_val = request_date.date() if isinstance(request_date, datetime) else (request_date or date.today())
+            notice_end_date = req_date_val + timedelta(days=notice_days)
+            
+            exit_date = offboard_req.exit_date or offboard_req.last_working_day
+            exit_date_val = None
+            if exit_date:
+                if isinstance(exit_date, str):
+                    try: exit_date_val = datetime.strptime(exit_date.split("T")[0], "%Y-%m-%d").date()
+                    except Exception: pass
+                elif isinstance(exit_date, datetime): exit_date_val = exit_date.date()
+                else: exit_date_val = exit_date
+            
+            deactivate_date = exit_date_val if exit_date_val is not None else notice_end_date
+            if deactivate_date and (deactivate_date - date.today()).days < 0:
+                is_offboarded = True
+                emp.status = "Inactive"
+                user.is_active = False
+                offboard_req.status = "Completed"
+                offboard_req.completed = True
+                db.add(emp)
+                db.add(user)
+                db.add(offboard_req)
+                try: db.commit()
+                except Exception: db.rollback()
+
+    if is_offboarded:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account has been deactivated due to offboarding completion. Please contact admin."
+        )
+
+    # For all non-offboarded users with valid password, ensure account and role access are ACTIVE
     if not user.is_active:
-        # Dynamic Auto-Healing: If employee is active with no offboarding, auto-reactivate account upon login
+        user.is_active = True
+        user.deleted_at = None
+        db.add(user)
+
+        if emp and emp.status in ["Inactive", "Suspended", "Onboarding"]:
+            emp.status = "Active"
+            db.add(emp)
+
+        if target_emp_id:
+            roles = db.query(RoleAssignment).filter(RoleAssignment.employee_id == target_emp_id).all()
+            for r in roles:
+                r.is_active = True
+                r.login_enabled = True
+                db.add(r)
+            if not roles:
+                new_role = RoleAssignment(
+                    assignment_id=f"RL-{target_emp_id}",
+                    employee_id=target_emp_id,
+                    role_name=user.role.upper() if user.role else "STAFF",
+                    login_enabled=True,
+                    assigned_by="system",
+                    assigned_at=datetime.now(),
+                    is_active=True,
+                    notes="Auto-activated on login"
+                )
+                db.add(new_role)
+
         try:
-            from app.models.employee import Employee
-            from app.models.offboarding import OffboardingRequest
-            from app.models.role_assignment import RoleAssignment
-            
-            emp = db.query(Employee).filter(
-                (Employee.user_id == user.id) | (Employee.employee_id == user.employee_id),
-                Employee.deleted_at == None
-            ).first()
-            
-            if emp and emp.status in ["Active", "Onboarding"]:
-                offboard_req = db.query(OffboardingRequest).filter(
-                    OffboardingRequest.employee_id == emp.employee_id,
-                    OffboardingRequest.deleted_at == None,
-                    OffboardingRequest.completed == False
-                ).first()
-                
-                if not offboard_req:
-                    user.is_active = True
-                    user.deleted_at = None
-                    emp.status = "Active"
-                    db.add(user)
-                    db.add(emp)
-                    
-                    roles = db.query(RoleAssignment).filter(RoleAssignment.employee_id == emp.employee_id).all()
-                    for r in roles:
-                        r.is_active = True
-                        r.login_enabled = True
-                        db.add(r)
-                    
-                    db.commit()
-                    db.refresh(user)
-                    print(f"[AUTH AUTO-HEAL] Automatically reactivated active employee user '{user.username}' (employee_id={emp.employee_id}) during login.")
+            db.commit()
+            db.refresh(user)
+            print(f"[AUTH LOGIN SYNC] Auto-activated account for user '{user.username}'.")
         except Exception as e:
             db.rollback()
-            print(f"[AUTH AUTO-HEAL WARNING] Failed auto-heal during login: {e}")
-
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="User account is inactive. Please contact admin."
-        )
+            print(f"[AUTH LOGIN SYNC ERROR] {e}")
     
     # Also check if login_enabled is False in role_assignments (probation over or manually locked)
     try:
