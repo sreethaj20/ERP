@@ -198,8 +198,14 @@ def on_startup():
                     for r in roles:
                         r.is_active = True
                         r.login_enabled = True
-                        db.add(r)
                     healed_count += 1
+
+        # Also auto-assign default 10 AM - 7 PM shift to any employee missing shift assignment
+        from app.services.attendance_service import shift_service
+        all_active_emps = db.query(Employee).filter(Employee.deleted_at == None).all()
+        for e in all_active_emps:
+            shift_service.ensure_default_shift_assignment(db, e.employee_id)
+
         db.commit()
         db.close()
         if healed_count > 0:

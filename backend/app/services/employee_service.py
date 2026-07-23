@@ -467,6 +467,13 @@ class EmployeeService:
                 )
                 db.add(role_req)
 
+            # ⏰ Provision Default Shift (10:00 AM to 7:00 PM)
+            from app.services.attendance_service import shift_service
+            try:
+                shift_service.ensure_default_shift_assignment(db, res.employee_id)
+            except Exception as shift_err:
+                print(f"[EMPLOYEE CREATION WARNING] Failed to assign default shift: {shift_err}")
+
             # 🎁 Provision Default Leave Balance
             from app.models.leave import LeaveBalance
             from decimal import Decimal

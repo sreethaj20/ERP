@@ -441,6 +441,57 @@ class ShiftService:
         db.commit()
         return True
 
+    def ensure_default_shift_assignment(self, db: Session, employee_id: str):
+        """
+        Ensures a default shift (10:00 AM to 7:00 PM) exists and assigns it to the employee if not already assigned.
+        """
+        from datetime import time
+        from app.models.shift import ShiftDefinition, ShiftAssignment
+
+        # 1. Find or create 10:00 AM - 7:00 PM General Shift definition
+        shift = db.query(ShiftDefinition).filter(
+            ShiftDefinition.deleted_at == None,
+            (ShiftDefinition.start_time == time(10, 0)) | (ShiftDefinition.shift_name == "General Shift")
+        ).first()
+
+        if not shift:
+            shift = ShiftDefinition(
+                shift_name="General Shift",
+                shift_code="GEN-10-7",
+                start_time=time(10, 0),  # 10:00 AM
+                end_time=time(19, 0),    # 7:00 PM
+                grace_time=15,
+                break_duration_minutes=60,
+                color="#0a84ff",
+                is_active=True
+            )
+            db.add(shift)
+            try:
+                db.commit()
+                db.refresh(shift)
+            except Exception:
+                db.rollback()
+                shift = db.query(ShiftDefinition).filter(ShiftDefinition.shift_name == "General Shift").first()
+
+        # 2. Check if employee already has a shift assignment
+        if shift:
+            existing = db.query(ShiftAssignment).filter(ShiftAssignment.employee_id == employee_id).first()
+            if not existing:
+                assignment = ShiftAssignment(
+                    employee_id=employee_id,
+                    shift_id=shift.id,
+                    assigned_by="system"
+                )
+                db.add(assignment)
+                try:
+                    db.commit()
+                    db.refresh(assignment)
+                    return assignment
+                except Exception:
+                    db.rollback()
+            return existing
+        return None
+
     async def start_session(self, db: Session, obj_in: ShiftSessionCreate) -> shift_models.ShiftSession:
         """
         Starts a shift session atomically. 
