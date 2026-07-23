@@ -12,9 +12,8 @@ class TicketService:
         self.repo = ticket_repo
 
     @staticmethod
-    def hydrate_attachment(t):
-        """Explicitly extract attachments from JSON array into URLs.
-        We provide attachment_url (legacy/first) and attachment_urls (complete list)."""
+    def hydrate_attachment(t, db: Session = None):
+        """Explicitly extract attachments from JSON array into URLs and resolve employee name."""
         import json
         raw_att = getattr(t, 'attachments', None)
         t.attachment_urls = []
@@ -35,6 +34,30 @@ class TicketService:
                     t.attachment_url = url
                     t.attachment_urls = [url]
 
+        # Resolve employee_name for frontend display
+        if getattr(t, 'author', None):
+            t.employee_name = t.author
+            t.author_name = t.author
+        elif db and getattr(t, 'employee_id', None):
+            from app.models.employee import Employee
+            from sqlalchemy import or_
+            emp_id_str = str(t.employee_id)
+            emp = db.query(Employee).filter(
+                or_(
+                    Employee.employee_id == emp_id_str,
+                    Employee.id == (int(emp_id_str) if emp_id_str.isdigit() else -1)
+                ),
+                Employee.deleted_at == None
+            ).first()
+            if emp:
+                emp_name = emp.name or f"{emp.first_name} {emp.last_name or ''}".strip()
+                t.employee_name = emp_name
+                t.author_name = emp_name
+                t.author = emp_name
+            else:
+                t.employee_name = f"Employee ({t.employee_id})"
+                t.author_name = t.employee_name
+
     async def create_ticket(self, db: Session, obj_in: TicketCreate):
         # Include department in the base data dict
         data = obj_in.dict(exclude={"attachments", "recipient"})
@@ -45,7 +68,25 @@ class TicketService:
             from app.models.ticket import Ticket
             count = db.query(func.count(Ticket.id)).scalar()
             data["ticket_id"] = f"TKT-{str(count + 1).zfill(3)}"
-        
+
+        # Resolve author / employee name if missing
+        if not data.get("author") or data.get("author") == "Unknown":
+            if data.get("author_name") and data.get("author_name") != "Unknown":
+                data["author"] = data["author_name"]
+            elif data.get("employee_id"):
+                from app.models.employee import Employee
+                from sqlalchemy import or_
+                emp_id_str = str(data["employee_id"])
+                emp = db.query(Employee).filter(
+                    or_(
+                        Employee.employee_id == emp_id_str,
+                        Employee.id == (int(emp_id_str) if emp_id_str.isdigit() else -1)
+                    ),
+                    Employee.deleted_at == None
+                ).first()
+                if emp:
+                    data["author"] = emp.name or f"{emp.first_name} {emp.last_name or ''}".strip()
+
         # Handle attachments (Base64 list or single string)
         raw_attachments = obj_in.attachments
         processed_paths = []
@@ -98,13 +139,13 @@ class TicketService:
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
-        self.hydrate_attachment(db_obj)
+        self.hydrate_attachment(db_obj, db=db)
         return db_obj
 
     def get_my_tickets(self, db: Session, employee_id: str):
         tickets = ticket_repo.get_by_employee(db, employee_id)
         for t in tickets:
-            self.hydrate_attachment(t)
+            self.hydrate_attachment(t, db=db)
         return tickets
 
     def get_all_tickets(self, db: Session, skip: int = 0, limit: int = 100, category: str = None):
@@ -115,7 +156,7 @@ class TicketService:
             tickets = ticket_repo.get_multi(db, skip, limit)
             
         for t in tickets:
-            self.hydrate_attachment(t)
+            self.hydrate_attachment(t, db=db)
         return tickets
 
     def update_ticket(self, db: Session, ticket_id: str, obj_in: TicketUpdate):

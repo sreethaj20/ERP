@@ -108,7 +108,7 @@ export default function HRTickets() {
                                     )}
 
                                     <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', display: 'flex', gap: '15px' }}>
-                                        <span>👤 {t.employee_name} ({t.emp_id})</span>
+                                        <span>👤 {t.employee_name || t.author_name || t.author || 'Employee'} ({t.emp_id || t.employee_id || 'Staff'})</span>
                                         <span>📅 {new Date(t.created_at).toLocaleDateString()}</span>
                                     </div>
 

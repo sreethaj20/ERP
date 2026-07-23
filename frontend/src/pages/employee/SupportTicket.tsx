@@ -53,6 +53,7 @@ export default function SupportTicket() {
       const ticketData = {
         employee_id: employeeId || userId,
         author_name: userName,
+        author: userName,
         issue: issue,
         description: issue, // Aligning with both legacy and new backend
         department: recipient,

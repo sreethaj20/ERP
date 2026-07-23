@@ -348,6 +348,8 @@ export const refreshTickets = async () => {
     const data = await fetchData('support-tickets');
     _tickets = (Array.isArray(data) ? data : []).map((t: any) => ({
         ...t,
+        employee_name: t.employee_name || t.author_name || t.author || t.userName || t.user_name || 'Employee',
+        emp_id: t.employee_id || t.emp_id || 'N/A',
         department: t.category || t.department || 'IT', // Sync with backend 'category' field
         replies: (t.comments || []).map((c: any) => ({
             text: c.comment || c.text,
