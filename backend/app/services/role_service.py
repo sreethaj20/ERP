@@ -111,17 +111,36 @@ class RoleService:
         if not db_obj:
             return None
         
-        # Enforce that if deactivating the assignment, we remove login access
+        # Enforce login_enabled sync with is_active
         if obj_in.is_active is False:
             obj_in.login_enabled = False
+        elif obj_in.is_active is True:
+            obj_in.login_enabled = True
             
         old_val = {c.key: getattr(db_obj, c.key, None) for c in db_obj.__table__.columns}
         res = role_repo.update(db, db_obj, obj_in)
         
-        # Also force check if res is inactive to disable login access
-        if res and not res.is_active:
-            res.login_enabled = False
-            db.add(res)
+        # Sync User account and Employee status with Role Assignment
+        from app.models.employee import Employee as EmpModel
+        from app.models.user import User as UserModel
+        emp_model = db.query(EmpModel).filter(EmpModel.employee_id == db_obj.employee_id).first()
+        user_model = None
+        if emp_model and emp_model.user_id:
+            user_model = db.query(UserModel).filter(UserModel.id == emp_model.user_id).first()
+        elif db_obj.employee_id:
+            user_model = db.query(UserModel).filter(UserModel.employee_id == db_obj.employee_id).first()
+            
+        if user_model:
+            if obj_in.is_active is True or obj_in.login_enabled is True:
+                user_model.is_active = True
+                user_model.deleted_at = None
+                if emp_model and emp_model.status in ["Inactive", "Suspended"]:
+                    emp_model.status = "Active"
+                    db.add(emp_model)
+                db.add(user_model)
+            elif obj_in.is_active is False or obj_in.login_enabled is False:
+                user_model.is_active = False
+                db.add(user_model)
             
         # Audit Log (Non-blocking)
         try:

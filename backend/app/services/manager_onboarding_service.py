@@ -166,6 +166,9 @@ class ManagerOnboardingService:
                     raise e
                 effective_user_id = existing_user.id
         else:
+            existing_user.is_active = True
+            existing_user.deleted_at = None
+            db.add(existing_user)
             effective_user_id = existing_user.id
 
         # Guard Employee Record
@@ -196,6 +199,9 @@ class ManagerOnboardingService:
             )
             db.add(new_emp)
             db.flush()
+        else:
+            existing_emp.status = "Active"
+            db.add(existing_emp)
         
         # Guard Autonomous Preboarding
         target_preboard_id = f"PRE-MGR-{db_obj.request_id}"
@@ -232,6 +238,10 @@ class ManagerOnboardingService:
                 notes="Auto-provisioned via Manager Onboarding"
             )
             db.add(role_req)
+        else:
+            existing_role.is_active = True
+            existing_role.login_enabled = True
+            db.add(existing_role)
 
         # --- WORKFLOW: Guarded Checklist Creation ---
         manager_onboarding_repo.create_checklist(db, db_obj.employee_id, manager_id)
