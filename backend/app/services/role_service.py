@@ -70,12 +70,16 @@ class RoleService:
         
         # Audit Log
         changer = db.query(User).filter(User.username == assigned_by).first()
+        
+        import json
+        new_val_str = json.dumps(obj_in.dict(), default=str)
+        
         audit = AuditLog(
             table_name="role_assignments",
             record_id=str(db_obj.id),
             action="CREATE",
-            new_value=obj_in.dict(),
-            changed_by=str(changer.id) if changer else None
+            new_value=new_val_str,
+            changed_by=changer.id if changer else None
         )
         db.add(audit)
         
@@ -120,13 +124,19 @@ class RoleService:
             
         # Audit Log
         changer = db.query(User).filter(User.username == assigned_by).first()
+        
+        # Serialize dictionaries to JSON strings since AuditLog columns are Text
+        import json
+        old_val_str = json.dumps(old_val, default=str)
+        new_val_str = json.dumps(obj_in.dict(exclude_unset=True), default=str)
+        
         audit = AuditLog(
             table_name="role_assignments",
             record_id=str(db_obj.id),
             action="UPDATE",
-            old_value=old_val,
-            new_value=obj_in.dict(exclude_unset=True),
-            changed_by=str(changer.id) if changer else None
+            old_value=old_val_str,
+            new_value=new_val_str,
+            changed_by=changer.id if changer else None
         )
         db.add(audit)
         
