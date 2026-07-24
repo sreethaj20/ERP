@@ -229,10 +229,14 @@ export const downloadCSV = (data: any[], filename: string): void => {
  * Safely parses ISO date/time string from backend into a JavaScript Date object,
  * handling UTC vs local timezone offsets correctly.
  */
-export const parseISOToLocalDate = (isoStr: string | null | undefined): Date => {
+export const parseISOToLocalDate = (isoStr: any): Date => {
     if (!isoStr) return new Date();
+    if (isoStr instanceof Date) return isoStr;
+    if (typeof isoStr === 'number') return new Date(isoStr);
+
     let str = String(isoStr).trim();
     if (!str) return new Date();
+
     // Handle time-only string e.g. "11:00" or "11:00:00"
     if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -242,12 +246,14 @@ export const parseISOToLocalDate = (isoStr: string | null | undefined): Date => 
     if (str.includes(' ') && !str.includes('T')) {
         str = str.replace(' ', 'T');
     }
-    // Append 'Z' if naive ISO string without timezone indicator so JS converts UTC to local time
-    if (str.includes('T') && !str.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(str)) {
-        str += 'Z';
-    }
+
     const d = new Date(str);
-    return isNaN(d.getTime()) ? new Date(isoStr as string) : d;
+    if (!isNaN(d.getTime())) {
+        return d;
+    }
+
+    const fallback = new Date(isoStr as string);
+    return isNaN(fallback.getTime()) ? new Date() : fallback;
 };
 
 /**

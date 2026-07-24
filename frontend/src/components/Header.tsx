@@ -22,7 +22,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [userName, setUserName] = useState(sessionStorage.getItem('userName') || 'HR Admin');
+  const [userName, setUserName] = useState(sessionStorage.getItem('userName') || localStorage.getItem('userName') || 'HR Admin');
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
   const [workDuration, setWorkDuration] = useState("00:00:00");
   const [session, setSession] = useState<any>(null);
@@ -64,18 +64,24 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
     }
 
     if (!loginDate || isNaN(loginDate.getTime())) {
-      const fallbackStr = sessionStorage.getItem("login_time");
+      const fallbackStr = sessionStorage.getItem("login_time") || localStorage.getItem("login_time");
       if (fallbackStr) {
         loginDate = parseISOToLocalDate(fallbackStr);
       }
     }
 
     if (!loginDate || isNaN(loginDate.getTime())) {
-      setWorkDuration("00:00:00");
-      return;
+      let storedStart = sessionStorage.getItem("app_session_start") || localStorage.getItem("app_session_start");
+      if (!storedStart) {
+        storedStart = new Date().toISOString();
+        sessionStorage.setItem("app_session_start", storedStart);
+        localStorage.setItem("app_session_start", storedStart);
+      }
+      loginDate = parseISOToLocalDate(storedStart);
     }
 
-    const totalShiftSec = Math.max(0, Math.floor((now.getTime() - loginDate.getTime()) / 1000));
+    const diffMs = now.getTime() - loginDate.getTime();
+    const totalShiftSec = Math.max(0, Math.floor(diffMs / 1000));
     const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
     setWorkDuration(formatSeconds(totalWorkSec));
   };
@@ -85,7 +91,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
     try {
       setBreakLoading(true);
       if (!session) {
-        const targetId = sessionStorage.getItem("employeeId") || userId;
+        const targetId = sessionStorage.getItem("employeeId") || localStorage.getItem("employeeId") || userId;
         const myShift = getEmployeeShift(targetId);
         await startShiftSession(myShift?.id || 0);
       }
@@ -111,10 +117,10 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           return;
         }
 
-        const userLoggedOut = sessionStorage.getItem("shift_user_logged_out") === "true";
+        const userLoggedOut = (sessionStorage.getItem("shift_user_logged_out") || localStorage.getItem("shift_user_logged_out")) === "true";
 
         if (!userLoggedOut) {
-          const targetId = sessionStorage.getItem("employeeId") || userId;
+          const targetId = sessionStorage.getItem("employeeId") || localStorage.getItem("employeeId") || userId;
           const myShift = getEmployeeShift(targetId);
           await startShiftSession(myShift?.id || 0);
           const updated = await getActiveShiftSession();
@@ -154,7 +160,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
         }));
         setNotifications(mapped);
       }
-      setUserName(sessionStorage.getItem('userName') || 'HR Admin');
+      setUserName(sessionStorage.getItem('userName') || localStorage.getItem('userName') || 'HR Admin');
 
       const employees = await getData('employee');
       if (Array.isArray(employees)) {
@@ -215,7 +221,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               <FaArrowLeft size={14} />
             </button>
           )}
-          <Logo width="auto" height="54px" layout="horizontal" showTagline={false} />
+          <Logo width="260px" height="68px" layout="horizontal" showTagline={false} />
         </div>
       </div>
 

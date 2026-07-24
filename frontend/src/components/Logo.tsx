@@ -83,10 +83,10 @@ const Logo: React.FC<LogoProps> = ({
                 src={logoSrc}
                 alt={companyName || "Company Logo"}
                 style={{
-                    width: isHorizontal ? 'auto' : (typeof width === 'number' ? `${width}px` : width),
-                    height: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '54px' : "auto"),
+                    width: width && width !== 'auto' ? (typeof width === 'number' ? `${width}px` : width) : (isHorizontal ? 'auto' : "100%"),
+                    height: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '68px' : "auto"),
                     objectFit: "contain",
-                    maxHeight: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '64px' : (typeof width === 'number' ? width * 0.6 : '60px')),
+                    maxHeight: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '75px' : (typeof width === 'number' ? width * 0.6 : '60px')),
                     marginBottom: (!isHorizontal && showName && companyName) ? '8px' : '0',
                     filter: printMode ? 'none' :
                         document.documentElement.getAttribute('data-theme') === 'light'

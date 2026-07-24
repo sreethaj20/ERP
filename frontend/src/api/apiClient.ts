@@ -14,8 +14,8 @@ const api = axios.create({
 // Add a request interceptor to include the JWT token + DEBUG LOGGING
 api.interceptors.request.use(
     (config) => {
-        const token = sessionStorage.getItem('token');
-        const role = sessionStorage.getItem('userRole');
+        const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+        const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -40,6 +40,10 @@ api.interceptors.response.use(
             if (error.response.status === 401) {
                 sessionStorage.removeItem('token');
                 sessionStorage.removeItem('userRole');
+                localStorage.removeItem('token');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('login_time');
+                localStorage.removeItem('app_session_start');
                 if (window.location.pathname !== '/login') {
                     window.location.href = '/login';
                 }

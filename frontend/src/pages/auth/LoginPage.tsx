@@ -119,23 +119,34 @@ export default function LoginPage() {
       const user = authData.user;
       const token = authData.access_token || authData.token;
 
-      // Store session data
+      // Store session data in both sessionStorage and persistent localStorage
       sessionStorage.removeItem("shift_user_logged_out");
       sessionStorage.removeItem("shift_autostarted");
+      localStorage.removeItem("shift_user_logged_out");
+      localStorage.removeItem("shift_autostarted");
+
+      const loginTime = localStorage.getItem("login_time") || sessionStorage.getItem("login_time") || new Date().toISOString();
+      localStorage.setItem("login_time", loginTime);
+      sessionStorage.setItem("login_time", loginTime);
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("userId", String(user.id));
+      localStorage.setItem("userName", user.name || user.full_name);
+      localStorage.setItem("employeeId", user.employee_id || "");
+
       sessionStorage.setItem("token", token);
       sessionStorage.setItem("isLoggedIn", "true");
       sessionStorage.setItem("userId", String(user.id));
       sessionStorage.setItem("userName", user.name || user.full_name);
       sessionStorage.setItem("employeeId", user.employee_id || "");
-      if (!sessionStorage.getItem("login_time")) {
-        sessionStorage.setItem("login_time", new Date().toISOString());
-      }
 
       // Map role for routing 
       let role = (user.role || 'employee').toLowerCase().replace(/[_\s]+/g, '');
       if (['requiter', 'recruiting'].includes(role)) role = 'recruiter';
       if (['itdepartment', 'itadmin', 'itsupport'].includes(role)) role = 'it';
       sessionStorage.setItem("userRole", role);
+      localStorage.setItem("userRole", role);
 
       // Record login presence for ALL roles (so Manager can see who's online)
       const allEmps = await getEmployees();

@@ -22,7 +22,7 @@ export function useLogoutLogic() {
                 const totalBreakSec = (session.total_break_seconds || 0) + currentBreakSec;
                 const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
 
-                const targetId = sessionStorage.getItem("employeeId") || sessionStorage.getItem("userId") || "";
+                const targetId = sessionStorage.getItem("employeeId") || localStorage.getItem("employeeId") || sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
                 const myShift = getEmployeeShift(targetId);
                 let shiftHours = 8;
                 

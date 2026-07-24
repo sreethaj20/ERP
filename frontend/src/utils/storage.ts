@@ -47,14 +47,17 @@ export const logoutUser = async () => {
     await recordLogoutPresence().catch(e => console.warn('[ATTENDANCE] Checkout on logout failed:', e));
     await api.post('auth/logout').catch(e => console.warn('[AUTH] Backend logout failed:', e));
     sessionStorage.clear();
+    localStorage.clear();
+    localStorage.setItem("shift_user_logged_out", "true");
+    sessionStorage.setItem("shift_user_logged_out", "true");
     _companyProfile = null;
     _currentUser = null;
     window.location.href = "/login";
 };
 
 export const initStorage = async () => {
-    const token = sessionStorage.getItem('token') || sessionStorage.getItem('token');
-    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true' || sessionStorage.getItem('isLoggedIn') === 'true';
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isLoggedIn') === 'true';
 
     if (!isLoggedIn || !token) {
         console.log('[STORAGE] Skipping initStorage (pre-login)');
@@ -66,16 +69,29 @@ export const initStorage = async () => {
         const meRes = await api.get('auth/me');
         _currentUser = meRes.data;
 
-        // Sync sessionStorage with fresher DB data for downstream components
+        // Sync sessionStorage & localStorage with fresher DB data for downstream components
         let role = (_currentUser.role || 'employee').toLowerCase().replace(/[_\s]+/g, '');
         if (['requiter', 'recruiting'].includes(role)) role = 'recruiter';
         if (['itdepartment', 'itadmin', 'itsupport'].includes(role)) role = 'it';
         if (['teamleader', 'tl'].includes(role)) role = 'teamleader';
 
+        const userNameVal = _currentUser.name || _currentUser.full_name || 'User';
+        const empIdVal = _currentUser.employee_id || '';
+        const userIdVal = String(_currentUser.id);
+
+        sessionStorage.setItem("token", token);
+        sessionStorage.setItem("isLoggedIn", "true");
         sessionStorage.setItem("userRole", role);
-        sessionStorage.setItem("userId", String(_currentUser.id));
-        sessionStorage.setItem("employeeId", _currentUser.employee_id || '');
-        sessionStorage.setItem("userName", _currentUser.name || _currentUser.full_name);
+        sessionStorage.setItem("userId", userIdVal);
+        sessionStorage.setItem("userName", userNameVal);
+        sessionStorage.setItem("employeeId", empIdVal);
+
+        localStorage.setItem("token", token);
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("userId", userIdVal);
+        localStorage.setItem("userName", userNameVal);
+        localStorage.setItem("employeeId", empIdVal);
 
         // Fetch Detailed Profile for Dashboard stats (Dept/Manager)
         await refreshProfile().catch(e => console.warn('[STORAGE] Profile refresh failed:', e));
@@ -590,8 +606,8 @@ export const recordLogoutPresence = async () => {
 // --- GENERIC HELPERS ---
 export const fetchData = async (endpoint: string) => {
     // 🔐 AUTH GUARD: Skip API calls pre-login
-    const token = sessionStorage.getItem('token');
-    const role = sessionStorage.getItem('userRole');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
     if (!token || !role) {
         console.log(`[STORAGE] Skipping ${endpoint} (pre-login: no token/role)`);
         return [];

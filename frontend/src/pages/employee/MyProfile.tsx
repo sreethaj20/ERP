@@ -482,7 +482,7 @@ export default function MyProfile() {
                       }
                     }}
                   >
-                    <FaSignOutAlt /> {offboarding && (offboarding.status === 'Pending' || !offboarding.completed) ? "Resignation Pending" : "Initiate Resignation"}
+                    <FaSignOutAlt /> Initialize Resignation
                   </button>
                 </div>
               </GlassCard>
