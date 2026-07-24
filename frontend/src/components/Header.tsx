@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaBell, FaUserCircle, FaSignOutAlt, FaArrowLeft } from 'react-icons/fa';
+import { FaBell, FaUserCircle, FaArrowLeft, FaCoffee, FaPlay } from 'react-icons/fa';
 import Logo from './Logo';
-import { logoutUser, endShiftSession, getNotifications, markNotificationRead, getData } from '../utils/storage';
+import { logoutUser, getNotifications, markNotificationRead, getData, getActiveShiftSession, startShiftSession, getEmployeeShift, takeBreak, endBreak } from '../utils/storage';
+import { parseISOToLocalDate } from '../utils/formatters';
 import { useTheme } from '../context/ThemeContext';
 import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
@@ -23,12 +24,98 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [userName, setUserName] = useState(sessionStorage.getItem('userName') || 'HR Admin');
   const [userPhoto, setUserPhoto] = useState<string | null>(null);
+  const [workDuration, setWorkDuration] = useState("00:00:00");
+  const [session, setSession] = useState<any>(null);
+  const [breakLoading, setBreakLoading] = useState(false);
+
+  const formatSeconds = (totalSeconds: number) => {
+    if (isNaN(totalSeconds) || totalSeconds < 0) return "00:00:00";
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const syncShiftSession = async () => {
+    const res = await getActiveShiftSession();
+    setSession(res?.active ? res.session : null);
+  };
+
+  const tickShift = () => {
+    if (!session) {
+      setWorkDuration("00:00:00");
+      return;
+    }
+    const now = new Date();
+    const loginDate = parseISOToLocalDate(session.login_time || session.started_at);
+    const totalShiftSec = Math.floor((now.getTime() - loginDate.getTime()) / 1000);
+    let currentBreakSec = 0;
+    if (session.on_break && session.current_break_start) {
+      currentBreakSec = Math.floor((now.getTime() - new Date(session.current_break_start).getTime()) / 1000);
+    }
+    const totalBreakSec = (session.total_break_seconds || 0) + currentBreakSec;
+    const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
+    setWorkDuration(formatSeconds(totalWorkSec));
+  };
+
+  const handleToggleBreak = async () => {
+    if (!userId || breakLoading) return;
+    try {
+      setBreakLoading(true);
+      if (session?.on_break) {
+        await endBreak(userId);
+      } else {
+        await takeBreak(userId);
+      }
+      await syncShiftSession();
+    } catch (err) {
+      console.error("Break action error:", err);
+    } finally {
+      setBreakLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initShift = async () => {
+      const res = await getActiveShiftSession();
+      setSession(res?.active ? res.session : null);
+
+      const userLoggedOut = sessionStorage.getItem("shift_user_logged_out") === "true";
+      const shiftAutostarted = sessionStorage.getItem("shift_autostarted") === "true";
+
+      if (!res?.active && !shiftAutostarted && !userLoggedOut) {
+        const targetId = sessionStorage.getItem("employeeId") || userId;
+        const myShift = getEmployeeShift(targetId);
+        if (myShift) {
+          try {
+            await startShiftSession(myShift.id || 0);
+            sessionStorage.setItem("shift_autostarted", "true");
+            const updated = await getActiveShiftSession();
+            setSession(updated?.active ? updated.session : null);
+          } catch (e) {
+            console.warn("Auto-start suppressed:", e);
+          }
+        }
+      }
+    };
+
+    initShift();
+    const pollInt = setInterval(syncShiftSession, 20000);
+    const tickInt = setInterval(tickShift, 1000);
+
+    return () => {
+      clearInterval(pollInt);
+      clearInterval(tickInt);
+    };
+  }, [userId]);
+
+  useEffect(() => {
+    tickShift();
+  }, [session]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
       const all = await getNotifications();
-      // Backend already filters by current user, just map fields if needed or use as is
-      // If backend returns {id, user_id, title, message, type, is_read, created_at}
       if (Array.isArray(all)) {
         const mapped = all.map((n: any) => ({
           ...n,
@@ -66,17 +153,6 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   };
   const roleKey = role.toLowerCase().replace(/[\s_]+/g, '');
   const displayRole = roleMap[roleKey] || (role.charAt(0).toUpperCase() + role.slice(1).replace(/([A-Z])/g, ' $1').trim());
-  const displayTitle = title || `${displayRole} Portal`;
-
-  const executeLogout = async () => {
-    // logoutUser is async: records checkout → clears session → redirects to /login
-    await logoutUser();
-  };
-
-  const handleLogout = async () => {
-    await handleSafeLogout(executeLogout);
-  };
-
 
   return (
     <div className="top-header" style={{
@@ -118,13 +194,69 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         <div
           style={{
-            fontSize: '14px',
-            color: 'var(--text-secondary)',
-            fontWeight: 500,
-            letterSpacing: '0.2px'
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            textAlign: 'right'
           }}
         >
-          Welcome back, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>!
+          <div
+            style={{
+              fontSize: '14px',
+              color: 'var(--text-secondary)',
+              fontWeight: 500,
+              letterSpacing: '0.2px'
+            }}
+          >
+            Welcome back, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>!
+          </div>
+          <div
+            style={{
+              fontSize: '12px',
+              color: session?.on_break ? '#ff9f0a' : 'var(--accent-blue, #0a84ff)',
+              fontWeight: 600,
+              fontFamily: 'monospace',
+              marginTop: '3px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontFamily: 'inherit' }}>Total Work:</span>
+            <span>{workDuration}</span>
+            {session && (
+              <button
+                onClick={handleToggleBreak}
+                disabled={breakLoading}
+                title={session?.on_break ? "End Break & Resume Work" : "Take Break"}
+                style={{
+                  background: session?.on_break ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 159, 10, 0.15)',
+                  color: session?.on_break ? '#30d158' : '#ff9f0a',
+                  border: `1px solid ${session?.on_break ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 159, 10, 0.3)'}`,
+                  borderRadius: '6px',
+                  padding: '2px 7px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: breakLoading ? 'wait' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginLeft: '4px',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                {session?.on_break ? (
+                  <>
+                    <FaPlay size={9} /> End Break
+                  </>
+                ) : (
+                  <>
+                    <FaCoffee size={11} /> Break
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         </div>
 
 
@@ -215,30 +347,6 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               <FaUserCircle size={32} color="var(--text-secondary)" />
             )}
           </div>
-
-          <button
-            onClick={handleLogout}
-            disabled={!canLogout}
-            style={{
-              background: canLogout ? 'rgba(255, 69, 58, 0.1)' : 'rgba(255, 69, 58, 0.04)',
-              border: 'none',
-              color: canLogout ? '#ff453a' : 'rgba(255, 69, 58, 0.35)',
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
-              cursor: canLogout ? 'pointer' : 'not-allowed',
-              opacity: canLogout ? 1 : 0.45,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease'
-            }}
-            title={canLogout ? "Logout from shift" : "Logout disabled until 4h half-day work completed"}
-            onMouseEnter={(e) => { if (canLogout) e.currentTarget.style.background = 'rgba(255, 69, 58, 0.2)'; }}
-            onMouseLeave={(e) => { if (canLogout) e.currentTarget.style.background = 'rgba(255, 69, 58, 0.1)'; }}
-          >
-            <FaSignOutAlt size={18} />
-          </button>
         </div>
       </div>
     </div>
