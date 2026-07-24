@@ -527,12 +527,11 @@ export const refreshITTransfers = async () => { _it_transfers = await fetchData(
 export const refreshITReturns = async () => { _it_returns = await fetchData('it/returns'); return _it_returns; };
 
 export const refreshPresence = async () => {
-    const role = getRole();
-    if (role === 'hr' || role === 'manager') {
+    try {
         _presence = await fetchData('hr/attendance/presence');
-    } else {
+    } catch (e) {
+        console.warn('[STORAGE] refreshPresence failed:', e);
         _presence = [];
-        console.log(`[STORAGE] Skipping hr/attendance/presence for role: ${role}`);
     }
     return _presence;
 };

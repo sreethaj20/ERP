@@ -364,7 +364,7 @@ def get_hr_attendance_corrections(skip: int = 0, limit: int = 100, db: Session =
     return attendance_service.get_all_corrections(db, skip, limit, user_role=current_user.role, user_id=current_user.id)
 
 @router.get("/attendance/presence")
-def get_attendance_presence(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):
+def get_attendance_presence(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager", "teamleader", "admin", "recruiter", "it", "employee"]))):
     return attendance_service.get_active_presence(db, user_role=current_user.role, viewer_user_id=current_user.id)
 
 
