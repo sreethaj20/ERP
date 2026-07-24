@@ -44,17 +44,12 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const tickShift = () => {
     const now = new Date();
     const sessionStart = session?.login_time || session?.started_at || session?.created_at;
-    const loginTimeIso = getOrSetDailyLoginTime(sessionStart);
-    let loginDate = parseISOToLocalDate(loginTimeIso);
+    const loginTimeIso = sessionStart || getOrSetDailyLoginTime();
+    const loginDate = parseISOToLocalDate(loginTimeIso);
 
-    // If active session has an earlier valid login_time/started_at today, use the earliest anchor
-    if (sessionStart) {
-      const sDate = parseISOToLocalDate(sessionStart);
-      if (!isNaN(sDate.getTime()) && sDate.getTime() < loginDate.getTime()) {
-        loginDate = sDate;
-        localStorage.setItem("login_time", sessionStart);
-        sessionStorage.setItem("login_time", sessionStart);
-      }
+    if (isNaN(loginDate.getTime())) {
+      setWorkDuration("00:00:00");
+      return;
     }
 
     let totalBreakSec = 0;
