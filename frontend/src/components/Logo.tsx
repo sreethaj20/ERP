@@ -4,6 +4,7 @@ import defaultLogoImage from "../assets/mercure-logo.jpeg";
 
 interface LogoProps {
     width?: number | string;
+    height?: number | string;
     className?: string;
     showTagline?: boolean;
     showName?: boolean;
@@ -13,6 +14,7 @@ interface LogoProps {
 
 const Logo: React.FC<LogoProps> = ({
     width = 200,
+    height,
     className = "",
     showTagline = false,
     showName = true,
@@ -81,10 +83,10 @@ const Logo: React.FC<LogoProps> = ({
                 src={logoSrc}
                 alt={companyName || "Company Logo"}
                 style={{
-                    width: isHorizontal ? 'auto' : "100%",
-                    height: isHorizontal ? '32px' : "auto",
+                    width: isHorizontal ? 'auto' : (typeof width === 'number' ? `${width}px` : width),
+                    height: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '54px' : "auto"),
                     objectFit: "contain",
-                    maxHeight: isHorizontal ? '40px' : (typeof width === 'number' ? width * 0.6 : '60px'),
+                    maxHeight: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '64px' : (typeof width === 'number' ? width * 0.6 : '60px')),
                     marginBottom: (!isHorizontal && showName && companyName) ? '8px' : '0',
                     filter: printMode ? 'none' :
                         document.documentElement.getAttribute('data-theme') === 'light'

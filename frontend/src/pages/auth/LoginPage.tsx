@@ -127,6 +127,9 @@ export default function LoginPage() {
       sessionStorage.setItem("userId", String(user.id));
       sessionStorage.setItem("userName", user.name || user.full_name);
       sessionStorage.setItem("employeeId", user.employee_id || "");
+      if (!sessionStorage.getItem("login_time")) {
+        sessionStorage.setItem("login_time", new Date().toISOString());
+      }
 
       // Map role for routing 
       let role = (user.role || 'employee').toLowerCase().replace(/[_\s]+/g, '');

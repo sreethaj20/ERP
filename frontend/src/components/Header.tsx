@@ -42,18 +42,40 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   };
 
   const tickShift = () => {
-    if (!session) {
+    const now = new Date();
+    let loginDate: Date | null = null;
+    let totalBreakSec = 0;
+    let isOnBreak = false;
+
+    if (session) {
+      const startTimeStr = session.login_time || session.started_at || session.created_at;
+      if (startTimeStr) {
+        loginDate = parseISOToLocalDate(startTimeStr);
+      }
+      isOnBreak = Boolean(session.on_break);
+      let currentBreakSec = 0;
+      if (isOnBreak && session.current_break_start) {
+        const breakDate = parseISOToLocalDate(session.current_break_start);
+        if (!isNaN(breakDate.getTime())) {
+          currentBreakSec = Math.max(0, Math.floor((now.getTime() - breakDate.getTime()) / 1000));
+        }
+      }
+      totalBreakSec = (Number(session.total_break_seconds) || 0) + currentBreakSec;
+    }
+
+    if (!loginDate || isNaN(loginDate.getTime())) {
+      const fallbackStr = sessionStorage.getItem("login_time");
+      if (fallbackStr) {
+        loginDate = parseISOToLocalDate(fallbackStr);
+      }
+    }
+
+    if (!loginDate || isNaN(loginDate.getTime())) {
       setWorkDuration("00:00:00");
       return;
     }
-    const now = new Date();
-    const loginDate = parseISOToLocalDate(session.login_time || session.started_at);
-    const totalShiftSec = Math.floor((now.getTime() - loginDate.getTime()) / 1000);
-    let currentBreakSec = 0;
-    if (session.on_break && session.current_break_start) {
-      currentBreakSec = Math.floor((now.getTime() - new Date(session.current_break_start).getTime()) / 1000);
-    }
-    const totalBreakSec = (session.total_break_seconds || 0) + currentBreakSec;
+
+    const totalShiftSec = Math.max(0, Math.floor((now.getTime() - loginDate.getTime()) / 1000));
     const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
     setWorkDuration(formatSeconds(totalWorkSec));
   };
@@ -62,6 +84,11 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
     if (!userId || breakLoading) return;
     try {
       setBreakLoading(true);
+      if (!session) {
+        const targetId = sessionStorage.getItem("employeeId") || userId;
+        const myShift = getEmployeeShift(targetId);
+        await startShiftSession(myShift?.id || 0);
+      }
       if (session?.on_break) {
         await endBreak(userId);
       } else {
@@ -77,25 +104,26 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
 
   useEffect(() => {
     const initShift = async () => {
-      const res = await getActiveShiftSession();
-      setSession(res?.active ? res.session : null);
+      try {
+        const res = await getActiveShiftSession();
+        if (res?.active && res.session) {
+          setSession(res.session);
+          return;
+        }
 
-      const userLoggedOut = sessionStorage.getItem("shift_user_logged_out") === "true";
-      const shiftAutostarted = sessionStorage.getItem("shift_autostarted") === "true";
+        const userLoggedOut = sessionStorage.getItem("shift_user_logged_out") === "true";
 
-      if (!res?.active && !shiftAutostarted && !userLoggedOut) {
-        const targetId = sessionStorage.getItem("employeeId") || userId;
-        const myShift = getEmployeeShift(targetId);
-        if (myShift) {
-          try {
-            await startShiftSession(myShift.id || 0);
-            sessionStorage.setItem("shift_autostarted", "true");
-            const updated = await getActiveShiftSession();
-            setSession(updated?.active ? updated.session : null);
-          } catch (e) {
-            console.warn("Auto-start suppressed:", e);
+        if (!userLoggedOut) {
+          const targetId = sessionStorage.getItem("employeeId") || userId;
+          const myShift = getEmployeeShift(targetId);
+          await startShiftSession(myShift?.id || 0);
+          const updated = await getActiveShiftSession();
+          if (updated?.active && updated.session) {
+            setSession(updated.session);
           }
         }
+      } catch (e) {
+        console.warn("Shift init error:", e);
       }
     };
 
@@ -187,7 +215,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               <FaArrowLeft size={14} />
             </button>
           )}
-          <Logo width="auto" layout="horizontal" showTagline={false} />
+          <Logo width="auto" height="54px" layout="horizontal" showTagline={false} />
         </div>
       </div>
 
@@ -224,38 +252,36 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           >
             <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontFamily: 'inherit' }}>Total Work:</span>
             <span>{workDuration}</span>
-            {session && (
-              <button
-                onClick={handleToggleBreak}
-                disabled={breakLoading}
-                title={session?.on_break ? "End Break & Resume Work" : "Take Break"}
-                style={{
-                  background: session?.on_break ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 159, 10, 0.15)',
-                  color: session?.on_break ? '#30d158' : '#ff9f0a',
-                  border: `1px solid ${session?.on_break ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 159, 10, 0.3)'}`,
-                  borderRadius: '6px',
-                  padding: '2px 7px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: breakLoading ? 'wait' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  marginLeft: '4px',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                {session?.on_break ? (
-                  <>
-                    <FaPlay size={9} /> End Break
-                  </>
-                ) : (
-                  <>
-                    <FaCoffee size={11} /> Break
-                  </>
-                )}
-              </button>
-            )}
+            <button
+              onClick={handleToggleBreak}
+              disabled={breakLoading}
+              title={session?.on_break ? "End Break & Resume Work" : "Take Break"}
+              style={{
+                background: session?.on_break ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 159, 10, 0.15)',
+                color: session?.on_break ? '#30d158' : '#ff9f0a',
+                border: `1px solid ${session?.on_break ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 159, 10, 0.3)'}`,
+                borderRadius: '6px',
+                padding: '2px 7px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: breakLoading ? 'wait' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                marginLeft: '4px',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              {session?.on_break ? (
+                <>
+                  <FaPlay size={9} /> End Break
+                </>
+              ) : (
+                <>
+                  <FaCoffee size={11} /> Break
+                </>
+              )}
+            </button>
           </div>
         </div>
 
