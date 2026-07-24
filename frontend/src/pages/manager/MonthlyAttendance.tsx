@@ -19,6 +19,22 @@ export default function MonthlyAttendance() {
     const [corrections, setCorrections] = useState<any[]>([]);
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // Helpers for robust matching & date normalization
+    const normalizeDate = (dStr: any) => {
+        if (!dStr) return '';
+        const s = String(dStr).trim();
+        return s.includes('T') ? s.split('T')[0] : s.substring(0, 10);
+    };
+
+    const isEmpMatch = (aId: any, emp: any) => {
+        if (!aId || !emp) return false;
+        const target = String(aId).trim().toLowerCase();
+        const eCode = String(emp.employee_id || '').trim().toLowerCase();
+        const eId = String(emp.id || '').trim().toLowerCase();
+        const uId = String(emp.user_id || '').trim().toLowerCase();
+        return (eCode !== '' && target === eCode) || (eId !== '' && target === eId) || (uId !== '' && target === uId);
+    };
+
     const adminRoles = ['hr', 'teamleader', 'team leader', 'recruiter', 'it'];
 
     const isPresent = (status: string) => {
@@ -204,16 +220,16 @@ export default function MonthlyAttendance() {
                                         No staff found.
                                     </td></tr>
                                 ) : visibleReports.map((emp: any) => {
-                                    const p = presence.find((x: any) =>
-                                        String(x.employee_id) === String(emp.employee_id) ||
-                                        String(x.user_id) === String(emp.employee_id)
-                                    );
+                                    const p = presence.find((x: any) => isEmpMatch(x.employee_id, emp) || isEmpMatch(x.user_id, emp));
 
                                     // Find official attendance record for today
                                     const att = records.find((r: any) =>
-                                        String(r.employee_id) === String(emp.employee_id) &&
-                                        r.date === todayStr
+                                        isEmpMatch(r.employee_id, emp) &&
+                                        normalizeDate(r.date) === todayStr
                                     );
+
+                                    const loginTime = att?.login_time || att?.check_in || att?.check_in_time;
+                                    const logoutTime = att?.logout_time || att?.check_out || att?.check_out_time;
 
                                     const badge = roleBadge(emp.role);
                                     const isTL = (emp.role || '').toLowerCase().replace(/\s+/g, '') === 'teamleader';
@@ -244,21 +260,21 @@ export default function MonthlyAttendance() {
                                                 </td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '13px' }}>{emp.department || '—'}</td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                                                    {att?.login_time ? formatLocalTime(att.login_time) : <span style={{ color: 'var(--text-tertiary)' }}>Not logged in</span>}
+                                                    {loginTime ? formatLocalTime(loginTime) : <span style={{ color: 'var(--text-tertiary)' }}>Not logged in</span>}
                                                 </td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                                                    {att?.logout_time
-                                                        ? formatLocalTime(att.logout_time)
+                                                    {logoutTime
+                                                        ? formatLocalTime(logoutTime)
                                                         : p?.is_online ? <span style={{ color: '#30d158' }}>Active</span>
                                                             : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
                                                 </td>
                                                 <td style={{ padding: '12px 14px' }}>
                                                     <span style={{
                                                         padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700',
-                                                        background: p?.is_online ? 'rgba(48,209,88,0.15)' : att?.status === 'On Leave' ? 'rgba(0,122,255,0.15)' : att?.login_time ? 'rgba(255,159,10,0.15)' : 'rgba(255,69,58,0.08)',
-                                                        color: p?.is_online ? '#30d158' : att?.status === 'On Leave' ? '#0a84ff' : att?.login_time ? '#ff9f0a' : '#ff453a'
+                                                        background: p?.is_online ? 'rgba(48,209,88,0.15)' : att?.status === 'On Leave' ? 'rgba(0,122,255,0.15)' : loginTime ? 'rgba(255,159,10,0.15)' : 'rgba(255,69,58,0.08)',
+                                                        color: p?.is_online ? '#30d158' : att?.status === 'On Leave' ? '#0a84ff' : loginTime ? '#ff9f0a' : '#ff453a'
                                                     }}>
-                                                        {p?.is_online ? 'ONLINE' : att?.status === 'On Leave' ? 'ON LEAVE' : att?.login_time ? 'LOGGED OUT' : 'OFFLINE'}
+                                                        {p?.is_online ? 'ONLINE' : att?.status === 'On Leave' ? 'ON LEAVE' : loginTime ? 'LOGGED OUT' : 'OFFLINE'}
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '12px 14px' }}>
@@ -301,14 +317,14 @@ export default function MonthlyAttendance() {
                                                                         </thead>
                                                                         <tbody>
                                                                             {teamMembers.map((m: any) => {
-                                                                                const mp = presence.find((x: any) =>
-                                                                                    String(x.employee_id) === String(m.employee_id) ||
-                                                                                    String(x.user_id) === String(m.employee_id)
-                                                                                );
+                                                                                const mp = presence.find((x: any) => isEmpMatch(x.employee_id, m) || isEmpMatch(x.user_id, m));
                                                                                 const matt = records.find((r: any) =>
-                                                                                    String(r.employee_id) === String(m.employee_id) &&
-                                                                                    r.date === todayStr
+                                                                                    isEmpMatch(r.employee_id, m) &&
+                                                                                    normalizeDate(r.date) === todayStr
                                                                                 );
+                                                                                const mLoginTime = matt?.login_time || matt?.check_in || matt?.check_in_time;
+                                                                                const mLogoutTime = matt?.logout_time || matt?.check_out || matt?.check_out_time;
+
                                                                                 return (
                                                                                     <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                                                                         <td style={{ padding: '8px', color: 'var(--text-primary)', fontWeight: '600' }}>
@@ -321,19 +337,19 @@ export default function MonthlyAttendance() {
                                                                                             </div>
                                                                                         </td>
                                                                                         <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                                                                                            {formatLocalTime(matt?.login_time)}
+                                                                                            {mLoginTime ? formatLocalTime(mLoginTime) : '—'}
                                                                                         </td>
                                                                                         <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
-                                                                                            {matt?.logout_time ? formatLocalTime(matt.logout_time)
+                                                                                            {mLogoutTime ? formatLocalTime(mLogoutTime)
                                                                                                 : mp?.is_online ? <span style={{ color: '#30d158' }}>Active</span> : '—'}
                                                                                         </td>
                                                                                         <td style={{ padding: '8px' }}>
                                                                                             <span style={{
                                                                                                 padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700',
-                                                                                                background: mp?.is_online ? 'rgba(48,209,88,0.15)' : matt?.login_time ? 'rgba(255,159,10,0.12)' : 'rgba(255,69,58,0.08)',
-                                                                                                color: mp?.is_online ? '#30d158' : matt?.login_time ? '#ff9f0a' : '#ff453a'
+                                                                                                background: mp?.is_online ? 'rgba(48,209,88,0.15)' : mLoginTime ? 'rgba(255,159,10,0.12)' : 'rgba(255,69,58,0.08)',
+                                                                                                color: mp?.is_online ? '#30d158' : mLoginTime ? '#ff9f0a' : '#ff453a'
                                                                                             }}>
-                                                                                                {mp?.is_online ? 'ONLINE' : matt?.login_time ? 'LOGGED OUT' : 'OFFLINE'}
+                                                                                                {mp?.is_online ? 'ONLINE' : mLoginTime ? 'LOGGED OUT' : 'OFFLINE'}
                                                                                             </span>
                                                                                         </td>
                                                                                     </tr>

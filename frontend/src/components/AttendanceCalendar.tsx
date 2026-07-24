@@ -85,19 +85,36 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         setViewDate(new Date());
     };
 
+    // Helper for date normalization
+    const normalizeDate = (dStr: any) => {
+        if (!dStr) return '';
+        const s = String(dStr).trim();
+        return s.includes('T') ? s.split('T')[0] : s.substring(0, 10);
+    };
+
+    // Helper for employee matching
+    const isEmpMatch = (rEmpId: any) => {
+        if (!rEmpId) return false;
+        const target = String(rEmpId).trim().toLowerCase();
+        const eCode = String(employeeId || '').trim().toLowerCase();
+        const uId = String(userId || '').trim().toLowerCase();
+        return (eCode !== '' && target === eCode) || (uId !== '' && target === uId);
+    };
+
     // Real attendance logic
     const getStatus = (day: number) => {
         const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         const dateObj = new Date(year, month, day);
+        dateObj.setHours(0, 0, 0, 0);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const isToday = dateObj.getTime() === today.getTime();
 
         // 1. Fetch Actual Attendance Records First
         let dayRecords = [];
         if (type === 'individual') {
             dayRecords = records.filter(r =>
-                r.date === dateStr &&
-                ((employeeId && String(r.employee_id) === String(employeeId)) || String(r.employee_id) === String(userId))
+                normalizeDate(r.date) === dateStr && isEmpMatch(r.employee_id)
             );
         } else {
             const userRole = sessionStorage.getItem("userRole");
@@ -119,9 +136,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                 if (employeeId) myTeamIds.push(String(employeeId));
                 if (userId) myTeamIds.push(String(userId));
 
-                dayRecords = records.filter(r => r.date === dateStr && myTeamIds.includes(String(r.employee_id)));
+                dayRecords = records.filter(r => normalizeDate(r.date) === dateStr && myTeamIds.includes(String(r.employee_id)));
             } else {
-                dayRecords = records.filter(r => r.date === dateStr);
+                dayRecords = records.filter(r => normalizeDate(r.date) === dateStr);
             }
         }
 
@@ -130,7 +147,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         if (dayRecords.length > 0) {
             // Check all records for highest priority status
             const hasExtension = dayRecords.some(r => String(r.status || '').toLowerCase().includes('extension') || String(r.remark || '').toLowerCase().includes('extension'));
-            const hasPresent = dayRecords.some(r => String(r.status || '').toLowerCase().includes('present') || String(r.status || '').toLowerCase().includes('active'));
+            const hasPresent = dayRecords.some(r => {
+                const st = String(r.status || '').toLowerCase();
+                const hasLogin = !!(r.login_time || r.check_in || r.check_in_time || r.started_at);
+                return st.includes('present') || st.includes('active') || st.includes('wfh') || st.includes('tracking') || st.includes('closed') || st.includes('shift') || hasLogin;
+            });
             const hasHalfDay = dayRecords.some(r => String(r.status || '').toLowerCase().includes('half'));
             const hasLeave = dayRecords.some(r => String(r.status || '').toLowerCase().includes('leave') || String(r.remark || '').toLowerCase().includes('leave'));
 
@@ -139,6 +160,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             else if (hasHalfDay) workedRecordStatus = 'half-day';
             else if (hasLeave) workedRecordStatus = 'leave';
             else workedRecordStatus = 'absent';
+        }
+
+        // 🟢 LIVE PRESENCE FALLBACK FOR TODAY: If current user is logged in today, mark as Present
+        if (!workedRecordStatus && isToday && type === 'individual') {
+            const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" || !!sessionStorage.getItem("token");
+            if (isLoggedIn) {
+                workedRecordStatus = 'present';
+            }
         }
 
         // 2. Check Priorities

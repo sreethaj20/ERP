@@ -132,8 +132,8 @@ class AttendanceService:
                     d["employee_name"] = f"{fn or ''} {ln or ''}".strip() or (attn.employee_id if attn else "Unknown")
                     d["role"] = role
                     d["department"] = dept
-                    d["login_time"] = attn.check_in if attn else None
-                    d["logout_time"] = attn.check_out if attn else None
+                    d["login_time"] = (attn.check_in or attn.check_in_time) if attn else None
+                    d["logout_time"] = (attn.check_out or attn.check_out_time) if attn else None
                     # Explicitly serialize date as YYYY-MM-DD string for frontend consistency
                     if d.get("date") and hasattr(d["date"], "isoformat"):
                         d["date"] = d["date"].isoformat()

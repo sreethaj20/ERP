@@ -508,21 +508,31 @@ def get_team_attendance_for_manager(
 
 @router.get("/attendance/summary")
 def get_team_attendance_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
-    # Simplified summary logic
     from app.repositories.employee_repo import employee_repo
     from app.models.attendance import Attendance
     from datetime import date
     emp = employee_repo.get_by_user_id(db, current_user.id)
-    team_ids = [e.employee_id for e in db.query(employee_repo.model).filter(employee_repo.model.manager_id == (emp.employee_id if emp else None)).all()]
+    manager_id = emp.employee_id if emp else None
+    team_ids = _get_recursive_team_ids(db, manager_id) if manager_id else []
     today = date.today()
-    present_count = db.query(Attendance).filter(Attendance.employee_id.in_(team_ids), Attendance.date == today, Attendance.status == "Present").count()
-    absent_count = len(team_ids) - present_count
+    
+    present_count = db.query(Attendance).filter(
+        Attendance.employee_id.in_(team_ids),
+        Attendance.date == today,
+        Attendance.status.ilike("%Present%")
+    ).count() if team_ids else 0
+    
+    total_team = len(team_ids)
+    absent_count = max(0, total_team - present_count)
     return {
-        "today_date": today,
-        "total_team_members": len(team_ids),
+        "today_date": today.isoformat(),
+        "total_team": total_team,
+        "total_team_members": total_team,
+        "present_count": present_count,
         "present": present_count,
+        "absent_count": absent_count,
         "absent": absent_count,
-        "on_leave": 0 # simplified
+        "on_leave": 0
     }
 
 # --- Manager Staff Timesheet Monitoring ---
