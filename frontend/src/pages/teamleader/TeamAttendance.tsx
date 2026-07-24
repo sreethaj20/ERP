@@ -4,7 +4,7 @@ import GlassCard from "../../components/GlassCard";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
 import { getTeamMembers, getTeamAttendanceRecords } from "../../services/teamleaderService";
 import { FaClock, FaCalendarCheck, FaUserFriends, FaSignOutAlt, FaSignInAlt, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
-import { downloadCSV, formatLocalTime } from "../../utils/formatters";
+import { downloadCSV, formatLocalTime, parseISOToLocalDate } from "../../utils/formatters";
 import { refreshAttendanceCorrections, approveAttendanceCorrection } from "../../utils/storage";
 
 export default function TeamAttendance() {
