@@ -453,20 +453,34 @@ export default function AttendanceManagement() {
           )}
         </td>
         <td style={{ padding: "14px 12px" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: att?.login_time ? '#30d158' : 'var(--text-tertiary)' }}>
-            <FaSignInAlt size={12} style={{ opacity: att?.login_time ? 1 : 0.4 }} />
-            <span style={{ fontSize: '13px', fontWeight: '500' }}>
-              {formatLocalTime(att?.login_time)}
-            </span>
-          </div>
+          {(() => {
+            const loginVal = att?.login_time || att?.check_in || att?.check_in_time;
+            const formatted = formatLocalTime(loginVal);
+            const hasLogin = formatted !== '—';
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hasLogin ? '#30d158' : 'var(--text-tertiary)' }}>
+                <FaSignInAlt size={12} style={{ opacity: hasLogin ? 1 : 0.4 }} />
+                <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                  {formatted}
+                </span>
+              </div>
+            );
+          })()}
         </td>
         <td style={{ padding: "14px 12px" }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: att?.logout_time ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
-            <FaSignOutAlt size={12} style={{ opacity: att?.logout_time ? 1 : 0.4 }} />
-            <span style={{ fontSize: '13px', fontWeight: '500' }}>
-              {formatLocalTime(att?.logout_time)}
-            </span>
-          </div>
+          {(() => {
+            const logoutVal = att?.logout_time || att?.check_out || att?.check_out_time;
+            const formatted = formatLocalTime(logoutVal);
+            const hasLogout = formatted !== '—';
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: hasLogout ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>
+                <FaSignOutAlt size={12} style={{ opacity: hasLogout ? 1 : 0.4 }} />
+                <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                  {formatted}
+                </span>
+              </div>
+            );
+          })()}
         </td>
         <td style={{ padding: "14px 12px", fontSize: '13px', fontWeight: '600', color: '#fff' }}>
           {att?.hours_worked || '0'}h

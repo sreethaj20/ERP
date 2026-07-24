@@ -133,7 +133,11 @@ class AttendanceService:
                     d["role"] = role
                     d["department"] = dept
                     d["login_time"] = (attn.check_in or attn.check_in_time) if attn else None
+                    if d.get("login_time") and hasattr(d["login_time"], "isoformat"):
+                        d["login_time"] = d["login_time"].isoformat()
                     d["logout_time"] = (attn.check_out or attn.check_out_time) if attn else None
+                    if d.get("logout_time") and hasattr(d["logout_time"], "isoformat"):
+                        d["logout_time"] = d["logout_time"].isoformat()
                     # Explicitly serialize date as YYYY-MM-DD string for frontend consistency
                     if d.get("date") and hasattr(d["date"], "isoformat"):
                         d["date"] = d["date"].isoformat()

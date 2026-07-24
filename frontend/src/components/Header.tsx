@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { FaBell, FaUserCircle, FaArrowLeft, FaCoffee, FaPlay } from 'react-icons/fa';
 import Logo from './Logo';
 import { logoutUser, getNotifications, markNotificationRead, getData, getActiveShiftSession, startShiftSession, getEmployeeShift, takeBreak, endBreak } from '../utils/storage';
-import { parseISOToLocalDate } from '../utils/formatters';
+import { parseISOToLocalDate, getOrSetDailyLoginTime } from '../utils/formatters';
 import { useTheme } from '../context/ThemeContext';
 import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
@@ -16,7 +16,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isDashboard = location.pathname.endsWith('/dashboard');
-  const userId = sessionStorage.getItem('userId') || '';
+  const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId') || '';
   const { theme, toggleTheme } = useTheme();
   const { canLogout, handleSafeLogout } = useLogoutLogic();
 
@@ -43,16 +43,23 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
 
   const tickShift = () => {
     const now = new Date();
-    let loginDate: Date | null = null;
-    let totalBreakSec = 0;
-    let isOnBreak = false;
+    const sessionStart = session?.login_time || session?.started_at || session?.created_at;
+    const loginTimeIso = getOrSetDailyLoginTime(sessionStart);
+    let loginDate = parseISOToLocalDate(loginTimeIso);
 
-    if (session) {
-      const startTimeStr = session.login_time || session.started_at || session.created_at;
-      if (startTimeStr) {
-        loginDate = parseISOToLocalDate(startTimeStr);
+    // If active session has an earlier valid login_time/started_at today, use the earliest anchor
+    if (sessionStart) {
+      const sDate = parseISOToLocalDate(sessionStart);
+      if (!isNaN(sDate.getTime()) && sDate.getTime() < loginDate.getTime()) {
+        loginDate = sDate;
+        localStorage.setItem("login_time", sessionStart);
+        sessionStorage.setItem("login_time", sessionStart);
       }
-      isOnBreak = Boolean(session.on_break);
+    }
+
+    let totalBreakSec = 0;
+    if (session) {
+      const isOnBreak = Boolean(session.on_break);
       let currentBreakSec = 0;
       if (isOnBreak && session.current_break_start) {
         const breakDate = parseISOToLocalDate(session.current_break_start);
@@ -63,26 +70,10 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
       totalBreakSec = (Number(session.total_break_seconds) || 0) + currentBreakSec;
     }
 
-    if (!loginDate || isNaN(loginDate.getTime())) {
-      const fallbackStr = sessionStorage.getItem("login_time") || localStorage.getItem("login_time");
-      if (fallbackStr) {
-        loginDate = parseISOToLocalDate(fallbackStr);
-      }
-    }
-
-    if (!loginDate || isNaN(loginDate.getTime())) {
-      let storedStart = sessionStorage.getItem("app_session_start") || localStorage.getItem("app_session_start");
-      if (!storedStart) {
-        storedStart = new Date().toISOString();
-        sessionStorage.setItem("app_session_start", storedStart);
-        localStorage.setItem("app_session_start", storedStart);
-      }
-      loginDate = parseISOToLocalDate(storedStart);
-    }
-
     const diffMs = now.getTime() - loginDate.getTime();
     const totalShiftSec = Math.max(0, Math.floor(diffMs / 1000));
     const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
+
     setWorkDuration(formatSeconds(totalWorkSec));
   };
 

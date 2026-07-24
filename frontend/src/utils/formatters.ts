@@ -230,12 +230,12 @@ export const downloadCSV = (data: any[], filename: string): void => {
  * handling UTC vs local timezone offsets correctly.
  */
 export const parseISOToLocalDate = (isoStr: any): Date => {
-    if (!isoStr) return new Date();
+    if (!isoStr || isoStr === 'null' || isoStr === 'undefined' || isoStr === '—' || isoStr === 'N/A') return new Date(NaN);
     if (isoStr instanceof Date) return isoStr;
     if (typeof isoStr === 'number') return new Date(isoStr);
 
     let str = String(isoStr).trim();
-    if (!str) return new Date();
+    if (!str || str === 'null' || str === 'undefined' || str === '—' || str === 'N/A') return new Date(NaN);
 
     // Handle time-only string e.g. "11:00" or "11:00:00"
     if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
@@ -253,7 +253,33 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
     }
 
     const fallback = new Date(isoStr as string);
-    return isNaN(fallback.getTime()) ? new Date() : fallback;
+    return isNaN(fallback.getTime()) ? new Date(NaN) : fallback;
+};
+
+/**
+ * Returns the persistent daily login timestamp (stored in localStorage/sessionStorage),
+ * ensuring browser refreshes retain the original login anchor date for today.
+ */
+export const getOrSetDailyLoginTime = (sessionStartTime?: string): string => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem("login_time") || sessionStorage.getItem("login_time");
+
+    if (stored) {
+        const storedDateStr = stored.split('T')[0];
+        if (storedDateStr === todayStr) {
+            return stored;
+        }
+    }
+
+    let candidate = sessionStartTime || new Date().toISOString();
+    const candidateDateStr = candidate.split('T')[0];
+    if (candidateDateStr !== todayStr) {
+        candidate = new Date().toISOString();
+    }
+
+    localStorage.setItem("login_time", candidate);
+    sessionStorage.setItem("login_time", candidate);
+    return candidate;
 };
 
 /**
