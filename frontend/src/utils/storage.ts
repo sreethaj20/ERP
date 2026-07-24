@@ -1143,6 +1143,28 @@ export const getEmployeeShift = (empId: string) => {
         }
     }
 
+    // 3. Organization Fallback: If no direct or inherited shift, fallback to General Shift or default shift definition
+    if (!shift && _shifts.length > 0) {
+        shift = _shifts.find((s: any) => 
+            s.shift_name === "General Shift" || 
+            (s.shift_name || '').toLowerCase().includes('general') || 
+            s.is_active
+        ) || _shifts[0];
+    }
+
+    if (!shift) {
+        // Universal fallback: 10:00 AM to 7:00 PM General Shift
+        shift = {
+            id: 1,
+            shift_name: "General Shift",
+            start_time: "10:00:00",
+            end_time: "19:00:00",
+            color: "#0a84ff",
+            week_off_days: ["Sunday"],
+            break_duration_minutes: 60
+        };
+    }
+
     if (shift) {
         // Calculate work hours required: (End - Start) - Break
         let workHours = 0;

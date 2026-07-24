@@ -71,7 +71,32 @@ export default function MonthlyAttendance() {
         return adminRoles.some(a => r === a.replace(/\s+/g, '') || r.includes(a.replace(/\s+/g, '')));
     };
 
-    const visibleReports = employees;
+    // Identify Team Leader employee IDs & IDs
+    const teamLeaderIds = React.useMemo(() => {
+        const ids = new Set<string>();
+        employees.forEach((e: any) => {
+            const role = (e.role || '').toLowerCase().replace(/\s+/g, '');
+            if (role === 'teamleader' || role === 'tl') {
+                if (e.employee_id) ids.add(String(e.employee_id).toLowerCase());
+                if (e.id) ids.add(String(e.id).toLowerCase());
+            }
+        });
+        return ids;
+    }, [employees]);
+
+    // Top-level overall list: Exclude employees who report to a Team Leader (they will be displayed inside their TL's team view)
+    const visibleReports = React.useMemo(() => {
+        return employees.filter((e: any) => {
+            const role = (e.role || '').toLowerCase().replace(/\s+/g, '');
+            if (role === 'teamleader' || role === 'tl') return true;
+
+            const repId = String(e.reporting_to_id || e.team_leader_id || e.manager_id || '').toLowerCase();
+            if (repId && teamLeaderIds.has(repId)) {
+                return false; // Displayed under Team Leader only, not in overall
+            }
+            return true;
+        });
+    }, [employees, teamLeaderIds]);
 
     // Working days helper
     const calculateWorkingDays = (empId: string, m: number, y: number) => {
