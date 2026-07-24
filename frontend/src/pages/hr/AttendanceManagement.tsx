@@ -114,7 +114,16 @@ export default function AttendanceManagement() {
     return s.includes('T') ? s.split('T')[0] : s.substring(0, 10);
   };
 
-  // Filter active workforce: only track employees currently in their probation period
+  // Helper for matching attendance records to employees reliably
+  const isEmpMatch = (aEmpId: any, emp: any) => {
+    if (!aEmpId || !emp) return false;
+    const a = String(aEmpId).trim().toLowerCase();
+    const eCode = String(emp.employee_id || '').trim().toLowerCase();
+    const eId = String(emp.id || '').trim().toLowerCase();
+    return (eCode !== '' && a === eCode) || (eId !== '' && a === eId);
+  };
+
+  // Filter active workforce: include all active employees across the company
   const activeWorkforce = useMemo(() => {
     return employees.filter((e: any) => {
       const status = (e.status || '').toLowerCase();
@@ -125,20 +134,9 @@ export default function AttendanceManagement() {
       }
 
       // Hide if offboarding is fully completed
-      const offboardingReq = offboardings.find(o => String(o.employee_id) === String(e.employee_id) || String(o.employee_id) === String(e.id));
+      const offboardingReq = offboardings.find(o => isEmpMatch(o.employee_id, e));
       if (offboardingReq && offboardingReq.status?.toLowerCase() === 'completed') {
         return false;
-      }
-
-      // Hide if probation/provision period is over
-      if (e.joining_date) {
-        const joinDate = new Date(e.joining_date);
-        const probationDays = e.probation_period_days != null ? e.probation_period_days : 90;
-        const probationEndDate = new Date(joinDate.getTime() + probationDays * 24 * 60 * 60 * 1000);
-        const isProbationOver = new Date() > probationEndDate;
-        if (isProbationOver) {
-          return false;
-        }
       }
 
       return true;
@@ -149,7 +147,7 @@ export default function AttendanceManagement() {
   const todayAttendance = useMemo(() => {
     return attendance.filter((a: any) => 
       normalizeDate(a.date) === today && 
-      activeWorkforce.some(emp => String(emp.employee_id) === String(a.employee_id) || String(emp.id) === String(a.employee_id))
+      activeWorkforce.some(emp => isEmpMatch(a.employee_id, emp))
     );
   }, [attendance, today, activeWorkforce]);
 
@@ -181,11 +179,7 @@ export default function AttendanceManagement() {
 
       if (deptFilter !== 'all' && e.department !== deptFilter) return false;
 
-      const att = todayAttendance.find((a: any) =>
-        a.employee_id === e.employee_id ||
-        a.employee_id === e.id ||
-        String(a.employee_id) === String(e.id)
-      );
+      const att = todayAttendance.find((a: any) => isEmpMatch(a.employee_id, e));
       const status = att ? att.status : 'Absent';
 
       if (statusFilter === 'all') return true;
@@ -239,12 +233,7 @@ export default function AttendanceManagement() {
 
   const handleExportDaily = () => {
     const exportData = activeWorkforce.map((m: any) => {
-      const a = todayAttendance.find((att: any) =>
-        att.employee_id === m.employee_id ||
-        att.employee_id === m.id ||
-        String(att.employee_id) === String(m.id) ||
-        String(att.employee_id) === String(m.employee_id)
-      );
+      const a = todayAttendance.find((att: any) => isEmpMatch(att.employee_id, m));
       return {
         Date: today,
         "Employee ID": m.employee_id || m.id,
@@ -265,12 +254,7 @@ export default function AttendanceManagement() {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const exportData = activeWorkforce.map((m: any) => {
       const stats = attendance.filter((a: any) => {
-        if (!a.date || !(
-          a.employee_id === m.employee_id ||
-          a.employee_id === m.id ||
-          String(a.employee_id) === String(m.id) ||
-          String(a.employee_id) === String(m.employee_id)
-        )) return false;
+        if (!a.date || !isEmpMatch(a.employee_id, m)) return false;
         
         const dateStr = normalizeDate(a.date);
         const parts = dateStr.split('-');
@@ -422,12 +406,7 @@ export default function AttendanceManagement() {
   };
 
   const renderEmployeeRow = (m: any) => {
-    const att = todayAttendance.find((a: any) =>
-      a.employee_id === m.employee_id ||
-      a.employee_id === m.id ||
-      String(a.employee_id) === String(m.id) ||
-      String(a.employee_id) === String(m.employee_id)
-    );
+    const att = todayAttendance.find((a: any) => isEmpMatch(a.employee_id, m));
     const shift = getEmployeeShift(m.id);
     const status = att ? att.status : 'Absent';
 
@@ -627,7 +606,7 @@ export default function AttendanceManagement() {
       {/* Hero Stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "20px", marginBottom: "30px" }}>
         {[
-          { label: "Staff on Probation", value: activeStaff, icon: <FaUsers size={20} color="#0a84ff" />, color: "#0a84ff", bgGlow: "rgba(10,132,255,0.1)" },
+          { label: "Total Active Workforce", value: activeStaff, icon: <FaUsers size={20} color="#0a84ff" />, color: "#0a84ff", bgGlow: "rgba(10,132,255,0.1)" },
           { label: "Active On-Duty", value: presentCount, icon: <FaCheckCircle size={20} color="#30d158" />, color: "#30d158", bgGlow: "rgba(48,209,88,0.1)" },
           { label: "Absent / Unaccounted", value: absentCount, icon: <FaExclamationCircle size={20} color="#ff375f" />, color: "#ff375f", bgGlow: "rgba(255,55,95,0.1)" },
           { label: "On Approved Leave", value: leaveCount, icon: <FaUserClock size={20} color="#ff9f0a" />, color: "#ff9f0a", bgGlow: "rgba(255,159,10,0.1)" }
