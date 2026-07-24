@@ -14,6 +14,8 @@ const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
     'Half Day': { color: '#ff9f0a', bg: 'rgba(255,159,10,0.1)' },
     'Absent': { color: '#ff453a', bg: 'rgba(255,69,58,0.1)' },
     'Tracking': { color: '#0a84ff', bg: 'rgba(10,132,255,0.1)' },
+    'Late Login': { color: '#ff453a', bg: 'rgba(255,69,58,0.1)' },
+    'Early Login': { color: '#0a84ff', bg: 'rgba(10,132,255,0.1)' },
     'Shift Extension': { color: '#bf5af2', bg: 'rgba(191,90,242,0.1)' },
 };
 

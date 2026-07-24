@@ -598,14 +598,20 @@ class ShiftService:
                         if now_dt.time() < early_req.requested_start_time:
                             raise HTTPException(status_code=403, detail=f"Your approved early login time for today is {early_req.requested_start_time}. Please wait until then.")
 
-        # Calculate is_late and Shift Extension based on grace period
+        # Calculate is_late based on grace period
         is_late = False
         if shift:
             shift_start_dt = datetime.combine(today, shift.start_time)
             if now_dt > (shift_start_dt + timedelta(minutes=shift.grace_time or 0)):
                 is_late = True
-                # User defined logic: Logging in after grace time counts as a Shift Extension
-                is_extension = True
+
+        # Determine explicit session remark: Late Login, Early Login, or On Time
+        if is_late:
+            session_remark = "Late Login"
+        elif is_early:
+            session_remark = "Early Login"
+        else:
+            session_remark = getattr(obj_in, 'remark', None) or "On Time"
 
         # 6. Create Session Object
         import uuid
@@ -624,8 +630,8 @@ class ShiftService:
             month=today.month,
             year=today.year,
             status="active",
-            remark="Shift Extension" if is_extension else getattr(obj_in, 'remark', None),
-            is_early_login=is_early and not is_extension,
+            remark=session_remark,
+            is_early_login=is_early,
             ip_address=obj_in.ip_address,
             location_metadata=str(obj_in.location_metadata) if obj_in.location_metadata else None
         )

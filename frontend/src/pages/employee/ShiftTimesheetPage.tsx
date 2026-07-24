@@ -14,6 +14,8 @@ const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
     'Half Day': { color: '#ff9f0a', bg: 'rgba(255,159,10,0.1)' },
     'Absent': { color: '#ff453a', bg: 'rgba(255,69,58,0.1)' },
     'Tracking': { color: '#0a84ff', bg: 'rgba(10,132,255,0.1)' },
+    'Late Login': { color: '#ff453a', bg: 'rgba(255,69,58,0.1)' },
+    'Early Login': { color: '#0a84ff', bg: 'rgba(10,132,255,0.1)' },
     'Shift Extension': { color: '#bf5af2', bg: 'rgba(191,90,242,0.1)' },
     'Week Off': { color: '#64d2ff', bg: 'rgba(100,210,255,0.1)' },
 };
@@ -583,8 +585,8 @@ export default function ShiftTimesheetPage() {
                                                         { label: 'Logged In At', value: fmtTime(session.login_time), color: '#30d158' },
                                                         {
                                                             label: 'Login Status',
-                                                            value: session.remark === 'Shift Extension' ? 'Shift Extension' : (session.is_early_login ? 'Early Login' : 'Normal'),
-                                                            color: session.remark === 'Shift Extension' ? '#ff9f0a' : (session.is_early_login ? '#0a84ff' : 'var(--text-secondary)')
+                                                            value: session.remark === 'Late Login' || session.is_late ? 'Late Login' : (session.remark === 'Early Login' || session.is_early_login ? 'Early Login' : 'On Time'),
+                                                            color: session.remark === 'Late Login' || session.is_late ? '#ff453a' : (session.remark === 'Early Login' || session.is_early_login ? '#0a84ff' : '#30d158')
                                                         },
                                                         { label: 'Logged Out At', value: fmtTime(session.logout_time), color: '#0a84ff' },
                                                         ...(empShift ? [

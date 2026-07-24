@@ -325,10 +325,10 @@ export default function ShiftActivityWidget() {
                                 </div>
                             </div>
                             <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                {session.remark === 'Shift Extension' ? (
-                                    <span style={{ color: '#ff9f0a', fontWeight: 'bold' }}>🕒 Shift Extension</span>
-                                ) : session.is_early_login ? (
-                                    <span style={{ color: '#0a84ff', fontWeight: 'bold' }}>🕒 Early Login Session</span>
+                                {session.remark === 'Late Login' || session.is_late ? (
+                                    <span style={{ color: '#ff453a', fontWeight: 'bold' }}>🕒 Late Login</span>
+                                ) : session.remark === 'Early Login' || session.is_early_login ? (
+                                    <span style={{ color: '#0a84ff', fontWeight: 'bold' }}>🕒 Early Login</span>
                                 ) : (
                                     `Logged in at ${timers.loginTime}`
                                 )}
