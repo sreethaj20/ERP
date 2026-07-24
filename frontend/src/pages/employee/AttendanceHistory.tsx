@@ -36,7 +36,7 @@ export default function AttendanceHistory() {
       Date: att.date || 'N/A',
       Status: att.status || 'Absent',
       'Login Time': formatLocalTime(att.login_time || att.check_in || att.check_in_time || att.started_at),
-      'Logout Time': att.logout_time || 'N/A',
+      'Logout Time': formatLocalTime(att.logout_time || att.check_out || att.check_out_time),
       Notes: att.notes || ''
     }));
 
@@ -242,8 +242,16 @@ export default function AttendanceHistory() {
                     <div style={{ fontSize: '12px', color: "rgba(255,255,255,0.5)" }}>
                       {(() => {
                         const loginVal = h.login_time || h.check_in || h.check_in_time || h.started_at;
-                        const formatted = formatLocalTime(loginVal);
-                        return formatted !== '—' ? `Login: ${formatted}` : 'Regular Login';
+                        const logoutVal = h.logout_time || h.check_out || h.check_out_time;
+                        const formattedLogin = formatLocalTime(loginVal);
+                        const formattedLogout = formatLocalTime(logoutVal);
+                        return (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <span>In: {formattedLogin !== '—' ? formattedLogin : 'Pending'}</span>
+                            <span>•</span>
+                            <span>Out: {formattedLogout !== '—' ? formattedLogout : 'Pending'}</span>
+                          </div>
+                        );
                       })()}
                     </div>
                   </div>
@@ -281,7 +289,7 @@ export default function AttendanceHistory() {
                         setSelectedAttendanceRecord(h);
                         const loginVal = h.login_time || h.check_in || h.check_in_time || h.started_at;
                         setRequestedCheckInTime(loginVal ? parseISOToLocalDate(loginVal).toTimeString().slice(0, 5) : "09:00");
-                        setRequestedCheckOutTime(h.logout_time ? new Date(h.logout_time).toTimeString().slice(0, 5) : "18:00");
+                        setRequestedCheckOutTime(h.logout_time ? parseISOToLocalDate(h.logout_time).toTimeString().slice(0, 5) : "18:00");
                         setShowCorrectionModal(true);
                       }}
                     >

@@ -71,7 +71,7 @@ export default function TeamAttendance() {
         "Employee ID": m.employee_id || m.id,
         "Name": m.name,
         "Login Time": formatLocalTime(att?.login_time || att?.check_in || att?.check_in_time || att?.started_at),
-        "Logout Time": att?.logout_time ? new Date(att.logout_time).toLocaleTimeString() : 'N/A',
+        "Logout Time": formatLocalTime(att?.logout_time || att?.check_out || att?.check_out_time),
         "Hours Worked": att?.hours_worked || 0,
         "Status": att?.status || 'Absent'
       };
@@ -349,10 +349,10 @@ export default function TeamAttendance() {
                     </td>
                     <td style={{ padding: '12px 14px', fontFamily: 'monospace' }}>{c.date}</td>
                     <td style={{ padding: '12px 14px', color: 'var(--accent-blue)' }}>
-                      {c.requested_check_in ? new Date(c.requested_check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                      {c.requested_check_in ? parseISOToLocalDate(c.requested_check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
-                    <td style={{ padding: '12px 14px', color: 'var(--accent-blue)' }}>
-                      {c.requested_check_out ? new Date(c.requested_check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                    <td style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                      {c.requested_check_out ? parseISOToLocalDate(c.requested_check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                     </td>
                     <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', maxWidth: '180px', wordBreak: 'break-word' }}>{c.reason}</td>
                     <td style={{ padding: '12px 14px' }}>

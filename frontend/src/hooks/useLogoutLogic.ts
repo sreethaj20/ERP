@@ -40,16 +40,10 @@ export function useLogoutLogic() {
                 const halfDaySec = targetSec / 2;
 
                 setWorkInfo({ totalWorkSec, targetSec, halfDaySec });
-
-                // STRICT RULE: Logout button is DISABLED until half-day (4h) is completed!
-                if (totalWorkSec >= halfDaySec) {
-                    setCanLogout(true);
-                } else {
-                    setCanLogout(false);
-                }
+                setCanLogout(true); // Always allow logout — restrictions are advisory prompts only
             } else {
                 setWorkInfo(null);
-                setCanLogout(true); // If not on active shift session, allow normal logout
+                setCanLogout(true); // No active session — allow logout
             }
         };
 
@@ -63,39 +57,18 @@ export function useLogoutLogic() {
         if (workInfo) {
             const { totalWorkSec, targetSec, halfDaySec } = workInfo;
 
-            // 1. STRICT BLOCK: Before half-day work duration (4 hours), logout is completely forbidden!
-            if (totalWorkSec < halfDaySec) {
-                const workedH = Math.floor(totalWorkSec / 3600);
-                const workedM = Math.floor((totalWorkSec % 3600) / 60);
-                const neededSec = halfDaySec - totalWorkSec;
-                const neededH = Math.floor(neededSec / 3600);
-                const neededM = Math.floor((neededSec % 3600) / 60);
-
-                window.alert(
-                    `⛔ LOGOUT DISABLED:\n\n` +
-                    `Logout is disabled until you complete at least half-day working hours (4.0 hours).\n\n` +
-                    `• Current Work Time: ${workedH}h ${workedM}m\n` +
-                    `• Remaining Time Needed for Half-Day: ${neededH}h ${neededM}m\n\n` +
-                    `Logout button will unlock automatically after half-day completion.`
-                );
-                return; // BLOCK LOGOUT COMPLETELY
-            }
-
-            // 2. HALF-DAY COMPLETED (4h <= work < 8h): Allow logout with explicit Half Day warning
+            // 1. HALF-DAY or more: prompt for half-day vs full shift logout
             if (totalWorkSec >= halfDaySec && totalWorkSec < targetSec) {
                 const workedH = (totalWorkSec / 3600).toFixed(1);
                 const confirmLogout = window.confirm(
-                    `⚠️ Half-Day Completed (${workedH}h worked):\n\n` +
-                    `Logging out now will record your attendance as 'Half Day'.\n\n` +
-                    `• Click 'OK' to confirm Half Day Logout.\n` +
-                    `• Click 'Cancel' to KEEP WORKING and complete your full shift.`
+                    `⚠️ Half-Day Completed (${workedH}h worked):\n\nLogging out now will record your attendance as 'Half Day'.\n\nClick 'OK' to confirm, or 'Cancel' to keep working.`
                 );
                 if (!confirmLogout) {
                     console.log("[LOGOUT] User cancelled half-day logout attempt to keep working.");
                     return; // ABORT LOGOUT
                 }
-            } else {
-                // 3. FULL SHIFT COMPLETED (>= 8h): Standard confirm
+            } else if (totalWorkSec >= targetSec) {
+                // 2. FULL SHIFT COMPLETED (>= 8h): Standard confirm
                 const confirmLogout = window.confirm("Are you sure you want to end your shift and log out?");
                 if (!confirmLogout) {
                     return; // ABORT LOGOUT

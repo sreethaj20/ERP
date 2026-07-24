@@ -534,8 +534,8 @@ export default function MonthlyAttendance() {
                                                 {c.original_status || 'Absent'}
                                             </td>
                                             <td style={{ padding: '12px 14px', color: 'var(--accent-blue)', fontWeight: '600' }}>
-                                                In: {c.requested_check_in ? new Date(c.requested_check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}<br />
-                                                Out: {c.requested_check_out ? new Date(c.requested_check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                In: {c.requested_check_in ? parseISOToLocalDate(c.requested_check_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}<br />
+                                                Out: {c.requested_check_out ? parseISOToLocalDate(c.requested_check_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
                                             </td>
                                             <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', maxWidth: '200px', wordBreak: 'break-word' }}>{c.reason}</td>
                                             <td style={{ padding: '12px 14px' }}>
