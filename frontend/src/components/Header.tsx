@@ -116,20 +116,16 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-        <a
-          className="top-header-link"
-          href="https://mercuresolution.com"
-          target="_blank"
-          rel="noopener noreferrer"
+        <div
           style={{
-            fontSize: "13px",
-            color: "var(--text-tertiary)",
-            textDecoration: "none",
-            fontWeight: 500
+            fontSize: '14px',
+            color: 'var(--text-secondary)',
+            fontWeight: 500,
+            letterSpacing: '0.2px'
           }}
         >
-          www.mercuresolution.com
-        </a>
+          Welcome back, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>!
+        </div>
 
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
