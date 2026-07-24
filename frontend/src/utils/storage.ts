@@ -1227,8 +1227,8 @@ export const startShiftSession = async (shift_id: number = 0) => {
         const res = await api.post('employee/shifts/start', payload);
         return { success: true, data: res.data };
     } catch (error: any) {
-        const detail = error.response?.data?.detail || '';
-        if (detail.toLowerCase().includes('early login')) {
+        const detail = error.response?.data?.detail || error.message || '';
+        if (error.response?.status === 403 || detail.toLowerCase().includes('early') || detail.toLowerCase().includes('pending') || detail.toLowerCase().includes('request')) {
             return { success: false, early_login_required: true, message: detail };
         }
         throw error;

@@ -587,6 +587,19 @@ class ShiftService:
                 else:
                     # Normal employees still need an approved request for early login
                     if is_early:
+                        # 1. Check if a request is currently PENDING approval
+                        pending_req = db.query(leave_models.EarlyLoginRequest).filter(
+                            leave_models.EarlyLoginRequest.employee_id == employee_id,
+                            leave_models.EarlyLoginRequest.date == today,
+                            func.lower(leave_models.EarlyLoginRequest.status) == "pending"
+                        ).first()
+                        if pending_req:
+                            raise HTTPException(
+                                status_code=403,
+                                detail=f"Your login request for today is PENDING approval from your Team Leader. Please wait until your request is approved."
+                            )
+
+                        # 2. Check for approved request
                         early_req = db.query(leave_models.EarlyLoginRequest).filter(
                             leave_models.EarlyLoginRequest.employee_id == employee_id,
                             leave_models.EarlyLoginRequest.date == today,

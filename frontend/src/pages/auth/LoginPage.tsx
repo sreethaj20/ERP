@@ -44,12 +44,17 @@ export default function LoginPage() {
     {
       category: "Shift & Attendance",
       q: "Why am I seeing 'Your shift is not yet started'?",
-      a: "The HRMS restricts logins to active shift schedules. If you attempt to log in more than 2 hours prior to your scheduled shift, the system will block access. You can submit an 'Early Login Request' directly on this page for manager approval."
+      a: "The HRMS restricts logins to active shift schedules. If you attempt to log in prior to your scheduled shift start time, the system requires an 'Early Login' approval. You can submit an 'Early Login Request' directly on this page for your Team Leader's review."
+    },
+    {
+      category: "Shift & Attendance",
+      q: "What happens if I log in after my shift start time?",
+      a: "If you log in after your assigned shift start time (plus grace period), your session will be recorded as a 'Late Login' in red for your Team Leader and Manager."
     },
     {
       category: "Shift & Attendance",
       q: "How do Early Login Requests get approved?",
-      a: "Once you submit an early login justification with your Team Leader (TL) ID, your TL receives a real-time notification on their management dashboard. Once they review and click 'Approve', your blockade is lifted immediately."
+      a: "Once you submit an Early Login justification with your Team Leader (TL) ID, your TL receives a real-time notification on their management dashboard. Once they review and click 'Approve', your Early Login request is granted."
     },
     {
       category: "Technical Issues",
@@ -139,18 +144,20 @@ export default function LoginPage() {
       if (role !== 'manager') {
         const res = await startShiftSession(0); // 0 = Auto-detect assigned shift
         if (res && !res.success) {
-          if (res.early_login_required) {
-            setError(res.message || "Your shift is not yet started");
-            setEarlyLoginState({
-              show: true,
-              emp_id: user.employee_id || user.id,
-              name: user.name || user.full_name,
-              userId: user.id,
-              reason: ""
-            });
-            setLoading(false);
-            return;
-          }
+          // 🔒 SECURITY PROTECTION: Clear session tokens so page refresh (F5) cannot bypass approval!
+          sessionStorage.clear();
+
+          const isPending = res.message?.toLowerCase().includes('pending');
+          setError(res.message || "Your shift has not started yet. Early/Late login approval required.");
+          setEarlyLoginState({
+            show: !isPending, // Hide request form if already pending
+            emp_id: user.employee_id || user.id,
+            name: user.name || user.full_name,
+            userId: user.id,
+            reason: ""
+          });
+          setLoading(false);
+          return;
         }
       }
 
@@ -173,6 +180,7 @@ export default function LoginPage() {
       await initStorage();
       navigate(dashboardPath, { replace: true });
     } catch (err: any) {
+      sessionStorage.clear();
       setError(err.message || "Invalid username or password.");
     } finally {
       setLoading(false);
