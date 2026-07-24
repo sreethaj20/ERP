@@ -44,7 +44,7 @@ export default function LoginPage() {
     {
       category: "Shift & Attendance",
       q: "Why am I seeing 'Your shift is not yet started'?",
-      a: "The HRMS restricts logins to active shift schedules. If you attempt to log in prior to your scheduled shift start time, the system requires an 'Early Login' approval. You can submit an 'Early Login Request' directly on this page for your Team Leader's review."
+      a: "The HRMS restricts logins to active shift schedules. If you attempt to log in prior to your scheduled shift start time, the system requires an 'Early Login' approval. You can submit an 'Login Request' directly on this page for your Team Leader's review."
     },
     {
       category: "Shift & Attendance",
@@ -53,8 +53,8 @@ export default function LoginPage() {
     },
     {
       category: "Shift & Attendance",
-      q: "How do Early Login Requests get approved?",
-      a: "Once you submit an Early Login justification with your Team Leader (TL) ID, your TL receives a real-time notification on their management dashboard. Once they review and click 'Approve', your Early Login request is granted."
+      q: "How do Login Requests get approved?",
+      a: "Once you submit an Login justification with your Team Leader (TL) ID, your TL receives a real-time notification on their management dashboard. Once they review and click 'Approve', your Login request is granted."
     },
     {
       category: "Technical Issues",
@@ -612,7 +612,7 @@ export default function LoginPage() {
           padding: "20px",
           animation: "modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
         }}
-        onClick={() => setModalView(null)}
+          onClick={() => setModalView(null)}
         >
           <div style={{
             width: "100%",
@@ -628,7 +628,7 @@ export default function LoginPage() {
             animation: "modalScaleIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
             position: "relative"
           }}
-          onClick={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div style={{
@@ -697,7 +697,7 @@ export default function LoginPage() {
               flexDirection: "column",
               gap: "24px"
             }}
-            className="modal-scroll"
+              className="modal-scroll"
             >
               {modalView === "help" ? (
                 <>
@@ -785,8 +785,8 @@ export default function LoginPage() {
                     <h4 style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-secondary)", margin: "0 0 4px 0", textTransform: "uppercase", letterSpacing: "1px" }}>
                       Frequently Asked Questions
                     </h4>
-                    {faqs.filter(faq => 
-                      faq.q.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    {faqs.filter(faq =>
+                      faq.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       faq.a.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       faq.category.toLowerCase().includes(searchQuery.toLowerCase())
                     ).map((faq, idx) => (
@@ -821,15 +821,15 @@ export default function LoginPage() {
                         </p>
                       </div>
                     ))}
-                    {faqs.filter(faq => 
-                      faq.q.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                    {faqs.filter(faq =>
+                      faq.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
                       faq.a.toLowerCase().includes(searchQuery.toLowerCase())
                     ).length === 0 && (
-                      <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-tertiary)" }}>
-                        <FaInfoCircle size={28} style={{ marginBottom: "12px", opacity: 0.5 }} />
-                        <p style={{ margin: 0, fontSize: "14px" }}>No matching help articles found. Please try a different query.</p>
-                      </div>
-                    )}
+                        <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-tertiary)" }}>
+                          <FaInfoCircle size={28} style={{ marginBottom: "12px", opacity: 0.5 }} />
+                          <p style={{ margin: 0, fontSize: "14px" }}>No matching help articles found. Please try a different query.</p>
+                        </div>
+                      )}
                   </div>
                 </>
               ) : (
