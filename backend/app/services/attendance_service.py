@@ -953,6 +953,12 @@ class ShiftService:
             # Break duration
             break_sec = getattr(session, 'total_break_seconds', 0)
             
+            # Convert datetime objects to ISO strings for frontend
+            start_iso = start_dt.isoformat() if start_dt and hasattr(start_dt, 'isoformat') else start_dt
+            end_iso = end_dt.isoformat() if end_dt and hasattr(end_dt, 'isoformat') else end_dt
+            break_start_iso = session.current_break_start.isoformat() if getattr(session, 'current_break_start', None) and hasattr(session.current_break_start, 'isoformat') else getattr(session, 'current_break_start', None)
+            created_iso = session.created_at.isoformat() if getattr(session, 'created_at', None) and hasattr(session.created_at, 'isoformat') else (start_iso)
+
             result.append({
                 "id": session.id,
                 "session_id": session.session_id,
@@ -965,16 +971,16 @@ class ShiftService:
                 "shift_id": session.shift_id,
                 "shift_name": shift.shift_name if shift else session.shift_name,
                 "shift_code": shift.shift_code if shift else None,
-                "shift_start_time": shift.start_time if shift else None,
-                "shift_end_time": shift.end_time if shift else None,
+                "shift_start_time": str(shift.start_time) if shift and hasattr(shift, 'start_time') else None,
+                "shift_end_time": str(shift.end_time) if shift and hasattr(shift, 'end_time') else None,
                 "shift_color": shift.color if shift else None,
-                "date": session.date or (start_dt.date() if start_dt else None),
-                "month": getattr(session, 'month', None) or (start_dt.month if start_dt else None),
-                "year": getattr(session, 'year', None) or (start_dt.year if start_dt else None),
-                "started_at": start_dt,
-                "ended_at": end_dt,
-                "login_time": start_dt,
-                "logout_time": end_dt,
+                "date": str(session.date) if session.date else (str(start_dt.date()) if start_dt and hasattr(start_dt, 'date') else None),
+                "month": getattr(session, 'month', None) or (start_dt.month if start_dt and hasattr(start_dt, 'month') else None),
+                "year": getattr(session, 'year', None) or (start_dt.year if start_dt and hasattr(start_dt, 'year') else None),
+                "started_at": start_iso,
+                "ended_at": end_iso,
+                "login_time": start_iso,
+                "logout_time": end_iso,
                 "total_work_seconds": total_sec,
                 "total_break_seconds": break_sec,
                 "status": session.status,
@@ -982,8 +988,8 @@ class ShiftService:
                 "is_early_login": getattr(session, 'is_early_login', False),
                 "early_approval_status": "approved" if getattr(session, 'is_early_login', False) else None,
                 "on_break": getattr(session, 'on_break', False),
-                "current_break_start": getattr(session, 'current_break_start', None),
-                "created_at": getattr(session, 'created_at', None) or start_dt,
+                "current_break_start": break_start_iso,
+                "created_at": created_iso,
                 "breaks_count": 0, # Placeholder for batch update
                 "break_logs": [] # Placeholder
             })
