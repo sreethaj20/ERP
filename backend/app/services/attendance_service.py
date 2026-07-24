@@ -596,7 +596,7 @@ class ShiftService:
                         if pending_req:
                             raise HTTPException(
                                 status_code=403,
-                                detail=f"Your login request for today is PENDING approval from your Team Leader. Please wait until your request is approved."
+                                detail=f"Your Early Login request for today is PENDING approval from your Team Leader. Please wait until approved."
                             )
 
                         # 2. Check for approved request
@@ -606,10 +606,10 @@ class ShiftService:
                             func.lower(leave_models.EarlyLoginRequest.status) == "approved"
                         ).first()
                         if not early_req:
-                            raise HTTPException(status_code=403, detail=f"Shift starts at {shift.start_time}. Early login requires an approved request.")
+                            raise HTTPException(status_code=403, detail=f"Shift starts at {shift.start_time}. Early Login requires an approved request.")
                         
                         if now_dt.time() < early_req.requested_start_time:
-                            raise HTTPException(status_code=403, detail=f"Your approved early login time for today is {early_req.requested_start_time}. Please wait until then.")
+                            raise HTTPException(status_code=403, detail=f"Your approved Early Login time for today is {early_req.requested_start_time}. Please wait until then.")
 
         # Calculate is_late based on grace period
         is_late = False

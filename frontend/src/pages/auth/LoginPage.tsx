@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [earlyLoginState, setEarlyLoginState] = useState({ show: false, emp_id: '', name: '', userId: '', reason: '' });
+  const [earlyLoginState, setEarlyLoginState] = useState({ show: false, type: 'early' as 'early' | 'late', emp_id: '', name: '', userId: '', reason: '' });
 
   // Help Center & Privacy Policy States
   const [modalView, setModalView] = useState<"help" | "privacy" | null>(null);
@@ -148,9 +148,11 @@ export default function LoginPage() {
           sessionStorage.clear();
 
           const isPending = res.message?.toLowerCase().includes('pending');
+          const isLate = res.message?.toLowerCase().includes('late');
           setError(res.message || "Your shift has not started yet. Early/Late login approval required.");
           setEarlyLoginState({
             show: !isPending, // Hide request form if already pending
+            type: isLate ? 'late' : 'early',
             emp_id: user.employee_id || user.id,
             name: user.name || user.full_name,
             userId: user.id,
@@ -530,12 +532,14 @@ export default function LoginPage() {
           </form>
         )}
 
-        {/* Early Login Request UI */}
+        {/* Early / Late Login Request UI */}
         {earlyLoginState.show && (
-          <div style={{ marginTop: '20px', padding: '20px', borderRadius: '16px', background: 'rgba(255, 159, 10, 0.1)', border: '1px solid rgba(255, 159, 10, 0.2)' }}>
-            <h4 style={{ color: '#ff9f0a', marginBottom: '10px', fontSize: '14px' }}>Submit Early Login Request</h4>
+          <div style={{ marginTop: '20px', padding: '20px', borderRadius: '16px', background: earlyLoginState.type === 'late' ? 'rgba(255, 69, 58, 0.1)' : 'rgba(255, 159, 10, 0.1)', border: `1px solid ${earlyLoginState.type === 'late' ? 'rgba(255, 69, 58, 0.2)' : 'rgba(255, 159, 10, 0.2)'}` }}>
+            <h4 style={{ color: earlyLoginState.type === 'late' ? '#ff453a' : '#ff9f0a', marginBottom: '10px', fontSize: '14px' }}>
+              {earlyLoginState.type === 'late' ? "Submit Late Login Request" : "Submit Early Login Request"}
+            </h4>
             <textarea
-              placeholder="Why are you logging in more than 2h early? (e.g. Server emergency, High priority task)"
+              placeholder={earlyLoginState.type === 'late' ? "Why are you logging in after shift time? (e.g. Traffic, Medical issue, Personal emergency)" : "Why are you logging in before shift time? (e.g. Critical deployment, Server emergency)"}
               style={{ width: '100%', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '10px', color: '#fff', fontSize: '13px', minHeight: '80px', marginBottom: '12px' }}
               value={earlyLoginState.reason}
               onChange={(e) => setEarlyLoginState({ ...earlyLoginState, reason: e.target.value })}
@@ -553,15 +557,15 @@ export default function LoginPage() {
                   employee_id: earlyLoginState.emp_id,
                   employee_name: earlyLoginState.name,
                   tl_id: me?.reporting_to_id || '',
-                  reason: earlyLoginState.reason,
+                  reason: `${earlyLoginState.type === 'late' ? '[LATE LOGIN] ' : '[EARLY LOGIN] '}${earlyLoginState.reason}`,
                   date: todayDate,
                   requested_start_time: currentTime
                 });
-                setSuccessMsg("Request submitted! Please wait for TL approval before trying again.");
+                setSuccessMsg(`Request submitted! Please wait for TL approval before trying again.`);
                 setEarlyLoginState({ ...earlyLoginState, show: false });
               }}
               className="apple-btn"
-              style={{ width: '100%', padding: '10px', background: '#ff9f0a', color: '#000', fontWeight: 'bold' }}
+              style={{ width: '100%', padding: '10px', background: earlyLoginState.type === 'late' ? '#ff453a' : '#ff9f0a', color: '#fff', fontWeight: 'bold' }}
             >
               Submit Request
             </button>
