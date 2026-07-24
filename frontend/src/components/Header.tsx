@@ -69,7 +69,10 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
     const totalShiftSec = Math.max(0, Math.floor(diffMs / 1000));
     const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
 
-    setWorkDuration(formatSeconds(totalWorkSec));
+    const targetSec = 9 * 3600; // 9 hours fixed time
+    const remainingSec = Math.max(0, targetSec - totalWorkSec);
+
+    setWorkDuration(formatSeconds(remainingSec));
   };
 
   const handleToggleBreak = async () => {
@@ -242,7 +245,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               gap: '6px'
             }}
           >
-            <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontFamily: 'inherit' }}>Total Work:</span>
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontFamily: 'inherit' }}>Remaining:</span>
             <span>{workDuration}</span>
             <button
               onClick={handleToggleBreak}
