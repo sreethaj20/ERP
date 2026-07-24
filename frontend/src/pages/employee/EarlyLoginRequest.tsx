@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { requestEarlyLogin, getMyEarlyLoginRequests, getDashboard } from "../../services/employeeService";
+import { requestEarlyLogin, getMyEarlyLoginRequests, getDashboard, getMyProfile } from "../../services/employeeService";
 import { FaClock, FaPaperPlane, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCalendarDay, FaClock as FaClockIcon } from "react-icons/fa";
 
 export default function EarlyLoginRequest() {
@@ -15,13 +15,27 @@ export default function EarlyLoginRequest() {
 
   const loadData = async () => {
     try {
-      const dash = await getDashboard();
-      setMyEmployee(dash.employee_profile);
+      const profile = await getMyProfile().catch(() => null);
+      const dash = await getDashboard().catch(() => null);
       
-      const reqs = await getMyEarlyLoginRequests();
-      setRequests(reqs);
+      const fallbackEmp = {
+        employee_id: sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId') || 'EMP-TEMP',
+        name: sessionStorage.getItem('userName') || localStorage.getItem('userName') || 'Employee',
+        reporting_to: sessionStorage.getItem('reportingTo') || 'Team Leader'
+      };
+
+      const emp = profile || dash?.employee_profile || fallbackEmp;
+      setMyEmployee(emp);
+      
+      const reqs = await getMyEarlyLoginRequests().catch(() => []);
+      setRequests(Array.isArray(reqs) ? reqs : []);
     } catch (e) {
       console.error("Failed to load early login data:", e);
+      setMyEmployee({
+        employee_id: sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId') || 'EMP-TEMP',
+        name: sessionStorage.getItem('userName') || localStorage.getItem('userName') || 'Employee',
+        reporting_to: sessionStorage.getItem('reportingTo') || 'Team Leader'
+      });
     }
   };
 

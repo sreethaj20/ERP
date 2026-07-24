@@ -250,16 +250,9 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
         str = str.replace(' ', 'T');
     }
 
-    // If ISO string is a naive local format e.g. "2026-07-24T17:25:00" without timezone offset
-    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
-    if (isoMatch && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) {
-        const y = parseInt(isoMatch[1], 10);
-        const m = parseInt(isoMatch[2], 10) - 1;
-        const day = parseInt(isoMatch[3], 10);
-        const hr = parseInt(isoMatch[4], 10);
-        const min = parseInt(isoMatch[5], 10);
-        const sec = isoMatch[6] ? parseInt(isoMatch[6], 10) : 0;
-        return new Date(y, m, day, hr, min, sec);
+    // If ISO string has no timezone offset (naive UTC string from DB), append 'Z' to convert to local timezone accurately
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+        str += 'Z';
     }
 
     const d = new Date(str);
@@ -301,9 +294,14 @@ export const getOrSetDailyLoginTime = (sessionStartTime?: string): string => {
  * Formats an ISO datetime string or time string into 12-hour local time (e.g., "11:00 AM")
  */
 export const formatLocalTime = (isoStr: string | null | undefined): string => {
-    if (!isoStr || isoStr === '—' || isoStr === 'N/A') return '—';
+    if (!isoStr || isoStr === '—' || isoStr === 'N/A' || isoStr === 'null' || isoStr === 'undefined') return '—';
+    const str = String(isoStr).trim();
+    // Return dash for date-only strings (e.g. "2026-07-24") to avoid false 12:00 AM midnight rendering
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        return '—';
+    }
     try {
-        const d = parseISOToLocalDate(isoStr);
+        const d = parseISOToLocalDate(str);
         if (isNaN(d.getTime())) return '—';
         return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     } catch {
