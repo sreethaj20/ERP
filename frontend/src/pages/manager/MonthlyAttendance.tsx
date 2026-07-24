@@ -209,7 +209,7 @@ export default function MonthlyAttendance() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                             <thead>
                                 <tr style={{ borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
-                                    {['Staff Member', 'Role', 'Department', 'Login Time', 'Logout Time', 'Status', 'Action'].map(h => (
+                                    {['Staff Member', 'Designation', 'Department', 'Login Time', 'Logout Time', 'Status', 'Action'].map(h => (
                                         <th key={h} style={{ padding: '10px 14px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -222,14 +222,16 @@ export default function MonthlyAttendance() {
                                 ) : visibleReports.map((emp: any) => {
                                     const p = presence.find((x: any) => isEmpMatch(x.employee_id, emp) || isEmpMatch(x.user_id, emp));
 
-                                    // Find official attendance record for today
                                     const att = records.find((r: any) =>
                                         isEmpMatch(r.employee_id, emp) &&
                                         normalizeDate(r.date) === todayStr
                                     );
 
-                                    const loginTime = att?.login_time || att?.check_in || att?.check_in_time;
-                                    const logoutTime = att?.logout_time || att?.check_out || att?.check_out_time;
+                                    const isSelf = isEmpMatch(sessionStorage.getItem("employeeId") || sessionStorage.getItem("userId"), emp);
+                                    const selfLogin = isSelf ? (sessionStorage.getItem("login_time") || localStorage.getItem("login_time")) : null;
+
+                                    const loginTime = selfLogin || p?.login_time || p?.check_in || p?.check_in_time || p?.started_at || att?.login_time || att?.check_in || att?.check_in_time || att?.started_at;
+                                    const logoutTime = p?.logout_time || p?.check_out || p?.check_out_time || p?.ended_at || att?.logout_time || att?.check_out || att?.check_out_time;
 
                                     const badge = roleBadge(emp.role);
                                     const isTL = (emp.role || '').toLowerCase().replace(/\s+/g, '') === 'teamleader';
@@ -254,8 +256,8 @@ export default function MonthlyAttendance() {
                                                     </div>
                                                 </td>
                                                 <td style={{ padding: '12px 14px' }}>
-                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: badge.bg, color: badge.color }}>
-                                                        {badge.label}
+                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>
+                                                        {emp.designation || emp.designation_name || emp.job_title || badge.label}
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '13px' }}>{emp.department || '—'}</td>
@@ -379,7 +381,7 @@ export default function MonthlyAttendance() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ textAlign: 'left', fontSize: '11px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    {['Employee', 'Role', 'Department', 'Working Days', 'Present', 'Leave', 'Absent/LOP', 'Fulfillment %'].map(h => (
+                                    {['Employee', 'Designation', 'Department', 'Working Days', 'Present', 'Leave', 'Absent/LOP', 'Fulfillment %'].map(h => (
                                         <th key={h} style={{ padding: '12px 14px' }}>{h}</th>
                                     ))}
                                 </tr>
@@ -416,7 +418,7 @@ export default function MonthlyAttendance() {
                                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{emp.employee_id}</div>
                                                 </td>
                                                 <td style={{ padding: '14px' }}>
-                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: badge.bg, color: badge.color }}>{badge.label}</span>
+                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{emp.designation || emp.designation_name || emp.job_title || badge.label}</span>
                                                 </td>
                                                 <td style={{ padding: '14px', color: 'var(--text-secondary)' }}>{emp.department || '—'}</td>
                                                 <td style={{ padding: '14px', color: 'var(--text-secondary)', fontWeight: '600' }}>{empWorkingDays}</td>

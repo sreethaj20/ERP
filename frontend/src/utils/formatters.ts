@@ -237,14 +237,29 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
     let str = String(isoStr).trim();
     if (!str || str === 'null' || str === 'undefined' || str === '—' || str === 'N/A') return new Date(NaN);
 
-    // Handle time-only string e.g. "11:00" or "11:00:00"
+    // If string is pure time like "17:25:00" or "05:29:00"
     if (/^\d{2}:\d{2}(:\d{2})?$/.test(str)) {
-        const todayStr = new Date().toISOString().split('T')[0];
-        str = `${todayStr}T${str}`;
+        const parts = str.split(':');
+        const d = new Date();
+        d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), parts[2] ? parseInt(parts[2], 10) : 0, 0);
+        return d;
     }
+
     // Handle space formatted dates e.g. "2026-07-23 06:00:00"
     if (str.includes(' ') && !str.includes('T')) {
         str = str.replace(' ', 'T');
+    }
+
+    // If ISO string is a naive local format e.g. "2026-07-24T17:25:00" without timezone offset
+    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (isoMatch && !str.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(str)) {
+        const y = parseInt(isoMatch[1], 10);
+        const m = parseInt(isoMatch[2], 10) - 1;
+        const day = parseInt(isoMatch[3], 10);
+        const hr = parseInt(isoMatch[4], 10);
+        const min = parseInt(isoMatch[5], 10);
+        const sec = isoMatch[6] ? parseInt(isoMatch[6], 10) : 0;
+        return new Date(y, m, day, hr, min, sec);
     }
 
     const d = new Date(str);

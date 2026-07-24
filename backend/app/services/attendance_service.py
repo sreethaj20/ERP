@@ -261,17 +261,24 @@ class AttendanceService:
                 # Direct attribute access for speed
                 d = {c.key: getattr(s, c.key, None) for c in s.__table__.columns}
                 # Convert Decimals to float for JSON
-                for k, v in d.items():
-                    if hasattr(v, '__float__') and not isinstance(v, (int, float)):
-                        d[k] = float(v)
-                        
+                if d.get("login_time") and hasattr(d["login_time"], "isoformat"):
+                    d["login_time"] = d["login_time"].isoformat()
+                if d.get("started_at") and hasattr(d["started_at"], "isoformat"):
+                    d["started_at"] = d["started_at"].isoformat()
+                if d.get("created_at") and hasattr(d["created_at"], "isoformat"):
+                    d["created_at"] = d["created_at"].isoformat()
+                if d.get("logout_time") and hasattr(d["logout_time"], "isoformat"):
+                    d["logout_time"] = d["logout_time"].isoformat()
+                if d.get("ended_at") and hasattr(d["ended_at"], "isoformat"):
+                    d["ended_at"] = d["ended_at"].isoformat()
+
                 d.update({
                     "employee_name": f"{fn} {ln}".strip(),
                     "role": role,
                     "department": dept,
                     "shift_name": sname,
                     "shift_color": scolor,
-                    "date": s.login_time.date() if getattr(s, 'login_time', None) else None,
+                    "date": str(s.login_time.date()) if getattr(s, 'login_time', None) else None,
                     "is_online": s.status == "active"
                 })
                 final_res.append(d)
