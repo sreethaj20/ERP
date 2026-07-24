@@ -125,7 +125,12 @@ export default function LoginPage() {
       localStorage.removeItem("shift_user_logged_out");
       localStorage.removeItem("shift_autostarted");
 
-      const loginTime = localStorage.getItem("login_time") || sessionStorage.getItem("login_time") || new Date().toISOString();
+      const todayStr = new Date().toISOString().split('T')[0];
+      const existingLogin = localStorage.getItem("login_time") || sessionStorage.getItem("login_time");
+      let loginTime = new Date().toISOString();
+      if (existingLogin && existingLogin.split('T')[0] === todayStr) {
+        loginTime = existingLogin;
+      }
       localStorage.setItem("login_time", loginTime);
       sessionStorage.setItem("login_time", loginTime);
 

@@ -11,7 +11,9 @@ import {
   refreshAttendance, 
   refreshAttendanceCorrections,
   getOffboardingRequests,
-  refreshOffboarding
+  refreshOffboarding,
+  getUserPresence,
+  refreshPresence
 } from "../../utils/storage";
 import { 
   FaCheckCircle, 
@@ -38,6 +40,7 @@ interface Toast {
 export default function AttendanceManagement() {
   const [employees, setEmployees] = useState(getEmployees());
   const [attendance, setAttendance] = useState(getAttendance());
+  const [presence, setPresence] = useState(getUserPresence());
   const [requests, setRequests] = useState<any[]>([]);
   const [offboardings, setOffboardings] = useState<any[]>(getOffboardingRequests());
   const [searchTerm, setSearchTerm] = useState("");
@@ -76,6 +79,7 @@ export default function AttendanceManagement() {
         await Promise.all([
           refreshEmployees(),
           refreshAttendance(),
+          refreshPresence(),
           refreshAttendanceCorrections(),
           refreshOffboarding()
         ]);
@@ -93,6 +97,7 @@ export default function AttendanceManagement() {
     const syncWithStorage = () => {
       setEmployees(getEmployees());
       setAttendance(getAttendance());
+      setPresence(getUserPresence());
       setOffboardings(getOffboardingRequests());
       const allRequests = getAttendanceCorrections();
       setRequests(Array.isArray(allRequests) ? allRequests.filter((r: any) => (r.status || '').toLowerCase() === 'pending') : []);
@@ -454,7 +459,8 @@ export default function AttendanceManagement() {
         </td>
         <td style={{ padding: "14px 12px" }}>
           {(() => {
-            const loginVal = att?.login_time || att?.check_in || att?.check_in_time;
+            const p = (presence || []).find((x: any) => isEmpMatch(x.employee_id, m) || isEmpMatch(x.user_id, m));
+            const loginVal = p?.login_time || p?.check_in || p?.started_at || att?.login_time || att?.check_in || att?.check_in_time || att?.started_at;
             const formatted = formatLocalTime(loginVal);
             const hasLogin = formatted !== '—';
             return (
@@ -469,7 +475,8 @@ export default function AttendanceManagement() {
         </td>
         <td style={{ padding: "14px 12px" }}>
           {(() => {
-            const logoutVal = att?.logout_time || att?.check_out || att?.check_out_time;
+            const p = (presence || []).find((x: any) => isEmpMatch(x.employee_id, m) || isEmpMatch(x.user_id, m));
+            const logoutVal = p?.logout_time || p?.check_out || p?.ended_at || att?.logout_time || att?.check_out || att?.check_out_time || att?.ended_at;
             const formatted = formatLocalTime(logoutVal);
             const hasLogout = formatted !== '—';
             return (
