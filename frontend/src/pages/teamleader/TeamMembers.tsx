@@ -48,7 +48,7 @@ const MemberRow = ({ m, presence, onClick }: any) => {
 
       {/* Login Time */}
       <td style={{ padding: "12px", fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '13px' }}>
-        {formatLocalTime(p?.login_time)}
+        {formatLocalTime(p?.login_time || p?.check_in || p?.check_in_time || p?.started_at)}
       </td>
 
       {/* Status */}
@@ -120,7 +120,7 @@ export default function TeamMembers() {
         "Name": mem.first_name ? `${mem.first_name} ${mem.last_name || ''}` : mem.name,
         "Department": mem.department_name || mem.department || '—',
         "Status": status,
-        "Shift Start": p?.login_time ? new Date(p.login_time).toLocaleTimeString() : '—'
+        "Shift Start": formatLocalTime(p?.login_time || p?.check_in || p?.check_in_time || p?.started_at)
       };
     });
     downloadCSV(data, `Team_Roster_${new Date().toISOString().split('T')[0]}.csv`);

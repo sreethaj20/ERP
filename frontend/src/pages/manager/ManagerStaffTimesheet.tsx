@@ -328,8 +328,8 @@ function ShiftTable({
                 const roleCfg = ROLE_CONFIG[roleKey];
                 const onBreak = session.on_break;
 
-                const loginRaw = session.login_time || session.started_at;
-                const logoutRaw = session.logout_time || session.ended_at;
+                const loginRaw = session.login_time || session.check_in || session.check_in_time || session.started_at || session.created_at;
+                const logoutRaw = session.logout_time || session.check_out || session.check_out_time || session.ended_at;
 
                 const loginMs = loginRaw ? parseISOToLocalDate(loginRaw).getTime() : 0;
                 const logoutMs = logoutRaw ? parseISOToLocalDate(logoutRaw).getTime() : Date.now();
@@ -397,7 +397,7 @@ function ShiftTable({
                                     <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '3px' }}>{session.department}</div>
                                 )}
                             </div>
-                            <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#30d158' }}>{fmtTime(session.login_time)}</div>
+                            <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#30d158' }}>{fmtTime(loginRaw)}</div>
                             <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: '600', color: session.logout_time ? '#0a84ff' : 'var(--text-tertiary)' }}>{fmtTime(session.logout_time)}</div>
                             <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: '700', color: '#64d2ff', fontFamily: 'monospace' }}>{fmtSecs(workSec)}</div>
                             <div style={{ textAlign: 'center', fontSize: '13px', color: breakSec > 0 ? '#bf5af2' : 'var(--text-tertiary)' }}>{fmtSecs(breakSec)}</div>

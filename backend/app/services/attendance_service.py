@@ -64,7 +64,7 @@ class AttendanceService:
         """Get attendance records scoped by viewer's role.
         Optimized to fetch team hierarchy in a single pass to avoid N+1 query overhead.
         """
-        query = db.query(attn_models.Attendance, emp_models.Employee.first_name, emp_models.Employee.last_name, emp_models.Employee.role, emp_models.Employee.department)\
+        query = db.query(attn_models.Attendance, emp_models.Employee.first_name, emp_models.Employee.last_name, emp_models.Employee.role, emp_models.Employee.department, emp_models.Employee.designation)\
             .outerjoin(emp_models.Employee, attn_models.Attendance.employee_id == emp_models.Employee.employee_id)\
             .filter(attn_models.Attendance.deleted_at == None)
 
@@ -126,11 +126,12 @@ class AttendanceService:
             results = query.order_by(attn_models.Attendance.date.desc()).offset(skip).limit(limit).all()
 
             enriched = []
-            for attn, fn, ln, role, dept in results:
+            for attn, fn, ln, role, dept, desig in results:
                 try:
                     d = {c.key: getattr(attn, c.key, None) for c in attn.__table__.columns}
                     d["employee_name"] = f"{fn or ''} {ln or ''}".strip() or (attn.employee_id if attn else "Unknown")
                     d["role"] = role
+                    d["designation"] = desig or role
                     d["department"] = dept
                     d["login_time"] = (attn.check_in or attn.check_in_time) if attn else None
                     if d.get("login_time") and hasattr(d["login_time"], "isoformat"):

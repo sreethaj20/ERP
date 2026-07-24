@@ -173,7 +173,7 @@ export default function AttendanceManagement() {
         (e.name || '').toLowerCase().includes(searchLower) ||
         (e.employee_id || '').toLowerCase().includes(searchLower) ||
         (e.department || '').toLowerCase().includes(searchLower) ||
-        (e.role || '').toLowerCase().includes(searchLower)
+        (e.designation || e.designation_name || e.job_title || e.role || '').toLowerCase().includes(searchLower)
       );
       if (!matchesSearch) return false;
 
@@ -221,7 +221,7 @@ export default function AttendanceManagement() {
       Date: a.date,
       Employee: a.employee_name,
       ID: a.employee_id,
-      Role: a.role,
+      Designation: a.designation || a.role || 'Staff',
       Login: formatLocalTime(a.login_time),
       Logout: formatLocalTime(a.logout_time),
       Hours: a.hours_worked || 0,
@@ -239,7 +239,7 @@ export default function AttendanceManagement() {
         "Employee ID": m.employee_id || m.id,
         "Employee Name": m.name,
         Department: m.department || 'N/A',
-        Role: m.role || 'N/A',
+        Designation: m.designation || m.designation_name || m.job_title || m.role || 'N/A',
         Login: formatLocalTime(a?.login_time),
         Logout: formatLocalTime(a?.logout_time),
         Hours: a?.hours_worked || 0,
@@ -435,7 +435,7 @@ export default function AttendanceManagement() {
               <div style={{ fontWeight: "600", fontSize: '14px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {m.name}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{m.employee_id || m.id} • {m.role}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '2px' }}>{m.employee_id || m.id} • {m.designation || m.designation_name || m.job_title || m.role || 'Staff'}</div>
             </div>
           </div>
         </td>

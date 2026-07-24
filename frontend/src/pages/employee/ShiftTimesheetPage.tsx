@@ -459,8 +459,8 @@ export default function ShiftTimesheetPage() {
                             const isActive = !session.logout_time && !session.ended_at;
                             const onBreak = session.on_break;
 
-                            const loginRaw = session.login_time || session.started_at;
-                            const logoutRaw = session.logout_time || session.ended_at;
+                            const loginRaw = session.login_time || session.check_in || session.check_in_time || session.started_at || session.created_at;
+                            const logoutRaw = session.logout_time || session.check_out || session.check_out_time || session.ended_at;
 
                             const loginMs = loginRaw ? parseISOToLocalDate(loginRaw).getTime() : 0;
                             const logoutMs = logoutRaw ? parseISOToLocalDate(logoutRaw).getTime() : Date.now();
@@ -546,7 +546,7 @@ export default function ShiftTimesheetPage() {
                                         </div>
 
                                         <div style={{ textAlign: 'center' }}>
-                                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#30d158' }}>{fmtTime(session.login_time)}</div>
+                                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#30d158' }}>{fmtTime(loginRaw)}</div>
                                         </div>
                                         <div style={{ textAlign: 'center' }}>
                                             <div style={{ fontSize: '13px', fontWeight: '600', color: session.logout_time ? '#0a84ff' : 'var(--text-tertiary)' }}>{fmtTime(session.logout_time)}</div>
@@ -582,7 +582,7 @@ export default function ShiftTimesheetPage() {
                                                         { label: 'Total Work Time', value: fmtSeconds(workSec), color: '#64d2ff' },
                                                         { label: 'Total Break Time', value: fmtSeconds(breakSec), color: '#bf5af2' },
                                                         { label: 'Breaks Taken', value: (session.breaks_count || 0).toString(), color: '#ff9f0a' },
-                                                        { label: 'Logged In At', value: fmtTime(session.login_time), color: '#30d158' },
+                                                        { label: 'Logged In At', value: fmtTime(loginRaw), color: '#30d158' },
                                                         {
                                                             label: 'Login Status',
                                                             value: session.remark === 'Late Login' || session.is_late ? 'Late Login' : (session.remark === 'Early Login' || session.is_early_login ? 'Early Login' : 'On Time'),

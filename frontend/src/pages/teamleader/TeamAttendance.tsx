@@ -70,7 +70,7 @@ export default function TeamAttendance() {
       return {
         "Employee ID": m.employee_id || m.id,
         "Name": m.name,
-        "Login Time": att?.login_time ? new Date(att.login_time).toLocaleTimeString() : 'N/A',
+        "Login Time": formatLocalTime(att?.login_time || att?.check_in || att?.check_in_time || att?.started_at),
         "Logout Time": att?.logout_time ? new Date(att.logout_time).toLocaleTimeString() : 'N/A',
         "Hours Worked": att?.hours_worked || 0,
         "Status": att?.status || 'Absent'
@@ -166,12 +166,18 @@ export default function TeamAttendance() {
                         <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{m.employee_id || m.id}</div>
                       </td>
                       <td style={{ padding: "12px" }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: todayAtt?.login_time ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
-                          <FaSignInAlt size={12} />
-                          <span style={{ fontSize: '13px', fontWeight: '500' }}>
-                            {todayAtt?.login_time ? formatLocalTime(todayAtt.login_time) : 'Pending'}
-                          </span>
-                        </div>
+                        {(() => {
+                          const loginVal = todayAtt?.login_time || todayAtt?.check_in || todayAtt?.check_in_time || todayAtt?.started_at;
+                          const formatted = formatLocalTime(loginVal);
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: formatted !== '—' ? 'var(--accent-green)' : 'var(--text-tertiary)' }}>
+                              <FaSignInAlt size={12} />
+                              <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                                {formatted !== '—' ? formatted : 'Pending'}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td style={{ padding: "12px" }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: todayAtt?.logout_time ? 'var(--accent-blue)' : 'var(--text-tertiary)' }}>

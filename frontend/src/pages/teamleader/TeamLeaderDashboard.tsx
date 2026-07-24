@@ -168,8 +168,8 @@ export default function TeamLeaderDashboard() {
                             const isActive = !session.logout_time && !session.ended_at;
                             const onBreak = session.on_break;
 
-                            const loginRaw = session.login_time || session.started_at;
-                            const logoutRaw = session.logout_time || session.ended_at;
+                            const loginRaw = session.login_time || session.check_in || session.check_in_time || session.started_at || session.created_at;
+                            const logoutRaw = session.logout_time || session.check_out || session.check_out_time || session.ended_at;
 
                             const loginMs = loginRaw ? parseISOToLocalDate(loginRaw).getTime() : 0;
                             const logoutMs = logoutRaw ? parseISOToLocalDate(logoutRaw).getTime() : Date.now();
@@ -222,7 +222,7 @@ export default function TeamLeaderDashboard() {
 
                                     {/* Login time */}
                                     <div style={{ textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#30d158' }}>
-                                        {fmtTime(session.login_time)}
+                                        {fmtTime(loginRaw)}
                                     </div>
 
                                     {/* Work duration (live) */}

@@ -3,7 +3,7 @@ import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import AttendanceCalendar from "../../components/AttendanceCalendar";
 import { getAttendance, getHolidays, getLeaves, refreshAttendance, refreshLeaves } from "../../utils/storage";
-import { downloadCSV } from "../../utils/formatters";
+import { downloadCSV, formatLocalTime, parseISOToLocalDate } from "../../utils/formatters";
 import { requestAttendanceCorrection } from "../../services/employeeService";
 
 export default function AttendanceHistory() {
@@ -35,7 +35,7 @@ export default function AttendanceHistory() {
     const reportData = monthAtt.map((att: any) => ({
       Date: att.date || 'N/A',
       Status: att.status || 'Absent',
-      'Login Time': att.login_time || 'N/A',
+      'Login Time': formatLocalTime(att.login_time || att.check_in || att.check_in_time || att.started_at),
       'Logout Time': att.logout_time || 'N/A',
       Notes: att.notes || ''
     }));
@@ -239,7 +239,13 @@ export default function AttendanceHistory() {
                 >
                   <div>
                     <div style={{ fontSize: '14px', fontWeight: '600' }}>{h.date}</div>
-                    <div style={{ fontSize: '12px', color: "rgba(255,255,255,0.5)" }}>Regular Login</div>
+                    <div style={{ fontSize: '12px', color: "rgba(255,255,255,0.5)" }}>
+                      {(() => {
+                        const loginVal = h.login_time || h.check_in || h.check_in_time || h.started_at;
+                        const formatted = formatLocalTime(loginVal);
+                        return formatted !== '—' ? `Login: ${formatted}` : 'Regular Login';
+                      })()}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {(() => {
@@ -273,7 +279,8 @@ export default function AttendanceHistory() {
                       style={{ padding: '4px 10px', fontSize: '11px', borderRadius: '12px' }}
                       onClick={() => {
                         setSelectedAttendanceRecord(h);
-                        setRequestedCheckInTime(h.login_time ? new Date(h.login_time).toTimeString().slice(0, 5) : "09:00");
+                        const loginVal = h.login_time || h.check_in || h.check_in_time || h.started_at;
+                        setRequestedCheckInTime(loginVal ? parseISOToLocalDate(loginVal).toTimeString().slice(0, 5) : "09:00");
                         setRequestedCheckOutTime(h.logout_time ? new Date(h.logout_time).toTimeString().slice(0, 5) : "18:00");
                         setShowCorrectionModal(true);
                       }}
