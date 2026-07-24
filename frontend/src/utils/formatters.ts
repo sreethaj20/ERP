@@ -250,9 +250,17 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
         str = str.replace(' ', 'T');
     }
 
-    // If ISO string has no timezone offset (naive UTC string from DB), append 'Z' to convert to local timezone accurately
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(str) && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
-        str += 'Z';
+    // If ISO string has no timezone offset, it's a naive LOCAL time from the server (datetime.now() = IST).
+    // Parse components directly to avoid browser interpreting it as UTC.
+    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/);
+    if (isoMatch && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
+        const y = parseInt(isoMatch[1], 10);
+        const m = parseInt(isoMatch[2], 10) - 1;
+        const day = parseInt(isoMatch[3], 10);
+        const hr = parseInt(isoMatch[4], 10);
+        const min = parseInt(isoMatch[5], 10);
+        const sec = isoMatch[6] ? parseInt(isoMatch[6], 10) : 0;
+        return new Date(y, m, day, hr, min, sec);
     }
 
     const d = new Date(str);
