@@ -1,5 +1,6 @@
 from typing import List, Optional, Any
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from datetime import datetime
 from app.repositories.manager_onboarding_repo import manager_onboarding_repo
 from app.repositories.hr_onboarding_repo import hr_onboarding_repo
@@ -132,34 +133,38 @@ class ManagerOnboardingService:
         # --- WORKFLOW: Autonomous Identity Provisioning (Final Authority) ---
         target_username = f"usr_{db_obj.employee_id.lower().replace('-', '_')}"
         target_email = (db_obj.login_email or db_obj.personal_email or "").strip()
+        if not target_email:
+            target_email = f"{db_obj.employee_id.lower()}@mercuresolution.com"
         
         # Ultra-robust check: search by email, username, and employee_id independently
         # and use ilike for case-insensitive matching in case DB collation varies
-        existing_user = db.query(User).filter(
-            (User.employee_id == db_obj.employee_id) | 
-            (User.username.ilike(target_username)) | 
-            (User.email.ilike(target_email))
-        ).first()
+        filters = [User.employee_id == db_obj.employee_id, User.username.ilike(target_username)]
+        if target_email:
+            filters.append(User.email.ilike(target_email))
+            
+        existing_user = db.query(User).filter(or_(*filters)).first()
 
         if not existing_user:
             try:
-                new_user = User(
-                    username=target_username,
-                    email=target_email,
-                    hashed_password=get_password_hash("Mercure@123"), # Default Password
-                    role=db_obj.role_name.lower().replace(" ", "") if db_obj.role_name else "employee",
-                    full_name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
-                    employee_id=db_obj.employee_id,
-                    is_active=True
-                )
-                db.add(new_user)
-                db.flush()
+                with db.begin_nested():
+                    new_user = User(
+                        username=target_username,
+                        email=target_email,
+                        hashed_password=get_password_hash("Mercure@123"), # Default Password
+                        role=db_obj.role_name.lower().replace(" ", "") if db_obj.role_name else "employee",
+                        full_name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
+                        employee_id=db_obj.employee_id,
+                        is_active=True
+                    )
+                    db.add(new_user)
+                    db.flush()
                 effective_user_id = new_user.id
             except Exception as e:
-                # RECOVERY: If someone else just created this user during this transaction, find it
-                db.flush() # Try to see if it's in the current session
+                # RECOVERY: If savepoint rolled back due to collision, find the existing user
                 existing_user = db.query(User).filter(
-                    (User.username == target_username) | (User.email == target_email)
+                    (User.employee_id == db_obj.employee_id) | 
+                    (User.username.ilike(target_username)) | 
+                    (User.email.ilike(target_email))
                 ).first()
                 if not existing_user:
                     # If still not found, it's a real error
@@ -174,31 +179,40 @@ class ManagerOnboardingService:
         # Guard Employee Record
         existing_emp = db.query(Employee).filter(Employee.employee_id == db_obj.employee_id).first()
         if not existing_emp:
-            new_emp = Employee(
-                user_id=effective_user_id,
-                employee_id=db_obj.employee_id,
-                first_name=db_obj.first_name,
-                last_name=db_obj.last_name,
-                name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
-                email=target_email,
-                official_email=db_obj.login_email,
-                personal_email=db_obj.personal_email,
-                phone=db_obj.personal_mobile,
-                department=db_obj.department,
-                designation=db_obj.designation,
-                manager_id=db_obj.manager_id,
-                team_leader_id=db_obj.team_leader_id,
-                joining_date=db_obj.join_date or datetime.now().date(),
-                gender=db_obj.gender,
-                date_of_birth=db_obj.dob,
-                blood_group=db_obj.blood_group,
-                nationality=db_obj.nationality,
-                work_location=db_obj.joining_location,
-                status="Active",
-                role=db_obj.role_name.lower().replace(" ", "") if db_obj.role_name else "employee"
-            )
-            db.add(new_emp)
-            db.flush()
+            try:
+                with db.begin_nested():
+                    new_emp = Employee(
+                        user_id=effective_user_id,
+                        employee_id=db_obj.employee_id,
+                        first_name=db_obj.first_name,
+                        last_name=db_obj.last_name,
+                        name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
+                        email=target_email,
+                        official_email=db_obj.login_email,
+                        personal_email=db_obj.personal_email,
+                        phone=db_obj.personal_mobile,
+                        department=db_obj.department,
+                        designation=db_obj.designation,
+                        manager_id=db_obj.manager_id,
+                        team_leader_id=db_obj.team_leader_id,
+                        joining_date=db_obj.join_date or datetime.now().date(),
+                        gender=db_obj.gender,
+                        date_of_birth=db_obj.dob,
+                        blood_group=db_obj.blood_group,
+                        nationality=db_obj.nationality,
+                        work_location=db_obj.joining_location,
+                        status="Active",
+                        role=db_obj.role_name.lower().replace(" ", "") if db_obj.role_name else "employee"
+                    )
+                    db.add(new_emp)
+                    db.flush()
+            except Exception:
+                existing_emp = db.query(Employee).filter(Employee.employee_id == db_obj.employee_id).first()
+                if existing_emp:
+                    existing_emp.status = "Active"
+                    db.add(existing_emp)
+                else:
+                    raise
         else:
             existing_emp.status = "Active"
             db.add(existing_emp)

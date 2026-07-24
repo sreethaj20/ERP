@@ -7,7 +7,7 @@ from app.models.employee import Employee
 from app.models.user import User
 from app.models.preboarding import EmployeePreboarding
 from app.core.security import get_password_hash
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from app.core.websocket_manager import websocket_manager
 import asyncio
 from app.services.storage_service import storage_service
@@ -116,31 +116,35 @@ class HROnboardingService:
         # --- WORKFLOW: Provision Identity (User & Employee) ---
         target_username = f"usr_onb_{db_obj.employee_id}"
         target_email = (db_obj.official_email or db_obj.personal_email or "").strip()
+        if not target_email:
+            target_email = f"{db_obj.employee_id.lower()}@mercuresolution.com"
 
-        existing_user = db.query(User).filter(
-            (User.employee_id == db_obj.employee_id) | 
-            (User.username.ilike(target_username)) | 
-            (User.email.ilike(target_email))
-        ).first()
+        filters = [User.employee_id == db_obj.employee_id, User.username.ilike(target_username)]
+        if target_email:
+            filters.append(User.email.ilike(target_email))
+
+        existing_user = db.query(User).filter(or_(*filters)).first()
 
         if not existing_user:
             try:
-                new_user = User(
-                    username=target_username,
-                    email=target_email,
-                    hashed_password=get_password_hash("Mercure@123"),
-                    role=db_obj.role_name or "employee",
-                    full_name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
-                    employee_id=db_obj.employee_id,
-                    is_active=True
-                )
-                db.add(new_user)
-                db.flush()
+                with db.begin_nested():
+                    new_user = User(
+                        username=target_username,
+                        email=target_email,
+                        hashed_password=get_password_hash("Mercure@123"),
+                        role=db_obj.role_name or "employee",
+                        full_name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
+                        employee_id=db_obj.employee_id,
+                        is_active=True
+                    )
+                    db.add(new_user)
+                    db.flush()
                 effective_user_id = new_user.id
             except Exception as e:
-                db.flush()
                 existing_user = db.query(User).filter(
-                    (User.username == target_username) | (User.email == target_email)
+                    (User.employee_id == db_obj.employee_id) |
+                    (User.username.ilike(target_username)) | 
+                    (User.email.ilike(target_email))
                 ).first()
                 if not existing_user:
                     raise e
@@ -158,7 +162,7 @@ class HROnboardingService:
                 first_name=db_obj.first_name,
                 last_name=db_obj.last_name,
                 name=f"{db_obj.first_name} {db_obj.last_name or ''}".strip(),
-                email=db_obj.official_email,
+                email=target_email,
                 official_email=db_obj.official_email,
                 personal_email=db_obj.personal_email,
                 department=db_obj.department,
