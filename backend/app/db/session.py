@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from app.core.config import settings
 
@@ -12,12 +12,6 @@ engine = create_engine(
     pool_timeout=30,   # Wait up to 30s for a connection from the pool
     echo=False
 )
-
-@event.listens_for(engine, "connect")
-def set_timezone(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("SET TIME ZONE 'Asia/Kolkata';")
-    cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

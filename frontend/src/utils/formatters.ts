@@ -256,9 +256,8 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
         const hour = parseInt(match[4], 10);
         const minute = parseInt(match[5], 10);
         const second = parseInt(match[6], 10);
-        // Since the database stores naive datetimes in Indian Standard Time (IST / UTC+05:30),
-        // we construct the UTC timestamp and subtract 5.5 hours (19,800,000 ms) to align it.
-        const utcEpoch = Date.UTC(year, month, day, hour, minute, second) - (5.5 * 3600 * 1000);
+        // Since database stores naive datetimes in UTC, we construct the UTC timestamp directly
+        const utcEpoch = Date.UTC(year, month, day, hour, minute, second);
         return new Date(utcEpoch);
     }
 

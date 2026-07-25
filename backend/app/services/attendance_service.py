@@ -2,7 +2,6 @@
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from datetime import date, datetime, time, timedelta, timezone
-ist_tz = timezone(timedelta(hours=5, minutes=30))
 from typing import List, Optional
 from decimal import Decimal
 from app.repositories.attendance_repo import attendance_repo, shift_repo, shift_session_repo, shift_assignment_repo
@@ -19,7 +18,7 @@ from fastapi import HTTPException
 class AttendanceService:
     def check_in(self, db: Session, employee_id: str, check_in_dt: datetime = None):
         today = date.today()
-        now_dt = check_in_dt or datetime.now(ist_tz).replace(tzinfo=None)
+        now_dt = check_in_dt or datetime.now(timezone.utc).replace(tzinfo=None)
         db_obj = attendance_repo.get(db, employee_id, today)
         if db_obj:
             # Already checked in today — preserve original first check_in time if set
@@ -41,7 +40,7 @@ class AttendanceService:
 
     def check_out(self, db: Session, employee_id: str, check_out_dt: datetime = None):
         today = date.today()
-        now_dt = check_out_dt or datetime.now(ist_tz).replace(tzinfo=None)
+        now_dt = check_out_dt or datetime.now(timezone.utc).replace(tzinfo=None)
         db_obj = attendance_repo.get(db, employee_id, today)
         if not db_obj:
             raise ResourceNotFoundException("Attendance for today", employee_id)
@@ -311,10 +310,10 @@ class AttendanceService:
         
         db_obj.status = status
         db_obj.reviewed_by = approved_by_employee_id
-        db_obj.reviewed_at = datetime.now(ist_tz).replace(tzinfo=None)
+        db_obj.reviewed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         if rejection_reason:
             db_obj.comments = rejection_reason
-        db_obj.updated_at = datetime.now(ist_tz).replace(tzinfo=None)
+        db_obj.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         
         # Only finalize and update master table if HR is approving
         if status.lower() == "approved" and approver_role.lower() == "hr":
@@ -379,7 +378,7 @@ class AttendanceService:
             
         db_obj.status = status
         db_obj.approved_by = approved_by_employee_id
-        db_obj.updated_at = datetime.now(ist_tz).replace(tzinfo=None)
+        db_obj.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)
@@ -523,7 +522,7 @@ class ShiftService:
         requested_shift_id = obj_in.shift_id
         
         today = date.today()
-        now_dt = datetime.now(ist_tz).replace(tzinfo=None)
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
 
         # 1. Early Guard: Prevent double-starting if session exists TODAY; auto-close stale sessions from past days
         active = shift_session_repo.get_active(db, employee_id)
@@ -720,7 +719,7 @@ class ShiftService:
             if not active:
                 raise ResourceNotFoundException("Active shift session", employee_id)
                 
-            now = datetime.now(ist_tz).replace(tzinfo=None)
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
             active.ended_at = now
             active.logout_time = now
             active.status = "closed"
@@ -844,10 +843,10 @@ class ShiftService:
         new_break = shift_models.BreakLog(
             session_id=active_session.session_id or str(active_session.id), 
             employee_id=employee_id, 
-            break_start=datetime.now(ist_tz).replace(tzinfo=None)
+            break_start=datetime.now(timezone.utc).replace(tzinfo=None)
         )
         active_session.on_break = True
-        active_session.current_break_start = datetime.now(ist_tz).replace(tzinfo=None)
+        active_session.current_break_start = datetime.now(timezone.utc).replace(tzinfo=None)
         db.add(new_break)
         db.add(active_session)
         db.commit()
@@ -863,7 +862,7 @@ class ShiftService:
         if not active_break: 
             raise ResourceNotFoundException("Active break log", employee_id)
             
-        active_break.break_end = datetime.now(ist_tz).replace(tzinfo=None)
+        active_break.break_end = datetime.now(timezone.utc).replace(tzinfo=None)
         diff = active_break.break_end - active_break.break_start
         active_break.duration_seconds = int(diff.total_seconds())
         active_break.duration_minutes = int(active_break.duration_seconds / 60)
