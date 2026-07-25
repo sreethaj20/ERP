@@ -1,5 +1,6 @@
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+ist_tz = timezone(timedelta(hours=5, minutes=30))
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -141,7 +142,7 @@ def login(
                     role_name=user.role.upper() if user.role else "STAFF",
                     login_enabled=True,
                     assigned_by="system",
-                    assigned_at=datetime.now(),
+                    assigned_at=datetime.now(ist_tz).replace(tzinfo=None),
                     is_active=True,
                     notes="Auto-activated on login"
                 )
@@ -164,7 +165,7 @@ def login(
     
     # 📈 Log Activity & Update Last Login
     try:
-        user.last_login_at = datetime.now()
+        user.last_login_at = datetime.now(ist_tz).replace(tzinfo=None)
         
         login_activity = Activity(
             user_id=user.id,
@@ -247,7 +248,7 @@ def request_password_reset(
     # Generate random 6-digit token
     token = str(random.randint(100000, 999999))
     user.reset_token = token
-    user.reset_token_at = datetime.now()
+    user.reset_token_at = datetime.now(ist_tz).replace(tzinfo=None)
     db.add(user)
     db.commit()
     
@@ -279,7 +280,7 @@ def verify_reset_token(
         raise HTTPException(status_code=400, detail="Invalid security token.")
         
     # Check expiration (e.g., 15 minutes)
-    if not user.reset_token_at or (datetime.now() - user.reset_token_at) > timedelta(minutes=15):
+    if not user.reset_token_at or (datetime.now(ist_tz).replace(tzinfo=None) - user.reset_token_at) > timedelta(minutes=15):
         raise HTTPException(status_code=400, detail="Token has expired. Please request a new one.")
         
     return {"status": "success", "message": "Token verified."}
@@ -306,7 +307,7 @@ def reset_password(
     if not user.reset_token or user.reset_token != token:
         raise HTTPException(status_code=400, detail="Security verification failed.")
         
-    if not user.reset_token_at or (datetime.now() - user.reset_token_at) > timedelta(minutes=15):
+    if not user.reset_token_at or (datetime.now(ist_tz).replace(tzinfo=None) - user.reset_token_at) > timedelta(minutes=15):
         raise HTTPException(status_code=400, detail="Verification session expired.")
 
     # Update Password
