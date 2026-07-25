@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional
-from datetime import time, datetime
+from datetime import time, datetime, timezone
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, get_current_user_with_role
 from app.models.user import User
@@ -86,16 +86,18 @@ async def update_any_employee(emp_id: str, obj_in: EmployeeUpdate, db: Session =
 @router.post("/attendance/checkin", response_model=AttendanceOut)
 def employee_check_in(check_in_time: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     emp = employee_service.get_profile(db, current_user.id)
-    today = datetime.now().date()
-    t = time.fromisoformat(check_in_time) if check_in_time else datetime.now().time()
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.date()
+    t = time.fromisoformat(check_in_time) if check_in_time else now_utc.time()
     dt = datetime.combine(today, t)
     return attendance_service.check_in(db, emp.employee_id, dt)
 
 @router.post("/attendance/checkout", response_model=AttendanceOut)
 def employee_check_out(check_out_time: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     emp = employee_service.get_profile(db, current_user.id)
-    today = datetime.now().date()
-    t = time.fromisoformat(check_out_time) if check_out_time else datetime.now().time()
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.date()
+    t = time.fromisoformat(check_out_time) if check_out_time else now_utc.time()
     dt = datetime.combine(today, t)
     return attendance_service.check_out(db, emp.employee_id, dt)
 
