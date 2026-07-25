@@ -556,6 +556,13 @@ export const recordLoginPresence = async (id: string, name: string, role: string
         const endpoint = isHROrManager ? 'hr/attendance/checkin' : 'employee/attendance/checkin';
         const response = await api.post(endpoint, payload);
         console.log('[ATTENDANCE] Checkin success:', response.status);
+        if (response.data) {
+            const checkInVal = response.data.check_in || response.data.check_in_time || response.data.login_time;
+            if (checkInVal) {
+                localStorage.setItem("login_time", checkInVal);
+                sessionStorage.setItem("login_time", checkInVal);
+            }
+        }
         await refreshAttendance();
 
         // 🚀 LINK: Automatically start shift session on login (all staff except admin)

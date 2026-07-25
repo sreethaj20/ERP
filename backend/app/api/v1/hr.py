@@ -380,8 +380,12 @@ def hr_attendance_checkin(payload: dict, db: Session = Depends(get_db), current_
         if not emp or emp.employee_id != emp_id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot record attendance for another employee")
     try:
-        attendance_service.check_in(db, emp_id)
-        return {"status": "success"}
+        attn = attendance_service.check_in(db, emp_id)
+        return {
+            "status": "success",
+            "check_in": attn.check_in.isoformat() if attn and hasattr(attn.check_in, "isoformat") else None,
+            "check_in_time": attn.check_in_time.isoformat() if attn and hasattr(attn.check_in_time, "isoformat") else None
+        }
     except Exception as e:
         import traceback
         traceback.print_exc()
