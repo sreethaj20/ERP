@@ -245,13 +245,19 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
         return d;
     }
 
-    // Handle space formatted dates e.g. "2026-07-23 06:00:00"
-    if (str.includes(' ') && !str.includes('T')) {
-        str = str.replace(' ', 'T');
+    // Check if it is a naive ISO string like "2026-07-25T12:35:07" or "2026-07-25 12:35:07"
+    // (no Z, and no + or - offset at the end)
+    const naiveIsoRegex = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/;
+    const match = str.match(naiveIsoRegex);
+    if (match) {
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1; // JS month is 0-indexed
+        const day = parseInt(match[3], 10);
+        const hour = parseInt(match[4], 10);
+        const minute = parseInt(match[5], 10);
+        const second = parseInt(match[6], 10);
+        return new Date(year, month, day, hour, minute, second);
     }
-
-    // Parse naive ISO datetime outputs (e.g. "2026-07-24T12:41:00") directly as local time
-    // without appending 'Z' so the browser parses it using the local host timezone.
 
     const d = new Date(str);
     if (!isNaN(d.getTime())) {
