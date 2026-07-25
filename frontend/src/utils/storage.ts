@@ -1240,6 +1240,13 @@ export const startShiftSession = async (shift_id: number = 0) => {
         };
 
         const res = await api.post('employee/shifts/start', payload);
+        if (res.data) {
+            const actualLoginTime = res.data.login_time || res.data.started_at || res.data.created_at;
+            if (actualLoginTime) {
+                localStorage.setItem("login_time", actualLoginTime);
+                sessionStorage.setItem("login_time", actualLoginTime);
+            }
+        }
         return { success: true, data: res.data };
     } catch (error: any) {
         const detail = error.response?.data?.detail || error.message || '';
@@ -1259,6 +1266,11 @@ export const getActiveShiftSession = async () => {
     const session = await fetchData('employee/shifts/active');
     // If it's an object (not null/empty array), it's active
     if (session && !Array.isArray(session) && session.id) {
+        const actualLoginTime = session.login_time || session.started_at || session.created_at;
+        if (actualLoginTime) {
+            localStorage.setItem("login_time", actualLoginTime);
+            sessionStorage.setItem("login_time", actualLoginTime);
+        }
         return { active: true, session };
     }
     return { active: false };

@@ -246,7 +246,14 @@ export default function EmployeeMaster() {
       city: selectedEmp.city,
       state: selectedEmp.state,
       pincode: selectedEmp.postal_code || selectedEmp.pincode,
-      country: selectedEmp.country
+      country: selectedEmp.country,
+      // Probation & Work Logistics
+      probation_period_days: selectedEmp.probation_period_days ?? 90,
+      notice_period: selectedEmp.notice_period,
+      joining_date: selectedEmp.joining_date || selectedEmp.join_date,
+      work_location: selectedEmp.work_location,
+      work_mode: selectedEmp.work_mode,
+      shift_type: selectedEmp.shift_type,
     };
 
     // 🛡️ MASTER SYNCHRONIZER: Aggregate data from all tabs into a single atomic payload
@@ -881,6 +888,58 @@ export default function EmployeeMaster() {
                   <div style={{ gridColumn: 'span 2', marginTop: '10px' }}><h3 style={{ fontSize: '14px', borderBottom: '1px solid var(--border-light)', paddingBottom: '5px' }}>Work Logistics</h3></div>
                   <InputGroup label="Joining Date" type="date" value={selectedEmp.joining_date || selectedEmp.join_date} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, joining_date: v })} />
                   <InputGroup label="Work Location" value={selectedEmp.work_location} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, work_location: v })} />
+
+                  {/* ===== PROBATION / PROVISION PERIOD ===== */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>PROBATION PERIOD (DAYS)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="apple-input"
+                      value={selectedEmp.probation_period_days ?? 90}
+                      onChange={(e) => setSelectedEmp({ ...selectedEmp, probation_period_days: parseInt(e.target.value) || 90 })}
+                    />
+                  </div>
+
+                  {/* Live Probation Status Badge */}
+                  {(() => {
+                    const joinRaw = selectedEmp.joining_date || selectedEmp.join_date;
+                    const probDays = selectedEmp.probation_period_days ?? 90;
+                    if (!joinRaw) return null;
+                    const joinDate = new Date(joinRaw);
+                    const probEndDate = new Date(joinDate.getTime() + probDays * 24 * 60 * 60 * 1000);
+                    const today = new Date();
+                    const isOver = today > probEndDate;
+                    const daysLeft = Math.ceil((probEndDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    const probEndStr = probEndDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                    return (
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', gap: '6px',
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        background: isOver ? 'rgba(48,209,88,0.07)' : 'rgba(255,159,10,0.07)',
+                        border: `1px solid ${isOver ? 'rgba(48,209,88,0.25)' : 'rgba(255,159,10,0.25)'}`,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '10px', fontWeight: '800', padding: '3px 9px', borderRadius: '6px',
+                            background: isOver ? 'rgba(48,209,88,0.15)' : 'rgba(255,159,10,0.15)',
+                            color: isOver ? '#30d158' : '#ff9f0a',
+                            letterSpacing: '0.5px'
+                          }}>
+                            {isOver ? '✅ PROBATION COMPLETE' : '⏳ ON PROBATION'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                          {isOver
+                            ? <><strong style={{ color: '#30d158' }}>Confirmed</strong> — Probation ended on <strong>{probEndStr}</strong></>  
+                            : <><strong style={{ color: '#ff9f0a' }}>{daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining</strong> — Ends on <strong>{probEndStr}</strong></>}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* ===== END PROBATION SECTION ===== */}
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                     <label style={{ fontSize: '11px', color: 'var(--text-tertiary)', fontWeight: 'bold' }}>WORK MODE</label>
                     <select className="apple-input" value={selectedEmp.work_mode || ''} onChange={(e) => setSelectedEmp({ ...selectedEmp, work_mode: e.target.value })} style={{ appearance: "none" }}>

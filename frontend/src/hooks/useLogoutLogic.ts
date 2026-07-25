@@ -40,7 +40,7 @@ export function useLogoutLogic() {
                 const halfDaySec = targetSec / 2;
 
                 setWorkInfo({ totalWorkSec, targetSec, halfDaySec });
-                setCanLogout(true); // Always allow logout — restrictions are advisory prompts only
+                setCanLogout(totalWorkSec >= halfDaySec);
             } else {
                 setWorkInfo(null);
                 setCanLogout(true); // No active session — allow logout

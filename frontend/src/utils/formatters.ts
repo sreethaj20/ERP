@@ -250,12 +250,8 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
         str = str.replace(' ', 'T');
     }
 
-    // The backend server is running in UTC, so its naive datetime outputs (e.g. "2026-07-24T12:41:00")
-    // are actually UTC times. We must append 'Z' so the browser correctly converts them to local time (IST).
-    const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
-    if (isoMatch && !str.endsWith('Z') && !/[+-]\d{2}(:\d{2})?$/.test(str)) {
-        str = str + 'Z';
-    }
+    // Parse naive ISO datetime outputs (e.g. "2026-07-24T12:41:00") directly as local time
+    // without appending 'Z' so the browser parses it using the local host timezone.
 
     const d = new Date(str);
     if (!isNaN(d.getTime())) {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaClock, FaSignOutAlt, FaCoffee, FaPlay } from "react-icons/fa";
 import shiftService, { ShiftSession, BreakLog } from "../services/shiftService";
+import { useLogoutLogic } from "../hooks/useLogoutLogic";
 
 export default function LiveTimesheetBanner() {
     const userId = sessionStorage.getItem("userId") || "";
@@ -59,11 +60,14 @@ export default function LiveTimesheetBanner() {
         return () => clearInterval(timer);
     }, [session, activeBreak]);
 
+    const { canLogout, handleSafeLogout } = useLogoutLogic();
+
     const handleEndShift = async () => {
-        if (!window.confirm("Are you sure you want to end your shift?")) return;
-        await shiftService.endShift();
-        setSession(null);
-        setActiveBreak(null);
+        await handleSafeLogout(async () => {
+            await shiftService.endShift();
+            setSession(null);
+            setActiveBreak(null);
+        });
     };
 
     const handleStartBreak = async () => {
@@ -154,8 +158,24 @@ export default function LiveTimesheetBanner() {
                         <FaCoffee size={14} /> Start Break
                     </button>
                 )}
-                <button onClick={handleEndShift} className="apple-btn" style={{ background: 'rgba(255,69,58,0.15)', color: '#ff453a', border: '1px solid rgba(255,69,58,0.3)', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px' }}>
-                    <FaSignOutAlt size={14} /> End Shift
+                <button
+                    onClick={handleEndShift}
+                    disabled={!canLogout}
+                    className="apple-btn"
+                    style={{
+                        background: canLogout ? 'rgba(255,69,58,0.15)' : 'rgba(255,255,255,0.05)',
+                        color: canLogout ? '#ff453a' : 'var(--text-tertiary)',
+                        border: `1px solid ${canLogout ? 'rgba(255,69,58,0.3)' : 'rgba(255,255,255,0.05)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 20px',
+                        opacity: canLogout ? 1 : 0.45,
+                        cursor: canLogout ? 'pointer' : 'not-allowed'
+                    }}
+                    title={canLogout ? "End Shift" : "End Shift locked until 4h half-day completed"}
+                >
+                    <FaSignOutAlt size={14} /> {canLogout ? "End Shift" : "Locked (Min 4h)"}
                 </button>
             </div>
         </div>
