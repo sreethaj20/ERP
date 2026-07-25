@@ -234,10 +234,35 @@ class AttendanceService:
         - HR: all active sessions
         - Manager: only their team's sessions
         """
+        today = date.today()
+        # Auto-close stale active sessions from past days to keep database clean
+        try:
+            stale_sessions = db.query(shift_models.ShiftSession).filter(
+                shift_models.ShiftSession.status == "active",
+                shift_models.ShiftSession.date < today
+            ).all()
+            if stale_sessions:
+                for stale in stale_sessions:
+                    stale.status = "closed"
+                    if stale.started_at:
+                        stale.ended_at = stale.started_at + timedelta(hours=9)
+                    else:
+                        stale.ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                    stale.logout_time = stale.ended_at
+                    db.add(stale)
+                db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[ATTENDANCE] Error auto-closing stale sessions: {e}")
+
         query = db.query(shift_models.ShiftSession, emp_models.Employee.first_name, emp_models.Employee.last_name, emp_models.Employee.role, emp_models.Employee.department, shift_models.ShiftDefinition.shift_name, shift_models.ShiftDefinition.color)\
             .join(emp_models.Employee, shift_models.ShiftSession.employee_id == emp_models.Employee.employee_id)\
             .outerjoin(shift_models.ShiftDefinition, shift_models.ShiftSession.shift_id == shift_models.ShiftDefinition.id)\
-            .filter(shift_models.ShiftSession.status == "active", emp_models.Employee.deleted_at == None)
+            .filter(
+                shift_models.ShiftSession.status == "active",
+                shift_models.ShiftSession.date == today,
+                emp_models.Employee.deleted_at == None
+            )
 
         if user_role and user_role.lower() == "manager" and viewer_user_id:
             # 🚀 PRODUCTION OPTIMIZATION: Use flat-fetch for hierarchy
