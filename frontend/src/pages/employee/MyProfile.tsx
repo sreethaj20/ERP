@@ -300,18 +300,83 @@ export default function MyProfile() {
         {!isEditing ? (
           <button
             onClick={() => setIsEditing(true)}
-            className="apple-btn"
-            style={{ background: 'rgba(255,255,255,0.06)', gap: '8px', flexShrink: 0 }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.22) 0%, rgba(99, 102, 241, 0.12) 100%)',
+              border: '1px solid rgba(14, 165, 233, 0.4)',
+              color: '#38bdf8',
+              padding: '10px 22px',
+              borderRadius: '14px',
+              fontSize: '13px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flexShrink: 0,
+              cursor: 'pointer',
+              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              boxShadow: '0 4px 18px rgba(14, 165, 233, 0.2)',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(14, 165, 233, 0.38) 0%, rgba(99, 102, 241, 0.22) 100%)';
+              e.currentTarget.style.borderColor = 'rgba(14, 165, 233, 0.7)';
+              e.currentTarget.style.transform = 'translateY(-2px) scale(1.03)';
+              e.currentTarget.style.boxShadow = '0 6px 24px rgba(14, 165, 233, 0.45)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'linear-gradient(135deg, rgba(14, 165, 233, 0.22) 0%, rgba(99, 102, 241, 0.12) 100%)';
+              e.currentTarget.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 4px 18px rgba(14, 165, 233, 0.2)';
+            }}
           >
-            <FaEdit /> Edit Profile
+            <FaEdit size={14} /> Edit Profile
           </button>
         ) : (
           <div style={{ display: 'flex', gap: '10px', flexShrink: 0 }}>
-            <button onClick={handleSave} className="apple-btn" style={{ background: '#30d158', color: '#fff', border: 'none', gap: '6px' }}>
-              <FaSave /> Save
+            <button
+              onClick={handleSave}
+              style={{
+                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                color: '#ffffff',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '14px',
+                fontSize: '13px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 14px rgba(34, 197, 94, 0.35)'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <FaSave size={13} /> Save
             </button>
-            <button onClick={handleCancel} className="apple-btn" style={{ background: 'rgba(255,69,58,0.12)', color: '#ff453a', border: '1px solid rgba(255,69,58,0.2)', gap: '6px' }}>
-              <FaTimes /> Cancel
+            <button
+              onClick={handleCancel}
+              style={{
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.08) 100%)',
+                color: '#f87171',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                padding: '10px 20px',
+                borderRadius: '14px',
+                fontSize: '13px',
+                fontWeight: '700',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+            >
+              <FaTimes size={13} /> Cancel
             </button>
           </div>
         )}
