@@ -150,15 +150,35 @@ export default function LoginPage() {
       sessionStorage.setItem("userRole", role);
       localStorage.setItem("userRole", role);
 
-      // Record login presence for ALL roles (so Manager can see who's online)
-      const allEmps = await getEmployees();
-      const empRecord = Array.isArray(allEmps) ? allEmps.find((e: any) => String(e.id) === String(user.id) || String(e.user_id) === String(user.id) || e.email === user.email) : null;
-      const emp_id_to_log = empRecord?.employee_id || user.employee_id || user.id;
-      await recordLoginPresence(emp_id_to_log, user.name || user.full_name, role, empRecord?.department || '');
+      // Record login presence & store profile info safely (so secondary failures don't block login)
+      try {
+        const allEmps = await getEmployees();
+        const empRecord = Array.isArray(allEmps) ? allEmps.find((e: any) => String(e.id) === String(user.id) || String(e.user_id) === String(user.id) || e.email === user.email) : null;
+        const emp_id_to_log = empRecord?.employee_id || user.employee_id || user.id;
+        await recordLoginPresence(emp_id_to_log, user.name || user.full_name, role, empRecord?.department || '').catch(() => {});
+
+        if (empRecord) {
+          sessionStorage.setItem("department", empRecord.department || "Not Assigned");
+          sessionStorage.setItem("joinDate", empRecord.joining_date || "");
+
+          let mgrName = empRecord.reporting_to || empRecord.reporting_manager;
+          if (!mgrName && empRecord.reporting_to_id) {
+            const mgr = Array.isArray(allEmps) ? allEmps.find((e: any) => e.employee_id === empRecord.reporting_to_id) : null;
+            if (mgr) mgrName = mgr.name || `${mgr.first_name} ${mgr.last_name || ''}`.trim();
+            else mgrName = empRecord.reporting_to_id;
+          }
+          sessionStorage.setItem("reportingTo", mgrName || "");
+        }
+      } catch (postErr) {
+        console.warn("[AUTH] Post-login profile sync warning:", postErr);
+      }
 
       // Track full shift session for everyone EXCEPT the Manager
       if (role !== 'manager') {
-        const res = await startShiftSession(0); // 0 = Auto-detect assigned shift
+        const res = await startShiftSession(0).catch(e => {
+          console.warn("[SHIFT] Shift session start error:", e);
+          return null;
+        });
         if (res && !res.success) {
           // 🔒 SECURITY PROTECTION: Clear session tokens so page refresh (F5) cannot bypass approval!
           sessionStorage.clear();
@@ -179,23 +199,8 @@ export default function LoginPage() {
         }
       }
 
-      // Store additional profile info if found
-      if (empRecord) {
-        sessionStorage.setItem("department", empRecord.department || "Not Assigned");
-        sessionStorage.setItem("joinDate", empRecord.joining_date || "");
-
-        // Resolve Manager Name if only ID exists
-        let mgrName = empRecord.reporting_to || empRecord.reporting_manager;
-        if (!mgrName && empRecord.reporting_to_id) {
-          const mgr = Array.isArray(allEmps) ? allEmps.find((e: any) => e.employee_id === empRecord.reporting_to_id) : null;
-          if (mgr) mgrName = mgr.name || `${mgr.first_name} ${mgr.last_name || ''}`.trim();
-          else mgrName = empRecord.reporting_to_id;
-        }
-        sessionStorage.setItem("reportingTo", mgrName || "");
-      }
-
       const dashboardPath = role === "manager" ? "/manager/dashboard" : `/${role}/dashboard`;
-      await initStorage();
+      await initStorage().catch(() => {});
       navigate(dashboardPath, { replace: true });
     } catch (err: any) {
       sessionStorage.clear();

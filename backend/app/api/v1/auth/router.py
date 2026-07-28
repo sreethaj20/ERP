@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 
 from app.db.session import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, blacklist_token
@@ -34,13 +34,17 @@ def login(
             detail="Account is temporarily locked due to multiple failed login attempts. Please try again in 15 minutes."
         )
     
-    # 🛡️ 2. Exact Match User Lookup (Eliminates ambiguous prefix matching)
+    # 🛡️ 2. Case-Insensitive User Lookup (supports username before @ of email)
     try:
+        clean_identifier = username.lower()
+        prefix = clean_identifier.split('@')[0]
         user = db.query(User).filter(
             or_(
-                User.username == username, 
-                User.email == username,
-                User.employee_id == username
+                func.lower(User.username) == clean_identifier, 
+                func.lower(User.email) == clean_identifier,
+                func.lower(User.employee_id) == clean_identifier,
+                func.lower(User.username) == prefix,
+                func.lower(User.email).like(f"{prefix}@%")
             )
         ).first()
     except Exception as e:
