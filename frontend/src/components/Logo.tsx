@@ -88,14 +88,8 @@ const Logo: React.FC<LogoProps> = ({
                     objectFit: "contain",
                     maxHeight: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '75px' : (typeof width === 'number' ? width * 0.6 : '60px')),
                     marginBottom: (!isHorizontal && showName && companyName) ? '8px' : '0',
-                    filter: printMode ? 'none' :
-                        document.documentElement.getAttribute('data-theme') === 'light'
-                            ? 'invert(1) hue-rotate(180deg) brightness(0.9) contrast(1.2)'
-                            : 'invert(1) hue-rotate(180deg) brightness(1.2) contrast(1.1)',
-                    mixBlendMode: printMode ? 'normal' :
-                        document.documentElement.getAttribute('data-theme') === 'light'
-                            ? 'multiply'
-                            : 'lighten',
+                    filter: 'none',
+                    mixBlendMode: 'normal',
                     borderRadius: '4px'
                 }}
                 onError={(e) => {
