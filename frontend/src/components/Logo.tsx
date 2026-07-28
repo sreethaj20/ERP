@@ -87,9 +87,8 @@ const Logo: React.FC<LogoProps> = ({
                     height: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '68px' : "auto"),
                     objectFit: "contain",
                     maxHeight: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '75px' : (typeof width === 'number' ? width * 0.6 : '60px')),
-                    marginBottom: (!isHorizontal && showName && companyName) ? '8px' : '0',
-                    filter: 'none',
-                    mixBlendMode: 'normal',
+                    filter: printMode ? 'none' : 'contrast(1.1) brightness(1.15)',
+                    mixBlendMode: printMode ? 'normal' : 'multiply',
                     borderRadius: '4px'
                 }}
                 onError={(e) => {
