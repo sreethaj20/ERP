@@ -175,13 +175,79 @@ export default function OrganizationHierarchy() {
                     <h1 style={{ fontSize: "32px", fontWeight: "700" }}>Corporate Hierarchy</h1>
                     <p className="subtitle">Visualizing reporting lines, spans of control, and organizational depth</p>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => setExpandedNodes({})} className="apple-btn" style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)' }}>Collapse All</button>
-                    <button onClick={() => {
-                        const all: any = {};
-                        employees.forEach(e => all[e.id] = true);
-                        setExpandedNodes(all);
-                    }} className="apple-btn" style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)' }}>Expand All</button>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        onClick={() => setExpandedNodes({})}
+                        style={{
+                            background: 'linear-gradient(135deg, rgba(255, 69, 58, 0.18) 0%, rgba(255, 69, 58, 0.06) 100%)',
+                            border: '1px solid rgba(255, 69, 58, 0.35)',
+                            color: '#ff453a',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            padding: '9px 18px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            boxShadow: '0 4px 14px rgba(255, 69, 58, 0.15)',
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 69, 58, 0.3) 0%, rgba(255, 69, 58, 0.15) 100%)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 69, 58, 0.6)';
+                            e.currentTarget.style.transform = 'translateY(-1px) scale(1.03)';
+                            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 69, 58, 0.3)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 69, 58, 0.18) 0%, rgba(255, 69, 58, 0.06) 100%)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 69, 58, 0.35)';
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                            e.currentTarget.style.boxShadow = '0 4px 14px rgba(255, 69, 58, 0.15)';
+                        }}
+                    >
+                        Collapse All
+                    </button>
+                    <button
+                        onClick={() => {
+                            const all: any = {};
+                            employees.forEach(e => all[e.id] = true);
+                            setExpandedNodes(all);
+                        }}
+                        style={{
+                            background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(99, 102, 241, 0.15) 100%)',
+                            border: '1px solid rgba(14, 165, 233, 0.4)',
+                            color: '#38bdf8',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            padding: '9px 18px',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                            backdropFilter: 'blur(10px)',
+                            WebkitBackdropFilter: 'blur(10px)',
+                            boxShadow: '0 4px 16px rgba(14, 165, 233, 0.2)',
+                        }}
+                        onMouseEnter={e => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(14, 165, 233, 0.4) 0%, rgba(99, 102, 241, 0.25) 100%)';
+                            e.currentTarget.style.borderColor = 'rgba(14, 165, 233, 0.7)';
+                            e.currentTarget.style.transform = 'translateY(-1px) scale(1.03)';
+                            e.currentTarget.style.boxShadow = '0 6px 22px rgba(14, 165, 233, 0.4)';
+                        }}
+                        onMouseLeave={e => {
+                            e.currentTarget.style.background = 'linear-gradient(135deg, rgba(14, 165, 233, 0.25) 0%, rgba(99, 102, 241, 0.15) 100%)';
+                            e.currentTarget.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+                            e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                            e.currentTarget.style.boxShadow = '0 4px 16px rgba(14, 165, 233, 0.2)';
+                        }}
+                    >
+                        Expand All
+                    </button>
                 </div>
             </div>
 
@@ -227,11 +293,13 @@ const nodeStyle = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '12px 16px',
-    borderRadius: '12px',
+    padding: '14px 18px',
+    borderRadius: '14px',
     border: '1px solid var(--border-light)',
-    transition: 'all 0.2s ease',
-    marginBottom: '8px'
+    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+    marginBottom: '10px',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)'
 };
 
 const badgeStyle = {
