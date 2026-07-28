@@ -766,21 +766,9 @@ const ProfileField = ({ icon, label, value, isEditable, onEdit, type = "text" }:
           }}
         />
       ) : (
-        <>
-          <span style={{ color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: value ? '500' : '400' }}>
-            {value || "—"}
-          </span>
-          {/* If we are in edit mode but THIS specific field is not editable for the user */}
-          {window.location.href.includes('profile') && !isEditable && (
-            <FaTicketAlt
-              size={10}
-              color="var(--text-tertiary)"
-              style={{ cursor: 'pointer', opacity: 0.5 }}
-              title="Request Change"
-              onClick={() => window.location.href = '/employee/support'}
-            />
-          )}
-        </>
+        <span style={{ color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: value ? '500' : '400' }}>
+          {value || "—"}
+        </span>
       )}
     </div>
   </div>
