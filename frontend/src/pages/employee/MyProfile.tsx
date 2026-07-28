@@ -740,39 +740,51 @@ export default function MyProfile() {
 
 /* ─── SUB-COMPONENTS ─── */
 
-const ProfileField = ({ icon, label, value, isEditable, onEdit, type = "text" }: any) => (
-  <div style={{
-    display: 'flex', alignItems: 'center', gap: '14px',
-    padding: '13px 0', borderBottom: '1px solid var(--border-light)',
-    fontSize: '14px'
-  }}>
-    <div style={{ width: '20px', textAlign: 'center', flexShrink: 0 }}>{icon}</div>
-    <div style={{ minWidth: '130px', fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600', flexShrink: 0 }}>{label}</div>
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      {isEditable ? (
-        <input
-          type={type}
-          value={value || ""}
-          onChange={e => onEdit(e.target.value)}
-          style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: '1px solid var(--accent-blue)',
-            borderRadius: '6px',
-            color: '#fff',
-            padding: '4px 8px',
-            outline: 'none',
-            width: '100%',
-            fontSize: '13px'
-          }}
-        />
-      ) : (
-        <span style={{ color: value ? 'var(--text-primary)' : 'var(--text-tertiary)', fontWeight: value ? '500' : '400' }}>
-          {value || "—"}
-        </span>
-      )}
+const ProfileField = ({ icon, label, value, isEditable, onEdit, type = "text" }: any) => {
+  const formattedValue = React.useMemo(() => {
+    if (!value || typeof value !== 'string') return value || "—";
+    if (value.includes('@') || value.includes('http') || type === 'date' || value.includes('→')) return value;
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }, [value, type]);
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: '14px',
+      padding: '13px 0', borderBottom: '1px solid var(--border-light)',
+      fontSize: '14px'
+    }}>
+      <div style={{ width: '20px', textAlign: 'center', flexShrink: 0 }}>{icon}</div>
+      <div style={{ minWidth: '130px', fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600', flexShrink: 0 }}>{label}</div>
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {isEditable ? (
+          <input
+            type={type}
+            value={value || ""}
+            onChange={e => onEdit(e.target.value)}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--accent-blue)',
+              borderRadius: '6px',
+              color: '#fff',
+              padding: '4px 8px',
+              outline: 'none',
+              width: '100%',
+              fontSize: '13px'
+            }}
+          />
+        ) : (
+          <span style={{
+            color: value ? 'var(--text-primary)' : 'var(--text-tertiary)',
+            fontWeight: value ? '500' : '400',
+            textTransform: (value && typeof value === 'string' && !value.includes('@') && !value.includes('http') && type !== 'date') ? 'capitalize' : 'none'
+          }}>
+            {formattedValue}
+          </span>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const HRNote = ({ text }: { text?: string }) => (
   <div style={{
