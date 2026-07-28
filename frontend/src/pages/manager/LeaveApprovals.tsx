@@ -143,7 +143,7 @@ export default function LeaveApprovals() {
                         {fromD} → {toD}
                       </td>
                       <td style={{ padding: '12px', fontWeight: '700', color: 'var(--text-primary)' }}>{days}d</td>
-                      <td style={{ padding: '12px', color: 'var(--text-tertiary)', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={leave.reason}>{leave.reason}</td>
+                      <td style={{ padding: '12px', color: 'var(--text-secondary)', minWidth: '220px', maxWidth: '350px', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.4' }} title={leave.reason}>{leave.reason || '—'}</td>
                       <td style={{ padding: '12px' }}>
                         <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: s.bg, color: s.color }}>
                           {s.label}

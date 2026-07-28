@@ -253,7 +253,7 @@ export default function StaffLeaveManagement({ role, roleLabel }: Props) {
                                             <td style={{ padding: "14px", color: "var(--text-secondary)" }}>{l.start_date}</td>
                                             <td style={{ padding: "14px", color: "var(--text-secondary)" }}>{l.end_date}</td>
                                             <td style={{ padding: "14px", fontWeight: "700" }}>{l.total_days || 0}d</td>
-                                            <td style={{ padding: "14px", color: "var(--text-secondary)", maxWidth: "200px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.reason}>{l.reason}</td>
+                                            <td style={{ padding: "14px", color: "var(--text-secondary)", minWidth: "220px", maxWidth: "350px", wordBreak: "break-word", whiteSpace: "normal", lineHeight: "1.4" }} title={l.reason}>{l.reason || "—"}</td>
                                             <td style={{ padding: "14px" }}>{getStatusPill(l.status)}</td>
                                         </tr>
                                     ))}

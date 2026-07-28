@@ -187,7 +187,7 @@ export default function LeaveRecommendations() {
                                                 <td style={{ padding: '12px', color: '#0a84ff' }}>{leave.leave_type}</td>
                                                 <td style={{ padding: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{leave.start_date}</td>
                                                 <td style={{ padding: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{leave.end_date}</td>
-                                                <td style={{ padding: '12px', color: 'var(--text-tertiary)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{leave.reason}</td>
+                                                <td style={{ padding: '12px', color: 'var(--text-secondary)', minWidth: '220px', maxWidth: '350px', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.4' }} title={leave.reason}>{leave.reason || '—'}</td>
                                                 <td style={{ padding: '12px' }}>
                                                     <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: sc.bg, color: sc.color }}>
                                                         {statusLabel(leave.status)}
