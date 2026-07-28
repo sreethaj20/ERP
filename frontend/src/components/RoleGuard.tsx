@@ -8,13 +8,14 @@ interface RoleGuardProps {
 
 const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles }) => {
     const role = getRole();
-    const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true";
+    const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" || localStorage.getItem("isLoggedIn") === "true";
 
     if (!isLoggedIn) {
         return <Navigate to="/login" replace />;
     }
 
-    if (!allowedRoles.includes(role)) {
+    const normalizedAllowed = allowedRoles.map(r => r.toLowerCase().replace(/[_\s]+/g, ''));
+    if (!normalizedAllowed.includes(role)) {
         console.warn(`[AUTH] Access denied for role: ${role}. Required: ${allowedRoles.join(', ')}`);
         // Redirect to their own dashboard if they try to access something unauthorized
         return <Navigate to={`/${role}/dashboard`} replace />;

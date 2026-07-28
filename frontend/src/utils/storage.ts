@@ -229,7 +229,7 @@ export const normalizeEmployee = (e: any) => ({
 
 // --- REFRESHERS (ASYNCHRONOUS) ---
 export const refreshEmployees = async (forceRole?: string) => {
-    const role = (forceRole || sessionStorage.getItem("userRole") || '').toLowerCase();
+    const role = (forceRole || getRole()).toLowerCase();
     let url = 'hr/employees';
     if (role === 'manager') url = 'manager/workforce';
     else if (role !== 'hr') url = 'employees/reference';
@@ -256,7 +256,7 @@ export const getEmployeesForReference = async () => {
     return _employees;
 };
 export const refreshAttendance = async () => {
-    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const role = getRole();
     let url = 'hr/attendance'; // HR default: all employees
 
     if (role === 'manager') {
@@ -273,13 +273,20 @@ export const refreshAttendance = async () => {
     return _attendance;
 };
 export const refreshLeaves = async () => {
-    const role = (sessionStorage.getItem("userRole") || '').toLowerCase();
+    const role = getRole();
     const url = 'leaves'; // ✅ Unified endpoint
     _leaves = await fetchData(url);
     window.dispatchEvent(new Event('storage'));
     return _leaves;
 };
-export const getRole = () => (_currentUser?.role || 'employee').toLowerCase();
+export const getRole = (): string => {
+    const stored = sessionStorage.getItem("userRole") || localStorage.getItem("userRole") || (typeof _currentUser !== 'undefined' && _currentUser?.role ? _currentUser.role : 'employee');
+    let role = (stored || 'employee').toLowerCase().replace(/[_\s]+/g, '');
+    if (['requiter', 'recruiting'].includes(role)) role = 'recruiter';
+    if (['itdepartment', 'itadmin', 'itsupport'].includes(role)) role = 'it';
+    if (['teamlead', 'tl', 'teamleader'].includes(role)) role = 'teamleader';
+    return role;
+};
 
 export const refreshShifts = async () => {
     const role = getRole();

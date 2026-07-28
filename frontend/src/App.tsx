@@ -100,28 +100,26 @@ import SupportTicketsComponent from "./pages/shared/SupportTickets";
 import Layout from "./components/Layout";
 
 function App() {
-    const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true";
-    const token = sessionStorage.getItem("token");
+    const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" || localStorage.getItem("isLoggedIn") === "true";
     const [hydrated, setHydrated] = React.useState(false);
     
     React.useEffect(() => {
-        if (isLoggedIn && token) {
-            initStorage().then(() => setHydrated(true));
+        if (isLoggedIn) {
+            initStorage().then(() => setHydrated(true)).catch(() => setHydrated(true));
         } else {
-            setHydrated(true); // Pre-login state is technically 'hydrated' with null
+            setHydrated(true);
         }
-    }, [isLoggedIn, token]);
+    }, [isLoggedIn]);
 
     if (!hydrated) {
         return <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', color: '#fff' }}>Connecting to HRMS Secure Network...</div>;
     }
 
-    const role = (isLoggedIn && token) ? getRole() : "";
+    const role = isLoggedIn ? getRole() : "";
     
-    // Secure routing: If not logged in OR no token, always go to login
-    // Redirect to correct dashboard based on role
+    // Secure routing: If not logged in, go to login; otherwise redirect to role dashboard
     let homePath = "/login";
-    if (isLoggedIn && token && role) {
+    if (isLoggedIn && role) {
         homePath = `/${role}/dashboard`;
     }
 
