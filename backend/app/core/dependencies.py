@@ -7,20 +7,31 @@ from app.db.session import get_db
 from app.core.config import settings
 from app.models.user import User
 
+from fastapi import Request
+from app.core.security import decode_token
+
 reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
+    tokenUrl=f"{settings.API_V1_STR}/auth/login",
+    auto_error=False
 )
 
 def get_current_user(
+    request: Request,
     db: Session = Depends(get_db),
-    token: str = Depends(reusable_oauth2)
+    header_token: Optional[str] = Depends(reusable_oauth2)
 ) -> User:
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+    # 🍪 Check HttpOnly cookie first, fallback to Authorization header
+    token = request.cookies.get("access_token") or header_token
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication token required",
+            headers={"WWW-Authenticate": "Bearer"},
         )
+        
+    try:
+        payload = decode_token(token, expected_type="access")
         user_id: str = payload.get("sub")
-        print(f"[AUTH] Decoded sub (user_id): {user_id}")
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -28,17 +39,15 @@ def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
     except jwt.ExpiredSignatureError:
-        print("[AUTH] Token expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired",
             headers={"WWW-Authenticate": "Bearer"},
         )
     except (JWTError, Exception) as e:
-        print(f"[AUTH] JWT Decode Error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
+            detail=f"Could not validate credentials: {str(e)}",
             headers={"WWW-Authenticate": "Bearer"},
         )
     

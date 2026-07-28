@@ -320,7 +320,7 @@ function ShiftTable({
                     ? session.break_logs
                     : breakLogs.filter((b: any) => String(b.session_id) === String(session.session_id) || String(b.session_id) === String(session.id));
                 
-                const displayStatus = session.remark === 'Shift Extension' ? 'Shift Extension' : session.status;
+                const displayStatus = session.remark || (session.is_late ? 'Late Login' : (session.is_early_login ? 'Early Login' : session.status));
                 const statusStyle = STATUS_STYLES[displayStatus] || STATUS_STYLES[session.status] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.04)' };
                 
                 const isActive = !session.logout_time && !session.ended_at;

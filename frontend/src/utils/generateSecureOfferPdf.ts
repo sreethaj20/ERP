@@ -180,12 +180,11 @@ export async function generateSecureOfferPdf(
     // ── 5. Send to backend for real AES encryption (form-fill only lock) ──
     let finalBytes: ArrayBuffer = plainBuffer;
     try {
-        const token = sessionStorage.getItem('token');
         const response = await fetch('/api/v1/recruiter/secure-pdf', {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/pdf',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: plainBuffer,
         });

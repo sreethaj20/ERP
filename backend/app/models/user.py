@@ -43,6 +43,10 @@ class User(Base):
         self.hashed_password = value
 
     @property
+    def name(self):
+        return self.full_name or self.username
+
+    @property
     def photo(self):
         if hasattr(self, 'employee') and self.employee:
             return self.employee.photo

@@ -454,7 +454,11 @@ class ShiftService:
         return self._enrich_sessions(db, rows)
 
     def get_active_session(self, db: Session, employee_id: str):
-        return shift_session_repo.get_active(db, employee_id)
+        session = shift_session_repo.get_active(db, employee_id)
+        if not session:
+            return None
+        enriched = self._enrich_sessions(db, [session])
+        return enriched[0] if enriched else session
 
     def assign_shift(self, db: Session, obj_in: ShiftAssignmentCreate, current_user_role: str, current_employee_id: str) -> shift_models.ShiftAssignment:
         # Role validation: HR/Manager/TeamLeader only
@@ -614,17 +618,21 @@ class ShiftService:
             shift = db.query(shift_models.ShiftDefinition).order_by(shift_models.ShiftDefinition.id).first()
             if not shift:
                 # Emergency fallback if no shifts defined in system
-                shift = shift_models.ShiftDefinition(shift_name="Standard", start_time=time(9,0), end_time=time(18,0), grace_time=15)
+                shift = shift_models.ShiftDefinition(shift_name="General Shift", start_time=time(10,0), end_time=time(19,0), grace_time=15)
                 db.add(shift); db.flush()
             shift_id = shift.id
 
         # 5. Early Login Gating
+        now_local = datetime.now()
         is_extension = False
         is_early = False
         if is_explicitly_assigned and shift:
-            # Check if login is outside normal timing
-            is_early = now_dt.time() < shift.start_time
-            is_late_extension = now_dt.time() > shift.end_time
+            shift_start_dt = datetime.combine(today, shift.start_time)
+            # Allow 30 minutes pre-shift grace buffer (e.g. 9:30 AM for a 10:00 AM shift)
+            early_threshold_dt = shift_start_dt - timedelta(minutes=30)
+            
+            is_early = now_local < early_threshold_dt
+            is_late_extension = now_local.time() > shift.end_time
             
             if is_early or is_late_extension:
                 if is_privileged:
@@ -652,13 +660,14 @@ class ShiftService:
                             func.lower(leave_models.EarlyLoginRequest.status) == "approved"
                         ).first()
                         if not early_req:
-                            raise HTTPException(status_code=403, detail=f"Shift starts at {shift.start_time}. Early Login requires an approved request.")
+                            early_time_str = early_threshold_dt.strftime("%H:%M")
+                            raise HTTPException(status_code=403, detail=f"Shift starts at {shift.start_time}. Logins before {early_time_str} require an approved request.")
 
         # Calculate is_late based on grace period
         is_late = False
         if shift:
             shift_start_dt = datetime.combine(today, shift.start_time)
-            if now_dt > (shift_start_dt + timedelta(minutes=shift.grace_time or 0)):
+            if now_local > (shift_start_dt + timedelta(minutes=shift.grace_time or 0)):
                 is_late = True
 
         # Determine explicit session remark: Late Login, Early Login, or On Time
@@ -965,6 +974,9 @@ class ShiftService:
             # Break duration
             break_sec = getattr(session, 'total_break_seconds', 0)
             
+            if not shift and getattr(session, 'shift_id', None):
+                shift = db.query(shift_models.ShiftDefinition).filter(shift_models.ShiftDefinition.id == session.shift_id).first()
+            
             result.append({
                 "id": session.id,
                 "session_id": session.session_id,
@@ -975,11 +987,11 @@ class ShiftService:
                 "role": final_role,
                 "department": final_dept,
                 "shift_id": session.shift_id,
-                "shift_name": shift.shift_name if shift else session.shift_name,
+                "shift_name": shift.shift_name if shift else (session.shift_name or "General Shift"),
                 "shift_code": shift.shift_code if shift else None,
                 "shift_start_time": shift.start_time if shift else None,
                 "shift_end_time": shift.end_time if shift else None,
-                "shift_color": shift.color if shift else None,
+                "shift_color": (shift.color if shift else None) or getattr(session, 'shift_color', None) or "#0a84ff",
                 "date": session.date or (start_dt.date() if start_dt else None),
                 "month": getattr(session, 'month', None) or (start_dt.month if start_dt else None),
                 "year": getattr(session, 'year', None) or (start_dt.year if start_dt else None),

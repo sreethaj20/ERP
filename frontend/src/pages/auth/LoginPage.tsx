@@ -117,7 +117,6 @@ export default function LoginPage() {
     try {
       const authData = await loginUser(username, password);
       const user = authData.user;
-      const token = authData.access_token || authData.token;
 
       // Store session data in both sessionStorage and persistent localStorage
       sessionStorage.removeItem("shift_user_logged_out");
@@ -134,13 +133,11 @@ export default function LoginPage() {
       localStorage.setItem("login_time", loginTime);
       sessionStorage.setItem("login_time", loginTime);
 
-      localStorage.setItem("token", token);
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("userId", String(user.id));
       localStorage.setItem("userName", user.name || user.full_name);
       localStorage.setItem("employeeId", user.employee_id || "");
 
-      sessionStorage.setItem("token", token);
       sessionStorage.setItem("isLoggedIn", "true");
       sessionStorage.setItem("userId", String(user.id));
       sessionStorage.setItem("userName", user.name || user.full_name);

@@ -28,14 +28,13 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-    access_token: string;
-    token_type: string;
+    role: string;
+    user_id: number;
     user: User;
 }
 
 export interface AuthContextType {
     user: User | null;
-    token: string | null;
     login: (credentials: LoginCredentials) => Promise<void>;
     logout: () => void;
     isAuthenticated: boolean;

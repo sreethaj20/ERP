@@ -56,10 +56,9 @@ export const logoutUser = async () => {
 };
 
 export const initStorage = async () => {
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isLoggedIn') === 'true';
 
-    if (!isLoggedIn || !token) {
+    if (!isLoggedIn) {
         console.log('[STORAGE] Skipping initStorage (pre-login)');
         return true;
     }
@@ -79,14 +78,12 @@ export const initStorage = async () => {
         const empIdVal = _currentUser.employee_id || '';
         const userIdVal = String(_currentUser.id);
 
-        sessionStorage.setItem("token", token);
         sessionStorage.setItem("isLoggedIn", "true");
         sessionStorage.setItem("userRole", role);
         sessionStorage.setItem("userId", userIdVal);
         sessionStorage.setItem("userName", userNameVal);
         sessionStorage.setItem("employeeId", empIdVal);
 
-        localStorage.setItem("token", token);
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("userRole", role);
         localStorage.setItem("userId", userIdVal);
@@ -580,8 +577,8 @@ export const recordLoginPresence = async (id: string, name: string, role: string
 
 export const recordLogoutPresence = async () => {
     try {
-        const token = sessionStorage.getItem('token');
-        if (!token) return; // No session to record
+        const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isLoggedIn') === 'true';
+        if (!isLoggedIn) return; // No session to record
 
         // Resolve employee_id from cache
         const myEmployee = getMyEmployee();
@@ -612,10 +609,10 @@ export const recordLogoutPresence = async () => {
 // --- GENERIC HELPERS ---
 export const fetchData = async (endpoint: string) => {
     // 🔐 AUTH GUARD: Skip API calls pre-login
-    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
+    const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isLoggedIn') === 'true';
     const role = sessionStorage.getItem('userRole') || localStorage.getItem('userRole');
-    if (!token || !role) {
-        console.log(`[STORAGE] Skipping ${endpoint} (pre-login: no token/role)`);
+    if (!isLoggedIn || !role) {
+        console.log(`[STORAGE] Skipping ${endpoint} (pre-login: no active session/role)`);
         return [];
     }
 

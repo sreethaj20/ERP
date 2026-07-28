@@ -195,7 +195,7 @@ export default function TeamAttendance() {
                       </td>
                       <td style={{ padding: "12px" }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <StatusBadge status={todayAtt?.status || (m.status === 'Active' ? 'Expected' : m.status)} />
+                          <StatusBadge status={todayAtt?.remark || todayAtt?.status || (m.status === 'Active' ? 'Expected' : m.status)} />
                           {todayAtt?.is_extra_break && (
                             <FaExclamationCircle color="#ff453a" title="Exceeded 1h break limit" />
                           )}
@@ -383,9 +383,11 @@ const StatusBadge = ({ status }: { status: string }) => {
   let color = 'var(--text-tertiary)';
   let bg = 'rgba(255,255,255,0.05)';
 
-  if (status === 'Present') { color = '#30d158'; bg = 'rgba(48, 209, 88, 0.1)'; }
+  if (status === 'Present' || status === 'On Time') { color = '#30d158'; bg = 'rgba(48, 209, 88, 0.1)'; }
   else if (status === 'Half Day') { color = '#ff9f0a'; bg = 'rgba(255, 159, 10, 0.1)'; }
   else if (status && status.toLowerCase().includes('leave')) { color = '#bf5af2'; bg = 'rgba(191, 90, 242, 0.1)'; }
+  else if (status === 'Late Login' || (status && status.toLowerCase().includes('late'))) { color = '#ff453a'; bg = 'rgba(255, 69, 58, 0.1)'; }
+  else if (status === 'Early Login' || (status && status.toLowerCase().includes('early'))) { color = '#0a84ff'; bg = 'rgba(10, 132, 255, 0.1)'; }
   else if (status === 'Short Login') { color = '#ff453a'; bg = 'rgba(255, 69, 58, 0.1)'; }
   else if (status === 'Extra Break') { color = '#ff453a'; bg = 'rgba(255, 69, 58, 0.1)'; }
   else if (status === 'Expected') { color = 'var(--accent-blue)'; bg = 'rgba(10, 132, 255, 0.1)'; }

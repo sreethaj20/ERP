@@ -1,14 +1,14 @@
 from typing import Optional
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.db.session import get_db
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, blacklist_token
 from app.core.dependencies import get_current_user, get_current_active_user
-from app.core.rate_limiter import limiter, get_remote_address
+from app.core.rate_limiter import limiter, get_remote_address, is_account_locked, record_failed_attempt, reset_failed_attempts
 from app.core.config import settings
 from app.models.user import User
 from app.models.notification import Activity
@@ -16,24 +16,31 @@ from app.schemas.auth import Token, UserOut, PasswordChange
 
 router = APIRouter()
 
-@router.post("/login", response_model=Token)
+@router.post("/login")
 @limiter.limit("5/minute")
 def login(
     request: Request,
+    response: Response,
     username: str = Form(...),
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
     username = username.strip()
-    print(f"[DEBUG] Login attempt for: {username}")
     
+    # 🔒 1. Check Account Lockout State
+    if is_account_locked(username):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Account is temporarily locked due to multiple failed login attempts. Please try again in 15 minutes."
+        )
+    
+    # 🛡️ 2. Exact Match User Lookup (Eliminates ambiguous prefix matching)
     try:
         user = db.query(User).filter(
             or_(
                 User.username == username, 
                 User.email == username,
-                User.employee_id == username,
-                User.email.like(f"{username}@%")
+                User.employee_id == username
             )
         ).first()
     except Exception as e:
@@ -43,21 +50,42 @@ def login(
             detail="Database connection error. Please ensure the database service is running."
         )
     
-    if not user:
-        print(f"[AUTH] User not found: {username}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # 🕵️ 3. Anti-User Enumeration: Generic Error Message & Account Rate Limiting
+    if not user or not verify_password(password, user.hashed_password):
+        locked = record_failed_attempt(username)
         
-    if not verify_password(password, user.hashed_password):
-        print(f"[AUTH] Password verification failed for: {username}")
+        # Log Failed Security Attempt (without sensitive passwords)
+        try:
+            fail_activity = Activity(
+                user_id=user.id if user else None,
+                username=username,
+                action="Login Failed",
+                module="Auth",
+                type="Security Alert",
+                description=f"Failed login attempt for identifier '{username}'",
+                message=f"Failed login attempt for identifier '{username}'",
+                ip_address=request.client.host if request.client else "Unknown",
+                status="Failed"
+            )
+            db.add(fail_activity)
+            db.commit()
+        except Exception:
+            db.rollback()
+            
+        if locked:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many failed login attempts. Account has been locked for 15 minutes."
+            )
+            
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # Reset failed login attempt counter upon valid password
+    reset_failed_attempts(username)
     
     # Check offboarding status
     from app.models.employee import Employee
@@ -150,19 +178,35 @@ def login(
         try:
             db.commit()
             db.refresh(user)
-            print(f"[AUTH LOGIN SYNC] Auto-activated account for user '{user.username}'.")
         except Exception as e:
             db.rollback()
-            print(f"[AUTH LOGIN SYNC ERROR] {e}")
     
-
+    # 🔑 4. Generate Short-Lived Access Token & Refresh Token
+    access_token = create_access_token(subject=user.id)
+    refresh_token = create_refresh_token(subject=user.id)
     
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        subject=user.id, expires_delta=access_token_expires
+    # 🍪 5. Attach Secure, HttpOnly, SameSite Cookies
+    max_age_access = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    max_age_refresh = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+    
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=max_age_access
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite=settings.COOKIE_SAMESITE,
+        max_age=max_age_refresh
     )
     
-    # 📈 Log Activity & Update Last Login
+    # 📈 Log Successful Login Activity
     try:
         user.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
         
@@ -182,23 +226,93 @@ def login(
         db.add(user)
         db.commit()
     except Exception as e:
-        print(f"[AUTH ERROR] Failed to log activity: {e}")
         db.rollback()
     
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
         "role": user.role,
         "user_id": user.id,
         "user": UserOut.from_orm(user)
     }
 
+@router.post("/refresh")
+def refresh_token_endpoint(
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db)
+):
+    """Refreshes short-lived access token using HttpOnly refresh cookie."""
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token missing")
+        
+    try:
+        payload = decode_token(refresh_token, expected_type="refresh")
+        user_id = payload.get("sub")
+        old_jti = payload.get("jti")
+        
+        user = db.query(User).filter(User.id == int(user_id), User.is_active == True).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User account is inactive or deleted")
+            
+        # Rotate tokens: blacklist old refresh token
+        if old_jti:
+            blacklist_token(old_jti)
+            
+        new_access_token = create_access_token(subject=user.id)
+        new_refresh_token = create_refresh_token(subject=user.id)
+        
+        response.set_cookie(
+            key="access_token",
+            value=new_access_token,
+            httponly=True,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAMESITE,
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            secure=settings.COOKIE_SECURE,
+            samesite=settings.COOKIE_SAMESITE,
+            max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600
+        )
+        
+        return {"message": "Token refreshed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Invalid or expired refresh token: {str(e)}")
+
 @router.post("/logout", response_model=dict)
-def logout():
-    """
-    Invalidate token (client-side only for now).
-    """
-    return {"msg": "Logout successful - clear your token"}
+def logout(
+    request: Request,
+    response: Response
+):
+    """Revokes active tokens and clears HttpOnly cookies."""
+    # Extract access token from cookie to blacklist jti
+    access_token = request.cookies.get("access_token")
+    if access_token:
+        try:
+            payload = decode_token(access_token, expected_type="access")
+            jti = payload.get("jti")
+            if jti:
+                blacklist_token(jti)
+        except Exception:
+            pass
+
+    # Also blacklist the refresh token to prevent reuse
+    refresh_tok = request.cookies.get("refresh_token")
+    if refresh_tok:
+        try:
+            ref_payload = decode_token(refresh_tok, expected_type="refresh")
+            ref_jti = ref_payload.get("jti")
+            if ref_jti:
+                blacklist_token(ref_jti)
+        except Exception:
+            pass
+
+    response.delete_cookie(key="access_token", samesite=settings.COOKIE_SAMESITE, secure=settings.COOKIE_SECURE)
+    response.delete_cookie(key="refresh_token", samesite=settings.COOKIE_SAMESITE, secure=settings.COOKIE_SECURE)
+    return {"message": "Logged out successfully"}
 
 @router.get("/me", response_model=UserOut)
 def read_users_me(

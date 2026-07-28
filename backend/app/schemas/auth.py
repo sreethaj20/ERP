@@ -5,6 +5,7 @@ class UserBase(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = None
     full_name: Optional[str] = None
+    name: Optional[str] = None
 
 class UserOut(UserBase):
     id: int

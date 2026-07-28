@@ -237,7 +237,7 @@ export default function ShiftTimesheetPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ padding: '12px', background: 'rgba(255,255,255,0.08)', borderRadius: '12px', fontSize: '20px' }}>🏷️</div>
                         <div>
-                            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>{myShift.name || 'Standard Shift'}</div>
+                            <div style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>{myShift.name || 'General Shift'}</div>
                             <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <FaClock /> {myShift.shift_start} — {myShift.shift_end} ({myShift.work_hours_required}h work)
                             </div>

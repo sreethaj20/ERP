@@ -12,13 +12,12 @@ export const loginUser = async (username: string, password: string) => {
       },
     });
 
-    const { access_token, user } = response.data;
+    const { user } = response.data;
     
-    // Always store the token immediately in sessionStorage
-    sessionStorage.setItem("token", access_token);
+    // Flag logged in state without storing raw sensitive JWT tokens in storage
     sessionStorage.setItem("isLoggedIn", "true");
 
-    return response.data; // Return full data so LoginPage can also read it
+    return response.data;
   } catch (error: any) {
     const message = error.response?.data?.detail || "Invalid username or password";
     throw new Error(message);
