@@ -191,23 +191,38 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           {!isDashboard && (
             <button
               onClick={() => navigate(-1)}
-              className="apple-btn"
               style={{
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid var(--border-light)',
-                color: 'var(--text-secondary)',
-                width: '38px', height: '38px',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#ffffff',
+                width: '40px',
+                height: '40px',
                 padding: '0',
                 borderRadius: '12px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
-                transition: 'all 0.2s',
+                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#fff'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(10, 132, 255, 0.35) 0%, rgba(10, 132, 255, 0.15) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(10, 132, 255, 0.6)';
+                e.currentTarget.style.transform = 'scale(1.06) translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 20px rgba(10, 132, 255, 0.4)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)';
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.transform = 'scale(1) translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.3)';
+              }}
               title="Go Back"
             >
-              <FaArrowLeft size={14} />
+              <FaArrowLeft size={15} />
             </button>
           )}
           <Logo width="260px" height="68px" layout="horizontal" showTagline={false} />
