@@ -248,9 +248,16 @@ export const parseISOToLocalDate = (isoStr: any): Date => {
     // Normalize space to T
     str = str.replace(' ', 'T');
 
-    // If naive ISO string without Z or offset, append Z because database stores naive datetimes in UTC
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(str) && !/[Z+-]\d{2}/i.test(str)) {
-        str = str + 'Z';
+    // Parse naive ISO string (e.g. "2026-07-29T10:03:00") as local time components
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+    if (match && !str.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(str)) {
+        const year = parseInt(match[1], 10);
+        const month = parseInt(match[2], 10) - 1;
+        const day = parseInt(match[3], 10);
+        const hour = parseInt(match[4], 10);
+        const minute = parseInt(match[5], 10);
+        const second = parseInt(match[6], 10);
+        return new Date(year, month, day, hour, minute, second);
     }
 
     const d = new Date(str);
