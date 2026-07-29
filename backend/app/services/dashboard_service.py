@@ -430,11 +430,18 @@ class DashboardService:
 
         first_day = today.replace(day=1)
         lop_month = 0
+        lop_today = 0
         if team_ids:
             lop_month = db.query(Attendance).filter(
                 Attendance.employee_id.in_(team_ids),
                 Attendance.date >= first_day,
                 Attendance.date <= today,
+                (Attendance.status.ilike("%absent%") | Attendance.status.ilike("%lop%")),
+                Attendance.deleted_at == None
+            ).count()
+            lop_today = db.query(Attendance).filter(
+                Attendance.employee_id.in_(team_ids),
+                Attendance.date == today,
                 (Attendance.status.ilike("%absent%") | Attendance.status.ilike("%lop%")),
                 Attendance.deleted_at == None
             ).count()
@@ -489,6 +496,7 @@ class DashboardService:
                 "total_staff": total_staff,
                 "at_work": at_work_count,
                 "pending_leaves": pending_leaves,
+                "lop_today": lop_today,
                 "lop_month": lop_month,
                 "occupancy_rate": f"{int((at_work_count/total_staff)*100 if total_staff > 0 else 0)}%"
             },

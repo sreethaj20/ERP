@@ -78,7 +78,7 @@ export default function ManagerDashboard() {
     { label: "Total Staff", value: (stats.total_staff || 0).toString(), color: "#0a84ff", icon: <FaUsers /> },
     { label: "At Work", value: (stats.at_work || 0).toString(), color: "#30d158", icon: <FaUserCheck /> },
     { label: "Pending Leaves", value: (stats.pending_leaves || 0).toString(), color: "#bf5af2", icon: <FaClipboardList /> },
-    { label: "LOP Month", value: (stats.lop_month || 0).toString(), color: "#ff9f0a", icon: <FaCalendarCheck /> }
+    { label: "LOP Today", value: (stats.lop_today !== undefined ? stats.lop_today : stats.lop_month || 0).toString(), color: "#ff9f0a", icon: <FaCalendarCheck /> }
   ];
 
   const attentionItems = dashboardData?.attention_items || [];
