@@ -59,7 +59,7 @@ export default function LoginPage() {
     {
       category: "Technical Issues",
       q: "Which browsers and devices are officially supported?",
-      a: "Mercure HRMS is optimized for all modern web browsers including Google Chrome, Apple Safari, Mozilla Firefox, and Microsoft Edge. For full security features, we recommend running on the latest updated desktop version."
+      a: "Mercure is optimized for all modern web browsers including Google Chrome, Apple Safari, Mozilla Firefox, and Microsoft Edge. For full security features, we recommend running on the latest updated desktop version."
     },
     {
       category: "Technical Issues",
@@ -380,7 +380,7 @@ export default function LoginPage() {
           {view === "reset" && "Create New Password"}
         </h2>
         <p style={{ color: "var(--text-secondary)", marginBottom: "25px", fontSize: "14px" }}>
-          {view === "login" && "Sign in to your Mercure HRMS account"}
+          {view === "login" && "Sign in to your Mercure account"}
           {view === "forgot" && "Enter your email to receive a recovery code"}
           {view === "verify" && `Enter 6-digit code sent to your email`}
           {view === "reset" && "Must be at least 8 characters long"}

@@ -211,7 +211,7 @@ def on_startup():
         profiles = db.query(CompanyProfile).all()
         for p in profiles:
             if p.company_name and "antigravity" in p.company_name.lower():
-                p.company_name = "Mercure HRMS"
+                p.company_name = "Mercure"
                 db.add(p)
 
         db.commit()

@@ -80,7 +80,7 @@ export default function PayrollPreparation() {
         key: 'rzp_test_YOUR_KEY_ID', // Ideal to fetch from backend configuration
         amount: order.amount,
         currency: order.currency,
-        name: "Mercure HRMS",
+        name: "Mercure",
         description: `Salary Disbursement for ${empId}`,
         order_id: order.id,
         handler: async function (response: any) {

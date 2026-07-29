@@ -103,7 +103,7 @@ export const API_ENDPOINTS = {
 };
 
 // Application Constants
-export const APP_NAME = 'Mercure HRMS';
+export const APP_NAME = 'Mercure';
 export const APP_VERSION = '1.0.0';
 
 // Pagination

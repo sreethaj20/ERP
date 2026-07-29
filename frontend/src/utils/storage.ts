@@ -449,25 +449,25 @@ export const refreshCompanyProfile = async () => {
     try {
         const data = await fetchData('company-profile');
         if (data) {
-            if (data.company_name && /antigravity/i.test(data.company_name)) {
-                data.company_name = "Mercure HRMS";
+            if (data.company_name && (/antigravity/i.test(data.company_name) || /mercure\s+hrms/i.test(data.company_name))) {
+                data.company_name = "Mercure";
             }
             _companyProfile = data;
         } else {
             // Safe failure fallback
             _companyProfile = {
-                company_name: "Mercure HRMS",
+                company_name: "Mercure",
                 company_tagline: "Accelerating Innovation, Delivering Solutions",
             };
         }
-        if (_companyProfile && _companyProfile.company_name && /antigravity/i.test(_companyProfile.company_name)) {
-            _companyProfile.company_name = "Mercure HRMS";
+        if (_companyProfile && _companyProfile.company_name && (/antigravity/i.test(_companyProfile.company_name) || /mercure\s+hrms/i.test(_companyProfile.company_name))) {
+            _companyProfile.company_name = "Mercure";
         }
         sessionStorage.setItem("companyProfile", JSON.stringify(_companyProfile));
     } catch (e) {
         console.warn("Failed to refresh company profile globally:", e);
         _companyProfile = {
-            company_name: "Mercure HRMS (Offline)",
+            company_name: "Mercure (Offline)",
             company_tagline: "System temporarily unavailable"
         };
     }

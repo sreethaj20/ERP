@@ -5,7 +5,7 @@ import { getCompanyProfile } from '../utils/storage';
 
 const CompanyInfoWidget = () => {
     const [company, setCompany] = useState<any>({
-        company_name: "Mercure HRMS",
+        company_name: "Mercure",
         company_tagline: "Start your journey",
         company_industry: "Technology",
         logo_url: "",

@@ -402,7 +402,7 @@ def get_manager_analytics_endpoint(db: Session = Depends(get_db), current_user: 
             "onboarding_count": 3,
             "active_transitions": 2,
             "department_health": 85.0,
-            "company": {"company_name": "Mercure HRMS", "company_logo": None}
+            "company": {"company_name": "Mercure", "company_logo": None}
         }
 
 from app.schemas.notification import AnnouncementOut, AnnouncementUpdate, AuditLogOut

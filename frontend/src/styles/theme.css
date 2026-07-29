@@ -1,6 +1,7 @@
 /* === ORIGINAL GLASSY DESIGN REBUILT === */
 /* Dark Glassmorphism - Original Mercure Style */
-:root, [data-theme="dark"] {
+:root,
+[data-theme="dark"] {
   --bg-primary: #0b0f19;
   --bg-secondary: #111827;
   --bg-tertiary: #1f2937;
@@ -37,7 +38,9 @@
 }
 
 /* CORE GLASS EFFECT - Fixed/Enhanced */
-.glass-card, .glass-element, .bottom-dock {
+.glass-card,
+.glass-element,
+.bottom-dock {
   position: relative;
   isolation: isolate;
   background: var(--glass-bg);
@@ -49,7 +52,8 @@
 }
 
 /* GLASS GLOW LAYER */
-.glass-card::before, .bottom-dock::before {
+.glass-card::before,
+.bottom-dock::before {
   content: '';
   position: absolute;
   inset: 0;
