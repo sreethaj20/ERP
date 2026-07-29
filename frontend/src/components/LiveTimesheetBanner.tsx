@@ -39,11 +39,11 @@ export default function LiveTimesheetBanner() {
             const now = new Date();
             const loginDate = new Date(session.login_time);
             const diff = now.getTime() - loginDate.getTime();
-            
+
             const hours = Math.floor(diff / (1000 * 60 * 60));
             const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-            
+
             setElapsed(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
             setHoursNum(hours + minutes / 60);
 

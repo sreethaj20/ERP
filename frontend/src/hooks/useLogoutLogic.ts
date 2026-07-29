@@ -37,9 +37,10 @@ export function useLogoutLogic() {
                 }
                 
                 const targetSec = shiftHours * 3600;
-                const halfDaySec = targetSec / 2;
+                const halfDaySec = 4 * 3600; // Exact 4 hours (14,400 seconds / 240 minutes) for half-day credit
 
                 setWorkInfo({ totalWorkSec, targetSec, halfDaySec });
+                // Require half-day completion (4 hours) across ALL portals when an active shift session is running
                 setCanLogout(totalWorkSec >= halfDaySec);
             } else {
                 setWorkInfo(null);
@@ -73,6 +74,11 @@ export function useLogoutLogic() {
                 if (!confirmLogout) {
                     return; // ABORT LOGOUT
                 }
+            }
+        } else {
+            const confirmLogout = window.confirm("Are you sure you want to log out?");
+            if (!confirmLogout) {
+                return;
             }
         }
 

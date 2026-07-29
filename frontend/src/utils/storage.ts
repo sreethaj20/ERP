@@ -587,6 +587,9 @@ export const recordLogoutPresence = async () => {
         const isLoggedIn = sessionStorage.getItem('isLoggedIn') === 'true' || localStorage.getItem('isLoggedIn') === 'true';
         if (!isLoggedIn) return; // No session to record
 
+        // Automatically end any active shift session on logout (backend handles if no active session exists)
+        await endShiftSession().catch(e => console.warn('[SHIFT] Auto-end shift on logout notice:', e));
+
         // Resolve employee_id from cache
         const myEmployee = getMyEmployee();
         const empId = myEmployee?.employee_id || sessionStorage.getItem('employeeId');
@@ -600,12 +603,6 @@ export const recordLogoutPresence = async () => {
         const endpoint = isHROrManager ? 'hr/attendance/checkout' : 'employee/attendance/checkout';
         const response = await api.post(endpoint, { employee_id: empId });
         console.log('[ATTENDANCE] Checkout success on logout:', response.status);
-
-        // 🚀 LINK: Automatically end shift session on logout (Skip for managers who don't track shifts)
-        const role = sessionStorage.getItem("userRole");
-        if (role !== "manager") {
-            await endShiftSession().catch(e => console.warn('[SHIFT] Auto-end failed:', e));
-        }
     } catch (e: any) {
         // Non-blocking — logout must not be held up by this
         console.warn('[ATTENDANCE] Checkout on logout failed (non-blocking):', e?.message);
@@ -1260,8 +1257,9 @@ export const startShiftSession = async (shift_id: number = 0) => {
         }
         return { success: true, data: res.data };
     } catch (error: any) {
-        const detail = error.response?.data?.detail || error.message || '';
-        if (error.response?.status === 403 || detail.toLowerCase().includes('early') || detail.toLowerCase().includes('pending') || detail.toLowerCase().includes('request')) {
+        const detail = (error.response?.data?.detail || error.message || '').toString();
+        const isEarlyError = detail.toLowerCase().includes('early') || detail.toLowerCase().includes('pending') || detail.toLowerCase().includes('require an approved request');
+        if (error.response?.status === 403 && isEarlyError) {
             return { success: false, early_login_required: true, message: detail };
         }
         throw error;

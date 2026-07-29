@@ -626,13 +626,16 @@ class ShiftService:
         now_local = datetime.now()
         is_extension = False
         is_early = False
-        if is_explicitly_assigned and shift:
-            shift_start_dt = datetime.combine(today, shift.start_time)
-            # Allow 30 minutes pre-shift grace buffer (e.g. 9:30 AM for a 10:00 AM shift)
-            early_threshold_dt = shift_start_dt - timedelta(minutes=30)
-            
-            is_early = now_local < early_threshold_dt
-            is_late_extension = now_local.time() > shift.end_time
+        if shift:
+            # Compare only the time-of-day to avoid timezone mismatches.
+            now_time = now_local.time()
+            shift_start_time = shift.start_time
+            # Early threshold = shift start minus early buffer (70 minutes)
+            grace_minutes = 70
+            early_threshold_time = (datetime.combine(date.min, shift_start_time) - timedelta(minutes=grace_minutes)).time()
+            # Early login only if current time is strictly before the threshold
+            is_early = now_time < early_threshold_time
+            is_late_extension = now_time > shift.end_time
             
             if is_early or is_late_extension:
                 if is_privileged:
@@ -660,19 +663,47 @@ class ShiftService:
                             func.lower(leave_models.EarlyLoginRequest.status) == "approved"
                         ).first()
                         if not early_req:
-                            early_time_str = early_threshold_dt.strftime("%H:%M")
+                            early_time_str = early_threshold_time.strftime("%H:%M")
                             raise HTTPException(status_code=403, detail=f"Shift starts at {shift.start_time}. Logins before {early_time_str} require an approved request.")
 
         # Calculate is_late based on grace period
         is_late = False
         if shift:
             shift_start_dt = datetime.combine(today, shift.start_time)
-            if now_local > (shift_start_dt + timedelta(minutes=shift.grace_time or 0)):
+            late_cutoff_dt = shift_start_dt + timedelta(minutes=shift.grace_time or 0)
+            if now_local > late_cutoff_dt:
                 is_late = True
+                
+                # Late Login Gating: Require approved request for non-privileged roles
+                if not is_privileged:
+                    # 1. Check if a request is currently PENDING approval
+                    pending_late = db.query(leave_models.EarlyLoginRequest).filter(
+                        leave_models.EarlyLoginRequest.employee_id == employee_id,
+                        leave_models.EarlyLoginRequest.date == today,
+                        func.lower(leave_models.EarlyLoginRequest.status) == "pending"
+                    ).first()
+                    if pending_late:
+                        raise HTTPException(
+                            status_code=403,
+                            detail="Your Late Login request for today is PENDING approval from your Team Leader. Please wait until approved."
+                        )
 
-        # Determine explicit session remark: Late Login, Early Login, or On Time
+                    # 2. Check for approved request
+                    approved_late = db.query(leave_models.EarlyLoginRequest).filter(
+                        leave_models.EarlyLoginRequest.employee_id == employee_id,
+                        leave_models.EarlyLoginRequest.date == today,
+                        func.lower(leave_models.EarlyLoginRequest.status) == "approved"
+                    ).first()
+                    if not approved_late:
+                        cutoff_str = late_cutoff_dt.strftime("%H:%M")
+                        raise HTTPException(
+                            status_code=403,
+                            detail=f"Shift grace period ended at {cutoff_str}. Late logins require an approved request from your Team Leader."
+                        )
+
+        # Determine explicit session remark: Shift Extension, Early Login, or On Time
         if is_late:
-            session_remark = "Late Login"
+            session_remark = "Shift Extension"
         elif is_early:
             session_remark = "Early Login"
         else:

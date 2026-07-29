@@ -36,19 +36,35 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  const [isOvertime, setIsOvertime] = useState(false);
+
   const syncShiftSession = async () => {
     const res = await getActiveShiftSession();
-    setSession(res?.active ? res.session : null);
+    const active = res?.active ? res.session : null;
+    setSession(active);
+    if (active) {
+      const rawStart = active.login_time || active.started_at || active.created_at;
+      if (rawStart) {
+        localStorage.setItem("active_shift_login_iso", String(rawStart));
+      }
+    }
   };
 
   const tickShift = () => {
     const now = new Date();
-    const sessionStart = session?.login_time || session?.started_at || session?.created_at;
-    const loginTimeIso = sessionStart || getOrSetDailyLoginTime();
-    const loginDate = parseISOToLocalDate(loginTimeIso);
+    const sessionStart = session?.login_time || session?.started_at || session?.created_at || localStorage.getItem("active_shift_login_iso");
+
+    if (!sessionStart) {
+      setWorkDuration("00:00:00");
+      setIsOvertime(false);
+      return;
+    }
+
+    const loginDate = parseISOToLocalDate(sessionStart);
 
     if (isNaN(loginDate.getTime())) {
       setWorkDuration("00:00:00");
+      setIsOvertime(false);
       return;
     }
 
@@ -69,10 +85,16 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
     const totalShiftSec = Math.max(0, Math.floor(diffMs / 1000));
     const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
 
-    const targetSec = 9 * 3600; // 9 hours fixed time
-    const remainingSec = Math.max(0, targetSec - totalWorkSec);
-
-    setWorkDuration(formatSeconds(remainingSec));
+    const targetSec = 9 * 3600; // 9 hours fixed target
+    if (totalWorkSec >= targetSec) {
+      const extraSec = totalWorkSec - targetSec;
+      setWorkDuration(`+${formatSeconds(extraSec)}`);
+      setIsOvertime(true);
+    } else {
+      const remainingSec = targetSec - totalWorkSec;
+      setWorkDuration(formatSeconds(remainingSec));
+      setIsOvertime(false);
+    }
   };
 
   const handleToggleBreak = async () => {
@@ -103,6 +125,10 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
         const res = await getActiveShiftSession();
         if (res?.active && res.session) {
           setSession(res.session);
+          const rawStart = res.session.login_time || res.session.started_at || res.session.created_at;
+          if (rawStart) {
+            localStorage.setItem("active_shift_login_iso", String(rawStart));
+          }
           return;
         }
 
@@ -115,6 +141,10 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           const updated = await getActiveShiftSession();
           if (updated?.active && updated.session) {
             setSession(updated.session);
+            const rawStart = updated.session.login_time || updated.session.started_at || updated.session.created_at;
+            if (rawStart) {
+              localStorage.setItem("active_shift_login_iso", String(rawStart));
+            }
           }
         }
       } catch (e) {
@@ -251,7 +281,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           <div
             style={{
               fontSize: '12px',
-              color: session?.on_break ? '#ff9f0a' : 'var(--accent-blue, #0a84ff)',
+              color: session?.on_break ? '#ff9f0a' : isOvertime ? '#30d158' : 'var(--accent-blue, #0a84ff)',
               fontWeight: 600,
               fontFamily: 'monospace',
               marginTop: '3px',
@@ -260,7 +290,9 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               gap: '6px'
             }}
           >
-            <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontFamily: 'inherit' }}>Remaining:</span>
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 500, fontFamily: 'inherit' }}>
+              {isOvertime ? 'Extra:' : 'Remaining:'}
+            </span>
             <span>{workDuration}</span>
             <button
               onClick={handleToggleBreak}
