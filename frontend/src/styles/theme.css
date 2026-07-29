@@ -70,8 +70,7 @@
 .logo {
   filter: brightness(1.1) contrast(1.05);
   background: transparent !important;
-  mix-blend-mode: darken;
-  isolation: isolate;
+  mix-blend-mode: screen !important;
   transition: filter 0.4s ease;
 }
 

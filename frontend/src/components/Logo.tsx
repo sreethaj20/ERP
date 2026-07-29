@@ -82,11 +82,13 @@ const Logo: React.FC<LogoProps> = ({
             <img
                 src={logoSrc}
                 alt={companyName || "Company Logo"}
+                className="logo"
                 style={{
                     width: width && width !== 'auto' ? (typeof width === 'number' ? `${width}px` : width) : (isHorizontal ? 'auto' : "100%"),
                     height: height ? (typeof height === 'number' ? `${height}px` : height) : (isHorizontal ? '68px' : "auto"),
                     objectFit: "contain",
-                    filter: printMode ? 'none' : 'invert(1) hue-rotate(180deg) brightness(0.85) contrast(1.1)',
+                    backgroundColor: "transparent",
+                    filter: printMode ? 'none' : 'brightness(1.15) contrast(1.1)',
                     mixBlendMode: printMode ? 'normal' : 'screen',
                     borderRadius: '4px'
                 }}
