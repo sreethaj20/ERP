@@ -622,8 +622,9 @@ class ShiftService:
                 db.add(shift); db.flush()
             shift_id = shift.id
 
-        # 5. Early Login Gating
-        now_local = datetime.now()
+        # 5. Early Login Gating (Compare in IST timezone UTC+5:30)
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        now_local = datetime.now(timezone.utc).astimezone(ist_tz)
         is_extension = False
         is_early = False
         if shift:
@@ -671,7 +672,7 @@ class ShiftService:
         if shift:
             shift_start_dt = datetime.combine(today, shift.start_time)
             late_cutoff_dt = shift_start_dt + timedelta(minutes=shift.grace_time or 0)
-            if now_local > late_cutoff_dt:
+            if now_local.replace(tzinfo=None) > late_cutoff_dt:
                 is_late = True
                 
                 # Late Login Gating: Require approved request for non-privileged roles
