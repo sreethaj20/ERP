@@ -5,7 +5,7 @@ import {
   FaBuilding, FaMapMarkerAlt, FaEnvelope, FaPhone, FaGlobe,
   FaIdCard, FaSave, FaSpinner, FaUserTie, FaClock,
   FaMoneyBillWave, FaCalendarAlt, FaFileUpload,
-  FaLinkedin, FaInstagram, FaTwitter, FaYoutube, FaPen
+  FaLinkedin, FaInstagram, FaTwitter, FaYoutube, FaPen, FaTrash
 } from "react-icons/fa";
 import { getCompanyProfile, updateCompanyProfile } from "../../services/managerService";
 import { syncCompanyProfile } from "../../utils/companyUtils";
@@ -212,9 +212,14 @@ export default function CompanyProfile() {
                       }}>
                         {formData.logo_url ? <img src={formData.logo_url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <FaBuilding size={40} color="rgba(255,255,255,0.1)" />}
                       </div>
-                      <button type="button" onClick={() => fileInputRef.current?.click()} style={{ position: 'absolute', bottom: '-10px', right: '-10px', width: '36px', height: '36px', borderRadius: '10px', background: '#0a84ff', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(10,132,255,0.4)' }}>
+                      <button type="button" onClick={() => fileInputRef.current?.click()} style={{ position: 'absolute', bottom: '-10px', right: '-10px', width: '36px', height: '36px', borderRadius: '10px', background: '#0a84ff', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(10,132,255,0.4)' }} title="Upload / Change Logo">
                         <FaPen size={12} />
                       </button>
+                      {formData.logo_url && (
+                        <button type="button" onClick={() => setFormData(prev => ({ ...prev, logo_url: "" }))} style={{ position: 'absolute', bottom: '-10px', left: '-10px', width: '36px', height: '36px', borderRadius: '10px', background: '#ff453a', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(255,69,58,0.4)' }} title="Delete Logo">
+                          <FaTrash size={12} />
+                        </button>
+                      )}
                       <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleLogoUpload} />
                     </div>
                     <div style={{ flex: 1 }}>

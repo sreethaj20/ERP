@@ -726,44 +726,72 @@ export default function EmployeeMaster() {
                 <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedEmp.name}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{selectedEmp.employee_id || selectedEmp.id} • {selectedEmp.designation}</div>
                 
-                <label style={{
-                  padding: '3px 10px',
-                  background: 'rgba(10,132,255,0.1)',
-                  color: 'var(--accent-blue)',
-                  borderRadius: '6px',
-                  fontSize: '10px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  border: '1px solid rgba(10,132,255,0.2)',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  width: 'fit-content',
-                  marginTop: '4px'
-                }}>
-                  <FaUpload size={9} /> Change Profile Photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          const fileData = await uploadFile(file, 'profile_photo', selectedEmp.employee_id || selectedEmp.id);
-                          setSelectedEmp({
-                            ...selectedEmp,
-                            profile_photo_url: fileData.file_path,
-                            photo: fileData.file_path
-                          });
-                          alert("Profile photo uploaded successfully!");
-                        } catch (err) {
-                          alert("Failed to upload photo.");
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
+                  <label style={{
+                    padding: '3px 10px',
+                    background: 'rgba(10,132,255,0.1)',
+                    color: 'var(--accent-blue)',
+                    borderRadius: '6px',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    border: '1px solid rgba(10,132,255,0.2)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    width: 'fit-content'
+                  }}>
+                    <FaUpload size={9} /> Change Profile Photo
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const fileData = await uploadFile(file, 'profile_photo', selectedEmp.employee_id || selectedEmp.id);
+                            setSelectedEmp({
+                              ...selectedEmp,
+                              profile_photo_url: fileData.file_path,
+                              photo: fileData.file_path
+                            });
+                            alert("Profile photo uploaded successfully!");
+                          } catch (err) {
+                            alert("Failed to upload photo.");
+                          }
                         }
-                      }
-                    }}
-                    style={{ display: 'none' }}
-                  />
-                </label>
+                      }}
+                      style={{ display: 'none' }}
+                    />
+                  </label>
+                  {(selectedEmp.profile_photo_url || selectedEmp.photo) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedEmp({
+                          ...selectedEmp,
+                          profile_photo_url: "",
+                          photo: ""
+                        });
+                      }}
+                      style={{
+                        padding: '3px 10px',
+                        background: 'rgba(255,69,58,0.1)',
+                        color: '#ff453a',
+                        borderRadius: '6px',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        border: '1px solid rgba(255,69,58,0.2)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <FaTrash size={9} /> Remove Photo
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 

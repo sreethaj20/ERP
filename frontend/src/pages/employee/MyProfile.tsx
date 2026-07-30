@@ -8,7 +8,7 @@ import {
   FaEnvelope, FaPhone, FaIdCard, FaBuilding, FaUserTie, FaCalendarAlt,
   FaEdit, FaBriefcase, FaMapMarkerAlt, FaCircle, FaClock, FaSave,
   FaTimes, FaShieldAlt, FaUniversity, FaHeartbeat, FaUser, FaKey,
-  FaGlobe, FaHome, FaExclamationCircle, FaFingerprint, FaCamera, FaSignOutAlt
+  FaGlobe, FaHome, FaExclamationCircle, FaFingerprint, FaCamera, FaSignOutAlt, FaTrash
 } from "react-icons/fa";
 import { formatLongExperience } from "../../utils/dateHelpers";
 import { initiateOffboarding } from "../../utils/storage";
@@ -227,6 +227,7 @@ export default function MyProfile() {
                 onChange={handlePhotoUpload}
               />
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 style={{
                   position: 'absolute', bottom: '-4px', right: '-4px',
@@ -239,6 +240,22 @@ export default function MyProfile() {
               >
                 <FaCamera />
               </button>
+              {editPhoto && (
+                <button
+                  type="button"
+                  onClick={() => setEditPhoto("")}
+                  style={{
+                    position: 'absolute', bottom: '-4px', left: '-4px',
+                    width: '34px', height: '34px', borderRadius: '50%',
+                    background: '#ff453a', border: '3px solid #1a1a2e',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: '#fff', fontSize: '13px'
+                  }}
+                  title="Remove Photo"
+                >
+                  <FaTrash />
+                </button>
+              )}
             </>
           )}
         </div>
