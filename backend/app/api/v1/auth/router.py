@@ -17,7 +17,7 @@ from app.schemas.auth import Token, UserOut, PasswordChange
 router = APIRouter()
 
 @router.post("/login")
-@limiter.limit("5/minute")
+@limiter.limit("100/minute")
 def login(
     request: Request,
     response: Response,

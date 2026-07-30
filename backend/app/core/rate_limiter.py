@@ -10,7 +10,7 @@ limiter = Limiter(key_func=get_remote_address)
 # Account-based lockout tracker (identifier -> {attempts: int, locked_until: datetime})
 _account_lockouts = {}
 
-MAX_FAILED_ATTEMPTS = 5
+MAX_FAILED_ATTEMPTS = 100
 LOCKOUT_MINUTES = 15
 
 def record_failed_attempt(identifier: str) -> bool:
