@@ -63,7 +63,10 @@ const Logo: React.FC<LogoProps> = ({
     const isHorizontal = layout === 'horizontal';
 
     return (
-        <div
+        <a
+            href="https://www.mercuresolution.com"
+            target="_blank"
+            rel="noopener noreferrer"
             className={className}
             style={{
                 width: width,
@@ -76,7 +79,9 @@ const Logo: React.FC<LogoProps> = ({
                 borderRadius: '0',
                 border: 'none',
                 background: 'transparent',
-                backdropFilter: 'none'
+                backdropFilter: 'none',
+                textDecoration: 'none',
+                cursor: 'pointer'
             }}
         >
             <img
@@ -142,7 +147,7 @@ const Logo: React.FC<LogoProps> = ({
                     )}
                 </div>
             )}
-        </div>
+        </a>
     );
 };
 

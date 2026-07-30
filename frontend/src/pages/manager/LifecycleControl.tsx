@@ -2044,9 +2044,9 @@ function WorkforceTab({ employees }: any) {
             </div>
           </div>
           <div style={{ marginTop: '20px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', fontSize: '11px', marginBottom: '8px' }}>
-              <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Email:</span>
-              <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textAlign: 'right' }} title={emp.email}>{emp.email}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '8px', fontSize: '11px', marginBottom: '8px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--text-tertiary)' }}>Email:</span>
+              <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'right', display: 'block' }} title={emp.email}>{emp.email}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', fontSize: '11px', marginBottom: '8px' }}>
               <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Status:</span>
