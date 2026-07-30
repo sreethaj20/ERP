@@ -89,6 +89,7 @@ export default function ITDashboard() {
 
   const modules = [
     { title: "Asset Inventory", subtitle: "Manage hardware & software", path: "/it/assets", icon: <FaLaptop size={24} color="#64d2ff" /> },
+    { title: "My Assets", subtitle: "Your assigned devices", path: "/it/my-assets", icon: <FaLaptop size={24} color="#30d158" /> },
     { title: "Asset Allocation", subtitle: "Assign assets to users", path: "/it/allocation", icon: <FaTools size={24} color="#30d158" /> },
     { title: "Asset Lifecycle", subtitle: "Maintenance & Transfers", path: "/it/lifecycle", icon: <FaWrench size={24} color="#ff9f0a" /> },
     { title: "Support Tickets", subtitle: "Resolve employee issues", path: "/it/tickets", icon: <FaTicketAlt size={24} color="#ff9f0a" /> },

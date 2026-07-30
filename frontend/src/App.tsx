@@ -205,6 +205,7 @@ function App() {
                         <Route path="/it/lifecycle" element={<AssetLifecycle />} />
                         <Route path="/it/my-leave" element={<StaffLeaveManagement role="IT Department" roleLabel="IT Admin" />} />
                         <Route path="/it/shift-timesheet" element={<ShiftTimesheetPage />} />
+                        <Route path="/it/my-assets" element={<MyAssets />} />
                     </Route>
 
                     {/* EMPLOYEE ONLY Routes */}
@@ -238,6 +239,7 @@ function App() {
                         <Route path="/manager/it-tickets" element={<ITTicketsView />} />
                         <Route path="/manager/reports" element={<ManagerReports />} />
                         <Route path="/manager/audit" element={<AuditLogs />} />
+                        <Route path="/manager/my-assets" element={<MyAssets />} />
                         <Route path="/manager/broadcast" element={<BroadcastCenter />} />
                         <Route path="/manager/attendance" element={<MonthlyAttendance />} />
                         <Route path="/manager/performance" element={<PerformanceMonitoring />} />

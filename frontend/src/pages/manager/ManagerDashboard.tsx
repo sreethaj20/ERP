@@ -12,7 +12,7 @@ import {
   FaClipboardList,
   FaChartBar, FaCalendarCheck, FaUserShield, FaBuilding,
   FaKey, FaProjectDiagram, FaUserCheck, FaCogs, FaWrench, FaSearch, FaClock,
-  FaGlobe, FaShieldAlt, FaTimes, FaUserTie, FaUsers
+  FaGlobe, FaShieldAlt, FaTimes, FaUserTie, FaUsers, FaLaptop
 } from "react-icons/fa";
 import { syncCompanyProfile } from "../../utils/companyUtils";
 
@@ -41,14 +41,12 @@ export default function ManagerDashboard() {
         sessionStorage.setItem("reportingTo", data.employee_profile.reporting_to);
       }
 
-
       setLoading(false);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     loadData();
@@ -94,6 +92,7 @@ export default function ManagerDashboard() {
   ];
 
   const operationalModules = [
+    { title: "My Assets", subtitle: "Assigned devices & hardware", path: "/manager/my-assets", icon: <FaLaptop color="#64d2ff" /> },
     { title: "Pre-boarding", subtitle: "New hire monitoring", path: "/manager/lifecycle?tab=preboarding", icon: <FaUserCheck color="#30b0c7" /> },
     { title: "Interview Panel", subtitle: "Strategic participation", path: "/manager/interviews", icon: <FaCalendarCheck color="#30d158" /> },
     { title: "Leave Pulse", subtitle: "Executive approvals", path: "/manager/leaves", icon: <FaCalendarCheck color="#ff9500" /> },

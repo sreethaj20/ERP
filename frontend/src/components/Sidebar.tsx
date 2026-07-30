@@ -44,6 +44,7 @@ export default function Sidebar() {
                     { name: 'Offboarding', path: '/manager/offboarding', icon: <FaSignOutAlt /> },
                     { name: 'Timesheets', path: '/manager/staff-timesheet', icon: <FaCalendarAlt /> },
                     { name: 'Performance', path: '/manager/performance', icon: <FaStar /> },
+                    { name: 'My Assets', path: '/manager/my-assets', icon: <FaLaptop /> },
                     { name: 'My Profile', path: '/manager/profile', icon: <FaUserTie /> },
                 ];
             case 'hr':
@@ -90,6 +91,7 @@ export default function Sidebar() {
                 return [
                     { name: 'Dashboard', path: '/it/dashboard', icon: <FaHome /> },
                     { name: 'Assets', path: '/it/assets', icon: <FaLaptop /> },
+                    { name: 'My Assets', path: '/it/my-assets', icon: <FaLaptop /> },
                     { name: 'Tickets', path: '/it/tickets', icon: <FaBullhorn /> },
                     { name: 'Access', path: '/it/access', icon: <FaCog /> },
                     { name: 'My Leave', path: '/it/my-leave', icon: <FaCalendarAlt /> },
