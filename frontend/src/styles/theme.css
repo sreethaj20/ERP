@@ -72,9 +72,9 @@
 
 /* LOGO - Transparent + Theme Brightness */
 .logo {
-  filter: brightness(1.1) contrast(1.05);
+  filter: none;
   background: transparent !important;
-  mix-blend-mode: screen !important;
+  mix-blend-mode: normal !important;
   transition: filter 0.4s ease;
 }
 

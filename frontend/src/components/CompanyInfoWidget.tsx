@@ -50,7 +50,7 @@ const CompanyInfoWidget = () => {
                         <img
                             src={company.logo_url}
                             alt="Logo"
-                            style={{ width: '50px', height: '50px', objectFit: 'contain', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', padding: '5px' }}
+                            style={{ width: '50px', height: '50px', objectFit: 'contain', background: 'transparent', padding: '0' }}
                         />
                     ) : (
                         <div style={{ width: '50px', height: '50px', background: 'var(--accent-blue)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
