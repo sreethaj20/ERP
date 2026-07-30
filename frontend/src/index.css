@@ -521,6 +521,11 @@ input:checked+.slider-premium:before {
 
 /* === MOBILE COMPATIBILITY & RESPONSIVE DESIGN === */
 
+html {
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+}
+
 @media (max-width: 1024px) {
     .dashboard-container {
         padding: 20px 24px 80px;
@@ -537,21 +542,25 @@ input:checked+.slider-premium:before {
 
 @media (max-width: 768px) {
     .dashboard-container {
-        padding: 16px 14px 80px;
+        padding: 16px 12px 80px !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
     }
 
+    .grid-1,
     .grid-2,
     .grid-3,
     .grid-4 {
         grid-template-columns: 1fr !important;
-        gap: 14px !important;
+        gap: 12px !important;
     }
 
     .top-header {
-        margin-bottom: 20px !important;
+        margin-bottom: 16px !important;
         padding-bottom: 12px !important;
-        flex-wrap: wrap;
-        gap: 12px !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
     }
 
     .top-header-link {
@@ -559,12 +568,12 @@ input:checked+.slider-premium:before {
     }
 
     .glass-card {
-        padding: 16px !important;
+        padding: 14px !important;
         border-radius: 16px !important;
     }
 
     .glass-module-card {
-        padding: 16px !important;
+        padding: 14px !important;
         border-radius: 16px !important;
     }
 
@@ -572,24 +581,39 @@ input:checked+.slider-premium:before {
     .table-responsive,
     div[style*="overflowX"],
     div[style*="overflow-x"] {
-        width: 100%;
+        width: 100% !important;
+        max-width: 100% !important;
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch;
     }
 
+    table {
+        min-width: 100% !important;
+    }
+
     /* Modal responsiveness */
     div[style*="position: fixed"] > div[style*="maxWidth"],
-    div[style*="position: fixed"] > div[style*="max-width"] {
-        width: 95% !important;
-        max-height: 92vh !important;
-        margin: 10px !important;
+    div[style*="position: fixed"] > div[style*="max-width"],
+    .modal-content {
+        width: 94vw !important;
+        max-width: 94vw !important;
+        max-height: 90vh !important;
+        margin: 8px auto !important;
+        padding: 16px !important;
         border-radius: 16px !important;
+        overflow-y: auto !important;
+    }
+
+    /* Input scaling for mobile devices */
+    input, select, textarea, button {
+        font-size: 15px !important; /* Prevents auto-zoom on iOS safari */
     }
 
     /* Touch-friendly buttons */
     .apple-btn,
     .apple-btn-secondary {
         min-height: 44px;
+        width: 100%;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -598,18 +622,34 @@ input:checked+.slider-premium:before {
 
 @media (max-width: 480px) {
     body {
-        font-size: 14px;
+        font-size: 13.5px;
     }
 
     .dashboard-container {
-        padding: 12px 10px 70px;
+        padding: 10px 8px 75px !important;
     }
 
     .card-title {
-        font-size: 17px !important;
+        font-size: 16px !important;
     }
 
     .card-subtitle {
-        font-size: 12px !important;
+        font-size: 11px !important;
+    }
+
+    h1, .h1 { font-size: 20px !important; }
+    h2, .h2 { font-size: 18px !important; }
+    h3, .h3 { font-size: 16px !important; }
+    
+    /* Ensure content fits narrow phone viewports */
+    img {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .dashboard-container {
+        padding: 8px 6px 75px !important;
     }
 }
