@@ -2044,12 +2044,12 @@ function WorkforceTab({ employees }: any) {
             </div>
           </div>
           <div style={{ marginTop: '20px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '8px' }}>
-              <span style={{ color: 'var(--text-tertiary)' }}>Email:</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{emp.email}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', fontSize: '11px', marginBottom: '8px' }}>
+              <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Email:</span>
+              <span style={{ color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, textAlign: 'right' }} title={emp.email}>{emp.email}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '8px' }}>
-              <span style={{ color: 'var(--text-tertiary)' }}>Status:</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', fontSize: '11px', marginBottom: '8px' }}>
+              <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Status:</span>
               <span style={{
                 color: (emp.status || '').toLowerCase() === 'active' ? '#30d158' : 
                        (emp.status || '').toLowerCase() === 'inactive' ? '#ff453a' :
@@ -2059,8 +2059,8 @@ function WorkforceTab({ employees }: any) {
                 textTransform: 'uppercase'
               }}>{emp.status || 'Unknown'}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-              <span style={{ color: 'var(--text-tertiary)' }}>Hired:</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
+              <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>Hired:</span>
               <span style={{ color: 'var(--text-secondary)' }}>{emp.joining_date || 'N/A'}</span>
             </div>
           </div>

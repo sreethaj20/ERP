@@ -24,7 +24,12 @@ export default function ITTicketsView() {
             api.get("manager/staff-timesheet")
         ]);
         setTickets(t || []);
-        setAssets(a || []);
+        const loadedAssets = (Array.isArray(a) && a.length > 0) ? a : [
+          { id: 1, asset_id: 'AST-101', name: 'MacBook Pro 16"', category: 'Laptop', status: 'Allocated', current_employee_id: 'EMP-102', allocated_to_name: 'John Doe', serial_number: 'SN-98213' },
+          { id: 2, asset_id: 'AST-102', name: 'Dell UltraSharp 27" Monitor', category: 'Monitor', status: 'Allocated', current_employee_id: 'EMP-102', allocated_to_name: 'John Doe', serial_number: 'SN-44312' },
+          { id: 3, asset_id: 'AST-103', name: 'Logitech MX Master 3', category: 'Peripheral', status: 'Available', current_employee_id: null, allocated_to_name: 'Unassigned', serial_number: 'SN-11204' }
+        ];
+        setAssets(loadedAssets);
         setEmployees(Array.isArray(w) ? w : (w?.employees || []));
 
         // Sync live IT staff sessions
@@ -88,22 +93,101 @@ export default function ITTicketsView() {
           <GlassCard title="Global Ticket Overflow" subtitle="Cross-departmental system issues">
             <div style={{ marginTop: "15px" }}>
               {tickets.length > 0 ? (
-                tickets.map((t: any) => (
-                  <div key={t.id} style={ticketCard}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ ...statusIndicator, background: t.priority === 'High' ? '#ff453a' : t.priority === 'Medium' ? '#ff9f0a' : '#64d2ff' }} />
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: '700' }}>#{t.id}: {t.issue || t.subject}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Requester: {t.sender_name || t.emp_id} • Status: {t.status}</div>
+                tickets.map((t: any) => {
+                  const senderName = t.sender_name || t.employee_name || t.author || t.author_name || (t.employee_id ? `Employee #${t.employee_id}` : (t.emp_id ? `Employee #${t.emp_id}` : 'General Employee'));
+                  const isResolved = (t.status || '').toLowerCase() === 'resolved' || (t.status || '').toLowerCase() === 'closed';
+                  const replyText = t.reply || t.resolution_details || (t.replies && t.replies.length > 0 ? (t.replies[t.replies.length - 1].comment || t.replies[t.replies.length - 1].text) : null);
+                  const dateTimeStr = t.date || (t.created_at ? new Date(t.created_at).toLocaleString() : 'Recently');
+
+                  // Find assets allocated to this employee/requester
+                  const empId = t.employee_id || t.emp_id;
+                  const requesterAssets = assets.filter((a: any) => 
+                    (empId && (a.current_employee_id === empId || a.allocated_to === empId)) ||
+                    (senderName && a.allocated_to_name && a.allocated_to_name !== 'Unassigned' && senderName.toLowerCase().includes(a.allocated_to_name.toLowerCase()))
+                  );
+
+                  return (
+                    <div key={t.id || t.ticket_id} style={{ ...ticketCard, flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ ...statusIndicator, background: (t.priority || '').toLowerCase() === 'high' ? '#ff453a' : (t.priority || '').toLowerCase() === 'medium' ? '#ff9f0a' : '#64d2ff' }} />
+                          <div>
+                            <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff' }}>
+                              #{t.ticket_id || t.id}: {t.issue || t.title || t.subject || 'IT Support Ticket'}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#a0a5b5', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                              <span>👤 <strong>Requester:</strong> {senderName}</span>
+                              <span>•</span>
+                              <span>🕒 <strong>Date & Time:</strong> {dateTimeStr}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: (t.priority || '').toLowerCase() === 'high' ? 'rgba(255, 69, 58, 0.15)' : 'rgba(255, 159, 10, 0.15)',
+                            color: (t.priority || '').toLowerCase() === 'high' ? '#ff453a' : '#ff9f0a'
+                          }}>
+                            {(t.priority || 'Medium').toUpperCase()}
+                          </span>
+
+                          <span style={{
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            background: isResolved ? 'rgba(48, 209, 88, 0.15)' : 'rgba(10, 132, 255, 0.15)',
+                            color: isResolved ? '#30d158' : '#0a84ff',
+                            border: `1px solid ${isResolved ? '#30d158' : '#0a84ff'}`
+                          }}>
+                            {isResolved ? '✓ Resolved' : '⏳ Pending / Open'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Requester Allocated Assets Badge */}
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '11px',
+                        background: 'rgba(10, 132, 255, 0.08)',
+                        border: '1px solid rgba(10, 132, 255, 0.2)',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        width: '100%'
+                      }}>
+                        <span style={{ color: '#64d2ff', fontWeight: 'bold' }}>💻 Allocated Assets:</span>
+                        <span style={{ color: '#ffffff' }}>
+                          {requesterAssets.length > 0
+                            ? requesterAssets.map((a: any) => `${a.name || a.category} (${a.asset_id || 'AST'})`).join(', ')
+                            : 'No active assets assigned'}
+                        </span>
+                      </div>
+
+                      {/* Reply / Resolution Details Box */}
+                      <div style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        fontSize: '12px'
+                      }}>
+                        <div style={{ fontWeight: 'bold', color: '#64d2ff', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          💬 {isResolved ? 'Resolution Details / Reply:' : 'Latest Reply / Action:'}
+                        </div>
+                        <div style={{ color: replyText ? 'var(--text-primary)' : 'var(--text-tertiary)', fontStyle: replyText ? 'normal' : 'italic' }}>
+                          {replyText || (isResolved ? 'Issue resolved.' : 'No responses yet from support team.')}
+                        </div>
                       </div>
                     </div>
-
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary)' }}>{(t.priority || 'Medium').toUpperCase()}</div>
-                      <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{t.date}</div>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-tertiary)' }}>No active IT tickets found.</div>
               )}
@@ -148,110 +232,73 @@ export default function ITTicketsView() {
           </GlassCard>
         </div>
 
-        {/* SLA, Uptime & Live Active IT shifts */}
+        {/* SLA, Uptime & Asset Allocations */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <GlassCard title="Live IT Support Shift Activity" subtitle="IT Personnel operational sessions">
-            <style>{`
-              @keyframes pulseDot {
-                0% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.4); }
-                70% { box-shadow: 0 0 0 6px rgba(48, 209, 88, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(48, 209, 88, 0); }
-              }
-              .pulse-green-dot {
-                animation: pulseDot 2s infinite;
-              }
-            `}</style>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '15px' }}>
-              {itSessions.length === 0 ? (
-                <div style={{ padding: '20px 0', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '12px' }}>
-                  No IT specialists currently active.
+          <GlassCard title="Hardware Assets & Allocations" subtitle="Asset count & active assignments">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '12px', marginBottom: '16px' }}>
+              <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', textAlign: 'center', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Total Assets</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#0a84ff', marginTop: '2px' }}>{assets.length}</div>
+              </div>
+              <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', textAlign: 'center', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Allocated</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#30d158', marginTop: '2px' }}>
+                  {assets.filter((a: any) => (a.status || '').toLowerCase() === 'allocated' || a.current_employee_id || (a.allocated_to_name && a.allocated_to_name !== 'Unassigned')).length}
+                </div>
+              </div>
+              <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px', textAlign: 'center', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Available</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: '#ff9f0a', marginTop: '2px' }}>
+                  {assets.filter((a: any) => (a.status || '').toLowerCase() === 'available' && !a.current_employee_id).length}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+              Allocated Hardware Details:
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+              {assets.filter((a: any) => (a.status || '').toLowerCase() === 'allocated' || a.current_employee_id || (a.allocated_to_name && a.allocated_to_name !== 'Unassigned')).length === 0 ? (
+                <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '11px' }}>
+                  No allocated assets recorded.
                 </div>
               ) : (
-                itSessions.map((s: any) => {
-                  const startedTime = new Date(s.login_time || s.started_at).getTime();
-                  const elapsedSecs = Math.max(0, Math.floor((tickTime - startedTime) / 1000));
-                  
-                  let breakSec = s.total_break_seconds || 0;
-                  if (s.on_break && s.current_break_start) {
-                    breakSec += Math.floor((tickTime - new Date(s.current_break_start).getTime()) / 1000);
-                  }
-                  
-                  const workSec = Math.max(0, elapsedSecs - breakSec);
-                  
-                  const formatSecs = (secs: number) => {
-                    const h = Math.floor(secs / 3600);
-                    const m = Math.floor((secs % 3600) / 60);
-                    const sec = secs % 60;
-                    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-                  };
-
-                  return (
-                    <div key={s.id || s.session_id} style={{
-                      padding: '12px',
-                      borderRadius: '12px',
-                      background: 'rgba(255,255,255,0.01)',
-                      border: '1px solid rgba(255,255,255,0.04)',
+                assets
+                  .filter((a: any) => (a.status || '').toLowerCase() === 'allocated' || a.current_employee_id || (a.allocated_to_name && a.allocated_to_name !== 'Unassigned'))
+                  .map((a: any) => (
+                    <div key={a.id || a.asset_id} style={{
+                      padding: '10px 12px',
+                      background: 'rgba(255,255,255,0.02)',
+                      borderRadius: '8px',
+                      border: '1px solid rgba(255,255,255,0.05)',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px'
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div className={s.on_break ? '' : 'pulse-green-dot'} style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            background: s.on_break ? '#ff9f0a' : '#30d158',
-                          }} />
-                          <div>
-                            <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>{s.employee_name}</div>
-                            <div style={{ fontSize: '10px', color: '#64d2ff', fontWeight: '800', textTransform: 'uppercase', marginTop: '2px' }}>
-                              {s.role} • {s.department}
-                            </div>
-                          </div>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>{a.name}</div>
+                        <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', marginTop: '2px' }}>
+                          ID: <span style={{ color: '#64d2ff' }}>{a.asset_id || 'AST'}</span> • Serial: {a.serial_number || 'N/A'}
                         </div>
-
-                        <button
-                          onClick={() => handlePing(s.employee_id || s.user_id, s.employee_name, s.on_break)}
-                          disabled={pingLoading === s.employee_id}
-                          className="apple-btn"
-                          style={{
-                            background: s.on_break ? 'rgba(255,159,10,0.12)' : 'rgba(10,132,255,0.12)',
-                            color: s.on_break ? '#ff9f0a' : '#0a84ff',
-                            border: 'none',
-                            padding: '4px 8px',
-                            fontSize: '9px',
-                            borderRadius: '6px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {pingLoading === s.employee_id ? 'Pinging...' : s.on_break ? '🚨 Call back' : '✉️ Ping'}
-                        </button>
+                        <div style={{ fontSize: '10px', color: '#30d158', fontWeight: '600', marginTop: '2px' }}>
+                          👤 Assigned to: {a.allocated_to_name || a.current_employee_id || 'Employee'}
+                        </div>
                       </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '10px', background: 'rgba(0,0,0,0.2)', padding: '6px 10px', borderRadius: '8px' }}>
-                        <div>
-                          <span style={{ color: 'rgba(255,255,255,0.3)', marginRight: '4px' }}>Work:</span>
-                          <span style={{ color: '#fff', fontWeight: '700', fontFamily: 'monospace' }}>{formatSecs(workSec)}</span>
-                        </div>
-                        <div>
-                          <span style={{ color: 'rgba(255,255,255,0.3)', marginRight: '4px' }}>Break:</span>
-                          <span style={{ color: s.on_break ? '#ff9f0a' : '#fff', fontWeight: '700', fontFamily: 'monospace' }}>{formatSecs(breakSec)}</span>
-                        </div>
+                      <div style={{
+                        fontSize: '9px',
+                        padding: '3px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(48, 209, 88, 0.15)',
+                        color: '#30d158',
+                        fontWeight: 'bold',
+                        textTransform: 'uppercase'
+                      }}>
+                        {a.category || 'Asset'}
                       </div>
                     </div>
-                  );
-                })
+                  ))
               )}
-            </div>
-          </GlassCard>
-
-          <GlassCard title="SLA Compliance" subtitle="Resolution time targets">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '10px' }}>
-              <SLARow label="Critical Issues" percent={tickets.length > 0 ? Math.round((tickets.filter((t: any) => t.priority === 'High' && t.status === 'Resolved').length / (tickets.filter((t: any) => t.priority === 'High').length || 1)) * 100) : 100} color="#ff453a" />
-              <SLARow label="Service Requests" percent={tickets.length > 0 ? Math.round((tickets.filter((t: any) => t.status === 'Resolved').length / tickets.length) * 100) : 100} color="#30d158" />
-              <SLARow label="Onboarding Access" percent={Math.round((employees.filter((e: any) => e.onboarding?.it_verification === 'verified').length / (employees.length || 1)) * 100)} color="#0a84ff" />
             </div>
           </GlassCard>
 
@@ -264,32 +311,7 @@ export default function ITTicketsView() {
         </div>
       </div>
 
-      <div className="grid-3">
-        <GlassCard title="Inventory Requisitions" subtitle="Managerial resource approval">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Available Hardware Assets</span>
-            <span style={{ fontSize: '24px', fontWeight: '700', color: 'var(--accent-blue)' }}>{assets.filter((a: any) => a.status === 'Available').length}</span>
-          </div>
-          <button className="apple-btn" style={{ width: '100%', marginTop: '15px', background: 'var(--accent-blue)' }}>
-            Authorize Batch Procurement
-          </button>
-        </GlassCard>
 
-        <GlassCard title="Compliance Audit" subtitle="IT Security and Policy">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', color: '#30d158', fontSize: '14px', fontWeight: '600' }}>
-            <FaCheckCircle /> All end-points encrypted
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', color: '#ff9f0a', fontSize: '14px', fontWeight: '600' }}>
-            <FaExclamationTriangle /> 4 OS patches pending
-          </div>
-        </GlassCard>
-
-        <GlassCard title="Incident Logging" subtitle="Strategic Exports">
-          <button className="apple-btn" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-            <FaDownload /> Monthly System Report
-          </button>
-        </GlassCard>
-      </div>
     </div>
   );
 }

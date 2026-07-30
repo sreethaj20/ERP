@@ -660,16 +660,63 @@ async def ping_employee(employee_id: str, payload: dict, db: Session = Depends(g
 @router.get("/it-tickets")
 def manager_it_tickets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     from app.models.ticket import Ticket
+    from app.models.employee import Employee
     tickets = db.query(Ticket).filter(Ticket.category == "IT", Ticket.deleted_at == None).offset(skip).limit(limit).all()
+    res = []
     for t in tickets:
-        if not hasattr(t, 'issue') or t.issue is None:
-            t.issue = t.title
-    return tickets
+        emp_id = t.employee_id or t.emp_id
+        emp_name = t.author
+        if not emp_name and emp_id:
+            emp = db.query(Employee).filter(Employee.employee_id == emp_id).first()
+            if emp:
+                emp_name = f"{emp.first_name} {emp.last_name}"
+        
+        reply_text = t.reply or t.resolution_details
+        if not reply_text and hasattr(t, 'comments') and t.comments:
+            reply_text = t.comments[-1].comment
+            
+        created_str = t.created_at.strftime("%b %d, %Y %I:%M %p") if t.created_at else None
+
+        res.append({
+            "id": t.id,
+            "ticket_id": t.ticket_id or f"TKT-{t.id}",
+            "issue": t.issue or t.title,
+            "title": t.title or t.issue,
+            "description": t.description or t.issue or t.title,
+            "category": t.category,
+            "priority": t.priority or "Medium",
+            "status": t.status or "Open",
+            "employee_id": emp_id,
+            "emp_id": emp_id,
+            "sender_name": emp_name or t.author or (f"Employee #{emp_id}" if emp_id else "Anonymous Requester"),
+            "author": emp_name or t.author or (f"Employee #{emp_id}" if emp_id else "Anonymous Requester"),
+            "created_at": t.created_at.isoformat() if t.created_at else None,
+            "date": created_str or "Recently",
+            "reply": reply_text,
+            "resolution_details": t.resolution_details or reply_text
+        })
+    return res
 
 @router.get("/it-assets")
 def manager_it_assets(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("manager"))):
     from app.repositories.asset_repo import asset_repo
-    return asset_repo.get_multi(db, skip, limit)
+    assets = asset_repo.get_multi(db, skip, limit)
+    res = []
+    for a in assets:
+        allocated_name = getattr(a, "allocated_to_name", None) or a.current_employee_id or "Unassigned"
+        res.append({
+            "id": a.id,
+            "asset_id": a.asset_id or f"AST-{a.id}",
+            "name": a.name,
+            "category": a.category or "Hardware",
+            "serial_number": a.serial_number or "N/A",
+            "status": a.status or "Available",
+            "current_employee_id": a.current_employee_id,
+            "allocated_to": a.current_employee_id,
+            "allocated_to_name": allocated_name if a.current_employee_id else "Unassigned",
+            "notes": a.notes
+        })
+    return res
 
 @router.post("/finalize-leave")
 async def manager_finalize_leave(
