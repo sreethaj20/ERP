@@ -65,9 +65,8 @@
 
 /* HOVER GLASS LIFT */
 .glass-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-glow), var(--shadow-glass);
-  border-color: rgba(var(--accent-blue), 0.3);
+  box-shadow: var(--shadow-glass);
+  border-color: var(--border-light);
 }
 
 /* LOGO - Transparent + Theme Brightness */
