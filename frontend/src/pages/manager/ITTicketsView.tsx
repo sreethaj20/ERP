@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { FaTicketAlt, FaTools, FaCheckCircle, FaExclamationTriangle, FaDownload, FaDesktop, FaServer, FaClock, FaCoffee } from "react-icons/fa";
+import { FaTicketAlt, FaTools, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import api from "../../api/apiClient";
 import { getWorkforce, getITTickets, getITAssets } from "../../services/managerService";
 
@@ -193,43 +193,6 @@ export default function ITTicketsView() {
               )}
             </div>
           </GlassCard>
-
-          <GlassCard title="Hardware Provisioning Queue" subtitle="Manager-approved allocations">
-            <div style={{ marginTop: "15px" }}>
-              {employees.filter((e: any) => e.onboarding?.it_verification === 'pending').map((emp: any) => (
-                <div key={emp.id} style={{ ...ticketCard, flexDirection: 'column', alignItems: 'flex-start', gap: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                    <div>
-                    <div style={{ fontWeight: '600', fontSize: '15px' }}>{emp.first_name} {emp.last_name}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Role: {(emp.active_status?.role_name || emp.active_status?.role_type || 'Unspecified').toUpperCase()}</div>
-                  </div>
-                    <div style={{ padding: '4px 8px', background: 'rgba(255,159,10,0.1)', color: '#ff9f0a', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold' }}>PENDING VERIFICATION</div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', width: '100%', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
-                    <AllocationStat label="Laptops" val={emp.onboarding?.hardware_allocation?.laptop_qty} />
-                    <AllocationStat label="Phones" val={emp.onboarding?.hardware_allocation?.phone_qty} />
-                    <AllocationStat label="Tablets" val={emp.onboarding?.hardware_allocation?.tablet_qty} />
-                    <AllocationStat label="Monitors" val={emp.onboarding?.hardware_allocation?.monitor_qty} />
-                  </div>
-
-                  <div style={{ width: '100%' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-tertiary)', marginBottom: '8px' }}>ADD ACCESSORIES</div>
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                      <AccessoryChip label="Mouse" />
-                      <AccessoryChip label="Keyboard" />
-                      <AccessoryChip label="Headset" />
-                      <AccessoryChip label="Webcam" />
-                    </div>
-                  </div>
-
-                  <button className="apple-btn" style={{ width: '100%', background: '#30d158', border: 'none', color: 'white', fontWeight: 'bold' }}>
-                    Verify & Release Inventory
-                  </button>
-                </div>
-              ))}
-            </div>
-          </GlassCard>
         </div>
 
         {/* SLA, Uptime & Asset Allocations */}
@@ -301,33 +264,11 @@ export default function ITTicketsView() {
               )}
             </div>
           </GlassCard>
-
-          <GlassCard title="System Uptime" subtitle="Core infrastructure health">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '10px' }}>
-              <HealthStat icon={<FaDesktop />} label="VDI Clusters" val={tickets.filter((t: any) => (t.issue || t.subject || '').includes('VDI') || (t.issue || t.subject || '').includes('Display')).length > 2 ? "Degraded" : "99.9%"} />
-              <HealthStat icon={<FaServer />} label="IDM Vault" val="100%" />
-            </div>
-          </GlassCard>
         </div>
       </div>
-
-
     </div>
   );
 }
-
-const AllocationStat = ({ label, val }: any) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-    <span style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{label}</span>
-    <span style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--accent-blue)' }}>{val || 0}</span>
-  </div>
-);
-
-const AccessoryChip = ({ label }: any) => (
-  <div style={{ padding: '6px 12px', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', fontSize: '11px', border: '1px solid var(--border-light)', cursor: 'pointer' }}>
-    {label}
-  </div>
-);
 
 const SLARow = ({ label, percent, color }: any) => (
   <div>
@@ -338,14 +279,6 @@ const SLARow = ({ label, percent, color }: any) => (
     <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
       <div style={{ height: '100%', width: `${percent}%`, background: color }} />
     </div>
-  </div>
-);
-
-const HealthStat = ({ icon, label, val }: any) => (
-  <div style={{ padding: '15px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-    <div style={{ color: 'var(--accent-blue)', fontSize: '18px', marginBottom: '8px' }}>{icon}</div>
-    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
-    <div style={{ fontSize: '14px', fontWeight: '700', color: '#30d158' }}>{val}</div>
   </div>
 );
 
