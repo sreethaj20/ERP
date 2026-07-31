@@ -37,6 +37,33 @@ export default function AssetLifecycle() {
     const [condition, setCondition] = useState("Good");
     const [damageCost, setDamageCost] = useState("0");
 
+    const getAssignedEmpName = (assetIdInput: string) => {
+        if (!assetIdInput.trim()) return "N/A";
+        const cleanQuery = assetIdInput.trim().toLowerCase();
+        const foundAsset = assets.find((a: any) => {
+            const aId = String(a.asset_id || a.id || "").toLowerCase();
+            const aName = String(a.name || "").toLowerCase();
+            return aId === cleanQuery || cleanQuery.includes(aId) || aId.includes(cleanQuery);
+        });
+
+        if (!foundAsset) return "Asset Not Found";
+
+        const assignedId = foundAsset.assigned_to || foundAsset.employee_id || foundAsset.assigned_employee_id || foundAsset.user_id;
+        const assignedName = foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name;
+
+        if (assignedName) return `${assignedName}${assignedId ? ` (${assignedId})` : ''}`;
+
+        if (assignedId) {
+            const emp = employees.find((e: any) =>
+                String(e.employee_id || e.id || "").toLowerCase() === String(assignedId).toLowerCase()
+            );
+            if (emp) return `${emp.name || emp.first_name || 'Employee'} (${emp.employee_id || emp.id})`;
+            return `Employee ID: ${assignedId}`;
+        }
+
+        return "Unassigned / In Stock";
+    };
+
     useEffect(() => {
         loadData();
     }, []);
@@ -93,11 +120,18 @@ export default function AssetLifecycle() {
                 {/* 1. Maintenance */}
                 <GlassCard title="Maintenance" subtitle="Send device for repair">
                     <div style={formGroup}>
-                        <label style={labelStyle}>Select Asset</label>
-                        <select value={maintAsset} onChange={(e) => setMaintAsset(e.target.value)} style={inputStyle}>
-                            <option value="">Select Asset...</option>
-                            {assets.filter((a: any) => a.status !== 'Maintenance').map((a: any) => <option key={a.id} value={a.asset_id || a.id}>{a.name} ({a.asset_id || a.id})</option>)}
-                        </select>
+                        <label style={labelStyle}>Asset ID</label>
+                        <input
+                            placeholder="Enter Asset ID..."
+                            value={maintAsset}
+                            onChange={(e) => setMaintAsset(e.target.value)}
+                            style={inputStyle}
+                        />
+                        {maintAsset && (
+                            <div style={employeeDisplayBadgeStyle}>
+                                Assigned Employee: <strong>{getAssignedEmpName(maintAsset)}</strong>
+                            </div>
+                        )}
                         <label style={labelStyle}>Issue Description</label>
                         <input placeholder="Describe hardware issue..." value={issue} onChange={(e) => setIssue(e.target.value)} style={inputStyle} />
                         <label style={labelStyle}>Vendor / Technician</label>
@@ -113,11 +147,18 @@ export default function AssetLifecycle() {
                 {/* 2. Transfer */}
                 <GlassCard title="Transfer" subtitle="Reassign between employees">
                     <div style={formGroup}>
-                        <label style={labelStyle}>Asset to Transfer</label>
-                        <select value={transAsset} onChange={(e) => setTransAsset(e.target.value)} style={inputStyle}>
-                            <option value="">Select Asset...</option>
-                            {assets.filter((a: any) => a.status === 'Allocated').map((a: any) => <option key={a.id} value={a.asset_id || a.id}>{a.name} ({a.asset_id || a.id})</option>)}
-                        </select>
+                        <label style={labelStyle}>Asset ID to Transfer</label>
+                        <input
+                            placeholder="Enter Asset ID..."
+                            value={transAsset}
+                            onChange={(e) => setTransAsset(e.target.value)}
+                            style={inputStyle}
+                        />
+                        {transAsset && (
+                            <div style={employeeDisplayBadgeStyle}>
+                                Current Employee: <strong>{getAssignedEmpName(transAsset)}</strong>
+                            </div>
+                        )}
                         <label style={labelStyle}>New Employee</label>
                         <select value={toEmp} onChange={(e) => setToEmp(e.target.value)} style={inputStyle}>
                             <option value="">Select Employee...</option>
@@ -132,11 +173,18 @@ export default function AssetLifecycle() {
                 {/* 3. Return */}
                 <GlassCard title="Return" subtitle="Process device intake">
                     <div style={formGroup}>
-                        <label style={labelStyle}>Asset Returning</label>
-                        <select value={retAsset} onChange={(e) => setRetAsset(e.target.value)} style={inputStyle}>
-                            <option value="">Select Asset...</option>
-                            {assets.filter((a: any) => a.status === 'Allocated' || a.status === 'Maintenance').map((a: any) => <option key={a.id} value={a.asset_id || a.id}>{a.name} ({a.asset_id || a.id})</option>)}
-                        </select>
+                        <label style={labelStyle}>Asset ID Returning</label>
+                        <input
+                            placeholder="Enter Asset ID..."
+                            value={retAsset}
+                            onChange={(e) => setRetAsset(e.target.value)}
+                            style={inputStyle}
+                        />
+                        {retAsset && (
+                            <div style={employeeDisplayBadgeStyle}>
+                                Assigned Employee: <strong>{getAssignedEmpName(retAsset)}</strong>
+                            </div>
+                        )}
                         <label style={labelStyle}>Received Condition</label>
                         <select value={condition} onChange={(e) => setCondition(e.target.value)} style={inputStyle}>
                             <option value="Good">Good</option>
@@ -188,6 +236,15 @@ const labelStyle = { fontSize: '11px', color: 'var(--text-secondary)', textTrans
 const inputStyle = {
     width: "100%", padding: "12px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.1)",
     background: "rgba(0,0,0,0.4)", color: "white"
+};
+const employeeDisplayBadgeStyle: React.CSSProperties = {
+    fontSize: '12px',
+    padding: '8px 12px',
+    borderRadius: '8px',
+    background: 'rgba(0, 191, 255, 0.1)',
+    border: '1px solid rgba(0, 191, 255, 0.3)',
+    color: '#00bfff',
+    marginTop: '-4px'
 };
 const btnStyle: React.CSSProperties = {
     width: "100%", padding: "12px", borderRadius: "12px", border: "none",
