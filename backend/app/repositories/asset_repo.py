@@ -74,6 +74,7 @@ class AssetAllocationRepository:
     def get_by_asset(self, db: Session, asset_id: str) -> List[AssetAllocation]:
         from app.models.asset import Asset
         from app.models.employee import Employee
+        from sqlalchemy import cast, String, func
         
         # Resolve target asset_id if an integer ID was provided
         target_asset_id = asset_id
@@ -83,26 +84,27 @@ class AssetAllocationRepository:
                 target_asset_id = asset_ref.asset_id
 
         results = (
-            db.query(AssetAllocation, Asset.name.label("asset_name"), Employee.first_name, Employee.last_name, Employee.department)
+            db.query(AssetAllocation, Asset.name.label("asset_name"), Asset.serial_number, Employee.first_name, Employee.last_name, Employee.name.label("emp_name"), Employee.department)
             .join(Asset, Asset.asset_id == AssetAllocation.asset_id, isouter=True)
-            .join(Employee, Employee.employee_id == AssetAllocation.employee_id, isouter=True)
+            .join(Employee, (func.lower(Employee.employee_id) == func.lower(AssetAllocation.employee_id)) | (cast(Employee.id, String) == AssetAllocation.employee_id), isouter=True)
             .filter(AssetAllocation.asset_id == target_asset_id)
             .all()
         )
-        return self._enrich_rows(results)
+        return self._enrich_rows(results, db)
 
     def get_active_by_employee(self, db: Session, employee_id: str) -> List[AssetAllocation]:
         from app.models.asset import Asset
         from app.models.employee import Employee
+        from sqlalchemy import cast, String, func
         
         results = (
-            db.query(AssetAllocation, Asset.name.label("asset_name"), Asset.serial_number, Employee.first_name, Employee.last_name, Employee.department)
+            db.query(AssetAllocation, Asset.name.label("asset_name"), Asset.serial_number, Employee.first_name, Employee.last_name, Employee.name.label("emp_name"), Employee.department)
             .join(Asset, Asset.asset_id == AssetAllocation.asset_id, isouter=True)
-            .join(Employee, Employee.employee_id == AssetAllocation.employee_id, isouter=True)
+            .join(Employee, (func.lower(Employee.employee_id) == func.lower(AssetAllocation.employee_id)) | (cast(Employee.id, String) == AssetAllocation.employee_id), isouter=True)
             .filter(AssetAllocation.employee_id == employee_id, AssetAllocation.allocation_status == "allocated")
             .all()
         )
-        return self._enrich_rows(results)
+        return self._enrich_rows(results, db)
 
     def create(self, db: Session, obj_in: AssetAllocationCreate) -> AssetAllocation:
         # 1. Create Allocation Record
@@ -127,26 +129,48 @@ class AssetAllocationRepository:
     def get_multi(self, db: Session, skip: int = 0, limit: int = 100) -> List[AssetAllocation]:
         from app.models.asset import Asset
         from app.models.employee import Employee
+        from sqlalchemy import cast, String, func
         
         results = (
-            db.query(AssetAllocation, Asset.name.label("asset_name"), Asset.serial_number, Employee.first_name, Employee.last_name, Employee.department)
+            db.query(AssetAllocation, Asset.name.label("asset_name"), Asset.serial_number, Employee.first_name, Employee.last_name, Employee.name.label("emp_name"), Employee.department)
             .join(Asset, Asset.asset_id == AssetAllocation.asset_id, isouter=True)
-            .join(Employee, Employee.employee_id == AssetAllocation.employee_id, isouter=True)
+            .join(Employee, (func.lower(Employee.employee_id) == func.lower(AssetAllocation.employee_id)) | (cast(Employee.id, String) == AssetAllocation.employee_id), isouter=True)
             .offset(skip)
             .limit(limit)
             .all()
         )
-        return self._enrich_rows(results)
+        return self._enrich_rows(results, db)
 
-    def _enrich_rows(self, results) -> List[AssetAllocation]:
+    def _enrich_rows(self, results, db: Session = None) -> List[AssetAllocation]:
+        from app.models.employee import Employee
+        from sqlalchemy import cast, String, func
+
         allocations = []
         for row in results:
             alloc = row[0]
-            alloc.asset_name = row.asset_name
-            alloc.employee_name = f"{row.first_name or ''} {row.last_name or ''}".strip()
-            if not alloc.employee_name:
-                alloc.employee_name = f"Unknown ({alloc.employee_id})"
-            alloc.department = row.department
+            alloc.asset_name = getattr(row, 'asset_name', None) or "Unknown Device"
+            
+            fn = getattr(row, 'first_name', None)
+            ln = getattr(row, 'last_name', None)
+            full_name = getattr(row, 'emp_name', None)
+            
+            emp_name = f"{fn or ''} {ln or ''}".strip() or full_name or ""
+            
+            if not emp_name and db and alloc.employee_id:
+                clean_id = str(alloc.employee_id).strip()
+                normalized_id = clean_id.replace('O', '0').replace('o', '0')
+                emp = db.query(Employee).filter(
+                    (func.lower(Employee.employee_id) == func.lower(clean_id)) |
+                    (func.lower(Employee.employee_id) == func.lower(normalized_id)) |
+                    (cast(Employee.id, String) == clean_id)
+                ).first()
+                if emp:
+                    emp_name = f"{emp.first_name or ''} {emp.last_name or ''}".strip() or emp.name or ""
+                    if emp.department and not getattr(row, 'department', None):
+                        alloc.department = emp.department
+
+            alloc.employee_name = emp_name if emp_name else f"Unknown ({alloc.employee_id})"
+            alloc.department = getattr(row, 'department', None) or getattr(alloc, 'department', None)
             alloc.allocation_id = alloc.id
             alloc.serial_number = getattr(row, 'serial_number', None)
             alloc.allocation_date = alloc.allocation_date or (alloc.allocated_at.strftime("%Y-%m-%d") if alloc.allocated_at else None)

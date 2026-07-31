@@ -57,7 +57,28 @@ export default function AssetAllocation() {
     String(e.id || "") === String(empId || "")
   );
 
-  const filteredAllocations = allocations.filter((a: any) =>
+  const enrichedAllocations = allocations.map((a: any) => {
+    let empName = a.employee_name;
+    if (!empName || empName.startsWith("Unknown") || empName === a.employee_id) {
+      const cleanAllocEmpId = String(a.employee_id || '').toLowerCase().trim().replace(/o/g, '0');
+      const foundEmp = employees.find((e: any) => {
+        const eId = String(e.employee_id || '').toLowerCase().trim().replace(/o/g, '0');
+        const ePk = String(e.id || '').toLowerCase().trim();
+        const eCode = String(e.code || '').toLowerCase().trim();
+        return eId === cleanAllocEmpId || ePk === cleanAllocEmpId || eCode === cleanAllocEmpId ||
+               (eId && cleanAllocEmpId && (cleanAllocEmpId.endsWith(eId) || eId.endsWith(cleanAllocEmpId)));
+      });
+      if (foundEmp) {
+        const resolvedName = (foundEmp.name || `${foundEmp.first_name || ''} ${foundEmp.last_name || ''}`).trim();
+        if (resolvedName) {
+          empName = resolvedName;
+        }
+      }
+    }
+    return { ...a, employee_name: empName || `Employee (${a.employee_id})` };
+  });
+
+  const filteredAllocations = enrichedAllocations.filter((a: any) =>
     !searchEmpId ||
     (a.employee_id || "").toLowerCase().includes(searchEmpId.toLowerCase()) ||
     (a.employee_name || "").toLowerCase().includes(searchEmpId.toLowerCase())

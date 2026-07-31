@@ -56,7 +56,9 @@ export default function AssetLifecycle() {
             return aId === cleanQuery || cleanQuery === aId || sNum === cleanQuery || aName.includes(cleanQuery);
         }) || assets.find((a: any) => {
             const aId = String(a.asset_id || a.id || "").toLowerCase();
-            return aId.includes(cleanQuery) || cleanQuery.includes(aId);
+            const cleanNorm = cleanQuery.replace(/o/g, '0');
+            const aNorm = aId.replace(/o/g, '0');
+            return aId.includes(cleanQuery) || cleanQuery.includes(aId) || cleanNorm === aNorm;
         });
 
         if (!foundAsset) return "Asset Not Found";
@@ -71,10 +73,14 @@ export default function AssetLifecycle() {
 
         if (assignedId) {
             const cleanAssignedId = String(assignedId).toLowerCase().trim();
+            const cleanNormAssigned = cleanAssignedId.replace(/o/g, '0');
             const emp = employees.find((e: any) => {
-                const eId = String(e.employee_id || e.id || "").toLowerCase().trim();
+                const eId = String(e.employee_id || "").toLowerCase().trim();
+                const ePk = String(e.id || "").toLowerCase().trim();
                 const eCode = String(e.code || "").toLowerCase().trim();
-                return eId === cleanAssignedId || eCode === cleanAssignedId;
+                const eNorm = eId.replace(/o/g, '0');
+                return eId === cleanAssignedId || ePk === cleanAssignedId || eCode === cleanAssignedId ||
+                       eNorm === cleanNormAssigned || cleanNormAssigned.endsWith(eNorm) || eNorm.endsWith(cleanNormAssigned);
             });
             if (emp) {
                 const fullName = (emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`).trim();
@@ -83,7 +89,7 @@ export default function AssetLifecycle() {
             }
         }
 
-        const finalName = matchedEmpName || (assignedNameRaw && String(assignedNameRaw).trim() !== String(assignedId).trim() ? assignedNameRaw : "");
+        const finalName = matchedEmpName || (assignedNameRaw && String(assignedNameRaw).trim() !== String(assignedId).trim() && !String(assignedNameRaw).startsWith("Unknown") ? assignedNameRaw : "");
 
         if (finalName) {
             return `${finalName}${matchedEmpId ? ` (${matchedEmpId})` : ''}`;
@@ -196,7 +202,10 @@ export default function AssetLifecycle() {
                         <label style={labelStyle}>New Employee</label>
                         <select value={toEmp} onChange={(e) => setToEmp(e.target.value)} style={inputStyle}>
                             <option value="">Select Employee...</option>
-                            {employees.map((e: any) => <option key={e.employee_id || e.id} value={e.employee_id || e.id}>{e.name} ({e.employee_id || e.id})</option>)}
+                            {employees.map((e: any) => {
+                                const nameStr = (e.name || `${e.first_name || ''} ${e.last_name || ''}`).trim() || e.employee_id || e.id;
+                                return <option key={e.employee_id || e.id} value={e.employee_id || e.id}>{nameStr} ({e.employee_id || e.id})</option>;
+                            })}
                         </select>
                         <button className="apple-btn" onClick={handleTransfer} style={{ backgroundColor: '#5e5ce6' }}>
                             <FaExchangeAlt style={{ marginRight: '8px' }} /> Transfer Asset
