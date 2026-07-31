@@ -210,13 +210,13 @@ export default function MonthlyAttendance() {
                             <thead>
                                 <tr style={{ borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
                                     {['Staff Member', 'Designation', 'Department', 'Login Time', 'Logout Time', 'Status', 'Action'].map(h => (
-                                        <th key={h} style={{ padding: '10px 14px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                                        <th key={h} style={{ padding: '10px 14px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody>
                                 {visibleReports.length === 0 ? (
-                                    <tr><td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-tertiary)' }}>
+                                    <tr><td colSpan={7} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                         No staff found.
                                     </td></tr>
                                 ) : visibleReports.map((emp: any) => {
@@ -242,7 +242,7 @@ export default function MonthlyAttendance() {
                                             <tr
                                                 style={{ borderBottom: '1px solid var(--border-light)', background: isExp ? 'rgba(10,132,255,0.04)' : 'transparent', transition: 'background 0.2s' }}
                                             >
-                                                <td style={{ padding: '12px 14px' }}>
+                                                <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <div style={{
                                                             width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
@@ -250,40 +250,42 @@ export default function MonthlyAttendance() {
                                                             boxShadow: p?.is_online ? '0 0 8px #30d158' : 'none'
                                                         }} />
                                                         <div>
-                                                            <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{emp.name}</div>
-                                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{emp.employee_id}</div>
+                                                            <div style={{ fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{emp.name}</div>
+                                                            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{emp.employee_id}</div>
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td style={{ padding: '12px 14px' }}>
-                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>
+                                                <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: 'rgba(255,255,255,0.08)', color: '#fff', whiteSpace: 'nowrap', display: 'inline-block' }}>
                                                         {emp.designation || emp.designation_name || emp.job_title || badge.label}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '13px' }}>{emp.department || '—'}</td>
-                                                <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                                                    {loginTime ? formatLocalTime(loginTime) : <span style={{ color: 'var(--text-tertiary)' }}>Not logged in</span>}
+                                                <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '13px', whiteSpace: 'nowrap' }}>{emp.department || '—'}</td>
+                                                <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                                                    {loginTime ? formatLocalTime(loginTime) : <span style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>Not logged in</span>}
                                                 </td>
-                                                <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
+                                                <td style={{ padding: '12px 14px', color: 'var(--text-primary)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                                                     {logoutTime
                                                         ? formatLocalTime(logoutTime)
-                                                        : p?.is_online ? <span style={{ color: '#30d158' }}>Active</span>
-                                                            : <span style={{ color: 'var(--text-tertiary)' }}>—</span>}
+                                                        : p?.is_online ? <span style={{ color: '#30d158', whiteSpace: 'nowrap' }}>Active</span>
+                                                            : <span style={{ color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>—</span>}
                                                 </td>
-                                                <td style={{ padding: '12px 14px' }}>
+                                                <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                                                     <span style={{
                                                         padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700',
                                                         background: p?.is_online ? 'rgba(48,209,88,0.15)' : att?.status === 'On Leave' ? 'rgba(0,122,255,0.15)' : loginTime ? 'rgba(255,159,10,0.15)' : 'rgba(255,69,58,0.08)',
-                                                        color: p?.is_online ? '#30d158' : att?.status === 'On Leave' ? '#0a84ff' : loginTime ? '#ff9f0a' : '#ff453a'
+                                                        color: p?.is_online ? '#30d158' : att?.status === 'On Leave' ? '#0a84ff' : loginTime ? '#ff9f0a' : '#ff453a',
+                                                        whiteSpace: 'nowrap',
+                                                        display: 'inline-block'
                                                     }}>
                                                         {p?.is_online ? 'ONLINE' : att?.status === 'On Leave' ? 'ON LEAVE' : loginTime ? 'LOGGED OUT' : 'OFFLINE'}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '12px 14px' }}>
+                                                <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                                                     {isTL && (
                                                         <button
                                                             onClick={() => setExpandedTL(isExp ? null : emp.employee_id)}
-                                                            style={{ background: 'rgba(10,132,255,0.1)', border: '1px solid rgba(10,132,255,0.2)', borderRadius: '8px', padding: '5px 10px', color: '#0a84ff', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                                            style={{ background: 'rgba(10,132,255,0.1)', border: '1px solid rgba(10,132,255,0.2)', borderRadius: '8px', padding: '5px 10px', color: '#0a84ff', cursor: 'pointer', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', flexShrink: 0 }}
                                                         >
                                                             {isExp ? <FaChevronDown size={10} /> : <FaChevronRight size={10} />}
                                                             Team
@@ -313,7 +315,7 @@ export default function MonthlyAttendance() {
                                                                         <thead>
                                                                             <tr style={{ borderBottom: '1px solid var(--border-light)', color: 'var(--text-tertiary)' }}>
                                                                                 {['Member', 'Login Time', 'Logout Time', 'Status'].map(h => (
-                                                                                    <th key={h} style={{ padding: '8px', textAlign: 'left', fontWeight: '600', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.5px' }}>{h}</th>
+                                                                                    <th key={h} style={{ padding: '8px', textAlign: 'left', fontWeight: '600', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                                                                                 ))}
                                                                             </tr>
                                                                         </thead>
@@ -329,27 +331,29 @@ export default function MonthlyAttendance() {
 
                                                                                 return (
                                                                                     <tr key={m.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                                                                                        <td style={{ padding: '8px', color: 'var(--text-primary)', fontWeight: '600' }}>
+                                                                                        <td style={{ padding: '8px', color: 'var(--text-primary)', fontWeight: '600', whiteSpace: 'nowrap' }}>
                                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                                                                 <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: mp?.is_online ? '#30d158' : '#ff453a', flexShrink: 0 }} />
                                                                                                 <div>
-                                                                                                    <div>{m.name}</div>
-                                                                                                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'normal' }}>{m.employee_id}</div>
+                                                                                                    <div style={{ whiteSpace: 'nowrap' }}>{m.name}</div>
+                                                                                                    <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', fontWeight: 'normal', whiteSpace: 'nowrap' }}>{m.employee_id}</div>
                                                                                                 </div>
                                                                                             </div>
                                                                                         </td>
-                                                                                        <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                                                                        <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                                                                                             {mLoginTime ? formatLocalTime(mLoginTime) : '—'}
                                                                                         </td>
-                                                                                        <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>
+                                                                                        <td style={{ padding: '8px', fontFamily: 'monospace', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
                                                                                             {mLogoutTime ? formatLocalTime(mLogoutTime)
-                                                                                                : mp?.is_online ? <span style={{ color: '#30d158' }}>Active</span> : '—'}
+                                                                                                : mp?.is_online ? <span style={{ color: '#30d158', whiteSpace: 'nowrap' }}>Active</span> : '—'}
                                                                                         </td>
-                                                                                        <td style={{ padding: '8px' }}>
+                                                                                        <td style={{ padding: '8px', whiteSpace: 'nowrap' }}>
                                                                                             <span style={{
                                                                                                 padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700',
                                                                                                 background: mp?.is_online ? 'rgba(48,209,88,0.15)' : mLoginTime ? 'rgba(255,159,10,0.12)' : 'rgba(255,69,58,0.08)',
-                                                                                                color: mp?.is_online ? '#30d158' : mLoginTime ? '#ff9f0a' : '#ff453a'
+                                                                                                color: mp?.is_online ? '#30d158' : mLoginTime ? '#ff9f0a' : '#ff453a',
+                                                                                                whiteSpace: 'nowrap',
+                                                                                                display: 'inline-block'
                                                                                             }}>
                                                                                                 {mp?.is_online ? 'ONLINE' : mLoginTime ? 'LOGGED OUT' : 'OFFLINE'}
                                                                                             </span>
@@ -382,15 +386,15 @@ export default function MonthlyAttendance() {
                             <thead>
                                 <tr style={{ textAlign: 'left', fontSize: '11px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                     {['Employee', 'Designation', 'Department', 'Working Days', 'Present', 'Leave', 'Absent/LOP', 'Fulfillment %'].map(h => (
-                                        <th key={h} style={{ padding: '12px 14px' }}>{h}</th>
+                                        <th key={h} style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody style={{ fontSize: '13px' }}>
                                 {loading ? (
-                                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>Loading...</td></tr>
+                                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', whiteSpace: 'nowrap' }}>Loading...</td></tr>
                                 ) : visibleReports.length === 0 ? (
-                                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
+                                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                         No staff found.
                                     </td></tr>
                                 ) : visibleReports.map((emp: any, idx: number) => {
@@ -410,22 +414,22 @@ export default function MonthlyAttendance() {
                                                 onClick={() => isTL && setExpandedTL(isExp ? null : emp.employee_id + '_monthly')}
                                                 style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: isTL ? 'pointer' : 'default', background: isExp ? 'rgba(10,132,255,0.04)' : idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)' }}
                                             >
-                                                <td style={{ padding: '14px' }}>
-                                                    <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
+                                                <td style={{ padding: '14px', whiteSpace: 'nowrap' }}>
+                                                    <div style={{ fontWeight: '600', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                                                         {emp.name}
-                                                        {isTL && <span style={{ fontSize: '10px', color: '#0a84ff', marginLeft: '6px' }}>{isExp ? '▼' : '▶'} Team</span>}
+                                                        {isTL && <span style={{ fontSize: '10px', color: '#0a84ff', marginLeft: '6px', whiteSpace: 'nowrap', display: 'inline-block' }}>{isExp ? '▼' : '▶'} Team</span>}
                                                     </div>
-                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{emp.employee_id}</div>
+                                                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>{emp.employee_id}</div>
                                                 </td>
-                                                <td style={{ padding: '14px' }}>
-                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: 'rgba(255,255,255,0.08)', color: '#fff' }}>{emp.designation || emp.designation_name || emp.job_title || badge.label}</span>
+                                                <td style={{ padding: '14px', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: 'rgba(255,255,255,0.08)', color: '#fff', whiteSpace: 'nowrap', display: 'inline-block' }}>{emp.designation || emp.designation_name || emp.job_title || badge.label}</span>
                                                 </td>
-                                                <td style={{ padding: '14px', color: 'var(--text-secondary)' }}>{emp.department || '—'}</td>
-                                                <td style={{ padding: '14px', color: 'var(--text-secondary)', fontWeight: '600' }}>{empWorkingDays}</td>
-                                                <td style={{ padding: '14px', fontWeight: '700', color: '#30d158' }}>{present}</td>
-                                                <td style={{ padding: '14px', fontWeight: '700', color: '#ff9f0a' }}>{leave}</td>
-                                                <td style={{ padding: '14px', fontWeight: '700', color: '#ff453a' }}>{absent}</td>
-                                                <td style={{ padding: '14px', minWidth: '140px' }}>
+                                                <td style={{ padding: '14px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{emp.department || '—'}</td>
+                                                <td style={{ padding: '14px', color: 'var(--text-secondary)', fontWeight: '600', whiteSpace: 'nowrap' }}>{empWorkingDays}</td>
+                                                <td style={{ padding: '14px', fontWeight: '700', color: '#30d158', whiteSpace: 'nowrap' }}>{present}</td>
+                                                <td style={{ padding: '14px', fontWeight: '700', color: '#ff9f0a', whiteSpace: 'nowrap' }}>{leave}</td>
+                                                <td style={{ padding: '14px', fontWeight: '700', color: '#ff453a', whiteSpace: 'nowrap' }}>{absent}</td>
+                                                <td style={{ padding: '14px', minWidth: '140px', whiteSpace: 'nowrap' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                         <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
                                                             <div style={{ width: `${fulfillment}%`, height: '100%', background: fulfillment > 90 ? '#30d158' : fulfillment > 70 ? '#ff9f0a' : '#ff453a', transition: 'width 0.6s ease' }} />

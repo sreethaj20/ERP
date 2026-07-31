@@ -610,10 +610,11 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
         width: 100% !important;
     }
 
-    /* Responsive tables with auto-fit text */
+    /* Responsive tables with auto-fit text & smooth horizontal scrolling across all frontend pages */
     .table-responsive,
     div[style*="overflowX"],
-    div[style*="overflow-x"] {
+    div[style*="overflow-x"],
+    div:has(> table) {
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: auto !important;
@@ -626,8 +627,30 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
     }
 
     th, td {
+        white-space: nowrap !important;
+        word-break: normal !important;
+    }
+
+    td.allow-wrap,
+    .allow-wrap,
+    td[title] {
         white-space: normal !important;
         word-break: break-word !important;
+    }
+
+    /* Badges, status tags & action buttons protection against line breaks on all devices */
+    .status-badge,
+    .badge,
+    .pill,
+    .tag,
+    button,
+    .apple-btn,
+    span[style*="border-radius"],
+    span[style*="background"] {
+        white-space: nowrap !important;
+        display: inline-block !important;
+        max-width: max-content !important;
+        word-break: keep-all !important;
     }
 
     /* Modal responsiveness */
@@ -645,7 +668,7 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
     }
 
     /* Input scaling for mobile devices */
-    input, select, textarea, button {
+    input, select, textarea {
         font-size: 15px !important; /* Prevents auto-zoom on iOS safari */
         max-width: 100% !important;
         box-sizing: border-box !important;
@@ -654,12 +677,18 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
     /* Touch-friendly buttons */
     .apple-btn,
     .apple-btn-secondary {
-        min-height: 44px;
-        width: 100%;
+        min-height: 40px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        text-align: center !important;
+        white-space: nowrap !important;
+    }
+
+    td .apple-btn,
+    td button,
+    tr button {
+        width: auto !important;
+        display: inline-flex !important;
     }
 }
 

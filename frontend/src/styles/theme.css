@@ -195,3 +195,58 @@
 * {
   box-sizing: border-box;
 }
+
+/* RESPONSIVE TABLE & BADGE PROTECTIONS */
+.apple-btn,
+button {
+  white-space: nowrap;
+}
+
+span[style*="border-radius"],
+span[style*="background"] {
+  max-width: max-content;
+}
+
+@media (max-width: 600px) {
+  .bottom-dock-container {
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: 94vw;
+    max-width: 94vw;
+  }
+
+  .bottom-dock {
+    padding: 8px 12px;
+    gap: 8px;
+    border-radius: 40px;
+    justify-content: space-around;
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dock-item {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .dock-item.active {
+    padding: 0 14px;
+    gap: 6px;
+    height: 42px;
+    border-radius: 21px;
+  }
+
+  .dock-icon {
+    font-size: 17px;
+  }
+
+  .dock-label {
+    font-size: 12px;
+  }
+
+  .dock-divider {
+    height: 24px;
+  }
+}
