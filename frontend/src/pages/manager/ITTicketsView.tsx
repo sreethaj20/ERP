@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { FaTicketAlt, FaTools, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import { FaTicketAlt, FaTools, FaCheckCircle, FaExclamationTriangle, FaDesktop, FaBox, FaDownload } from "react-icons/fa";
 import api from "../../api/apiClient";
 import { getWorkforce, getITTickets, getITAssets } from "../../services/managerService";
+import { downloadCSV } from "../../utils/formatters";
 
 export default function ITTicketsView() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -78,6 +79,36 @@ export default function ITTicketsView() {
     }
   };
 
+  const handleExportInventoryCSV = () => {
+    const dataToExport = assets.map((a: any) => ({
+      "Asset ID": a.asset_id || a.id || 'N/A',
+      "Asset Name": a.name || 'N/A',
+      "Category": a.category || 'Hardware',
+      "Serial Number": a.serial_number || 'N/A',
+      "Status": a.status || 'Available',
+      "Assigned To": a.allocated_to_name || a.current_employee_id || 'Unassigned'
+    }));
+    downloadCSV(dataToExport, `Asset_Inventory_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
+  const handleExportAllocationsCSV = () => {
+    const allocatedAssets = assets.filter((a: any) => 
+      (a.status || '').toLowerCase() === 'allocated' || 
+      a.current_employee_id || 
+      (a.allocated_to_name && a.allocated_to_name !== 'Unassigned')
+    );
+    const dataToExport = (allocatedAssets.length > 0 ? allocatedAssets : assets).map((a: any) => ({
+      "Asset ID": a.asset_id || a.id || 'N/A',
+      "Asset Name": a.name || 'N/A',
+      "Category": a.category || 'Hardware',
+      "Employee ID": a.current_employee_id || 'N/A',
+      "Assigned Employee": a.allocated_to_name || 'N/A',
+      "Serial Number": a.serial_number || 'N/A',
+      "Allocation Date": a.allocation_date || new Date().toISOString().split('T')[0]
+    }));
+    downloadCSV(dataToExport, `Asset_Allocations_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   return (
     <div className="dashboard-container">
       <Header role="Manager" title="Infrastucture Pulse" />
@@ -85,6 +116,113 @@ export default function ITTicketsView() {
       <div style={{ marginBottom: "30px" }}>
         <h1 style={{ fontSize: "32px", fontWeight: "700" }}>IT Operations Health</h1>
         <p className="subtitle">Managerial overview of system uptime, support ticketing, and hardware fulfillment</p>
+      </div>
+
+      {/* Asset Inventory & Allocations Download Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+        {/* Asset Inventory Card */}
+        <GlassCard style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '12px',
+                background: 'rgba(10, 132, 255, 0.15)',
+                border: '1px solid rgba(10, 132, 255, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#0a84ff',
+                flexShrink: 0
+              }}>
+                <FaDesktop size={20} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#ffffff', margin: 0 }}>
+                Asset Inventory
+              </h3>
+            </div>
+            <p style={{ fontSize: '13px', color: '#a0a5b5', marginTop: '14px', marginBottom: '22px', lineHeight: '1.4' }}>
+              Complete hardware asset list with serial numbers and status
+            </p>
+          </div>
+          <button
+            onClick={handleExportInventoryCSV}
+            style={{
+              width: '100%',
+              padding: '12px 20px',
+              borderRadius: '14px',
+              background: 'rgba(10, 132, 255, 0.12)',
+              border: '1px solid rgba(10, 132, 255, 0.4)',
+              color: '#0a84ff',
+              fontSize: '14px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(10, 132, 255, 0.15)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(10, 132, 255, 0.25)')}
+            onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(10, 132, 255, 0.12)')}
+          >
+            <FaDownload size={14} /> Download CSV
+          </button>
+        </GlassCard>
+
+        {/* Asset Allocations Card */}
+        <GlassCard style={{ padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '12px',
+                background: 'rgba(48, 209, 88, 0.15)',
+                border: '1px solid rgba(48, 209, 88, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#30d158',
+                flexShrink: 0
+              }}>
+                <FaBox size={20} />
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#ffffff', margin: 0 }}>
+                Asset Allocations
+              </h3>
+            </div>
+            <p style={{ fontSize: '13px', color: '#a0a5b5', marginTop: '14px', marginBottom: '22px', lineHeight: '1.4' }}>
+              Asset assignments per employee with allocation dates
+            </p>
+          </div>
+          <button
+            onClick={handleExportAllocationsCSV}
+            style={{
+              width: '100%',
+              padding: '12px 20px',
+              borderRadius: '14px',
+              background: 'rgba(48, 209, 88, 0.12)',
+              border: '1px solid rgba(48, 209, 88, 0.4)',
+              color: '#30d158',
+              fontSize: '14px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(48, 209, 88, 0.15)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(48, 209, 88, 0.25)')}
+            onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(48, 209, 88, 0.12)')}
+          >
+            <FaDownload size={14} /> Download CSV
+          </button>
+        </GlassCard>
       </div>
 
       <div className="grid-3" style={{ gridTemplateColumns: "1.8fr 1.2fr", gap: "24px", marginBottom: "30px" }}>
