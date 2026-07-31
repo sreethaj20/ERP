@@ -615,6 +615,8 @@ class EmployeeService:
         # 🛡️ Level 4: S3 Sync for Photos & Documents (Base64 Handling)
         for field in ["profile_photo_url", "photo", "aadhaar_file_url", "pan_file_url", "resume_url", "bank_proof_url"]:
             val = obj_data.get(field)
+            old_val = getattr(db_obj, field, None)
+
             if val and isinstance(val, str) and val.startswith("data:"):
                 import base64
                 import uuid
@@ -632,6 +634,10 @@ class EmployeeService:
                     filename = f"{safe_name}_{field}_{uuid.uuid4().hex[:6]}.{ext}"
                     path, _ = await storage_service.save_content(content_bytes, filename, sub_dir="profiles")
                     
+                    # Clean up old file if replaced
+                    if old_val and old_val != path and not old_val.startswith(("http", "data:")):
+                        storage_service.delete_file(old_val)
+
                     # Update both the data and the obj_in instance
                     obj_data[field] = path
                     setattr(obj_in, field, path)
@@ -647,6 +653,15 @@ class EmployeeService:
                     print(f"[STORAGE SYNC] Processed base64 {field} for {employee_id} -> {path}")
                 except Exception as e:
                     print(f"[EMPLOYEE SERVICE ERROR] Failed to process base64 {field}: {e}")
+            elif val == "" and old_val and not old_val.startswith(("http", "data:")):
+                # Clean up file when explicitly cleared
+                storage_service.delete_file(old_val)
+                if field == "profile_photo_url":
+                    obj_data["photo"] = ""
+                    setattr(obj_in, "photo", "")
+                elif field == "photo":
+                    obj_data["profile_photo_url"] = ""
+                    setattr(obj_in, "profile_photo_url", "")
 
         res = employee_repo.update(db, db_obj, obj_in)
         

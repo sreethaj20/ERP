@@ -69,18 +69,33 @@ class CompanyService:
                 logger.error(f"Failed to process leave policy: {e}")
         
         if db_obj:
+            old_logo = db_obj.logo_url
+            old_policy = db_obj.leave_policy_url
+
             for field, value in update_data.items():
                 setattr(db_obj, field, value)
+
+            if old_logo and old_logo != db_obj.logo_url and not old_logo.startswith(("http", "data:")):
+                storage_service.delete_file(old_logo)
+
+            if old_policy and old_policy != db_obj.leave_policy_url and not old_policy.startswith(("http", "data:")):
+                storage_service.delete_file(old_policy)
+
             db.add(db_obj)
             db.commit()
             db.refresh(db_obj)
-            return db_obj
         else:
             db_obj = CompanyProfile(**update_data)
             db.add(db_obj)
             db.commit()
             db.refresh(db_obj)
-            return db_obj
+
+        if db_obj.logo_url:
+            db_obj.logo_url = storage_service.get_public_url(db_obj.logo_url)
+        if db_obj.leave_policy_url:
+            db_obj.leave_policy_url = storage_service.get_public_url(db_obj.leave_policy_url)
+
+        return db_obj
 
 class DepartmentService:
     def get_all(self, db: Session, skip: int = 0, limit: int = 100) -> List[Department]:

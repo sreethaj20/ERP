@@ -9,6 +9,7 @@ import {
 } from "react-icons/fa";
 import { getCompanyProfile, updateCompanyProfile } from "../../services/managerService";
 import { syncCompanyProfile } from "../../utils/companyUtils";
+import { getFileUrl } from "../../utils/storage";
 
 interface CompanyData {
   company_name: string;
@@ -86,7 +87,10 @@ export default function CompanyProfile() {
     try {
       setLoading(true);
       const data = await getCompanyProfile();
-      if (data) setFormData(prev => ({ ...prev, ...data }));
+      if (data) {
+        if (data.logo_url) data.logo_url = getFileUrl(data.logo_url);
+        setFormData(prev => ({ ...prev, ...data }));
+      }
     } catch (error) {
       console.error("Failed to fetch company profile", error);
     } finally {
@@ -126,11 +130,12 @@ export default function CompanyProfile() {
     try {
       setSaving(true);
       const updated = await updateCompanyProfile(formData);
-      syncCompanyProfile({
-        company_name: updated?.company_name || formData.company_name,
-        company_logo: updated?.logo_url || formData.logo_url,
-        company_tagline: updated?.company_tagline || formData.company_tagline
-      });
+      const dataToSync = { ...formData, ...(updated || {}) };
+      if (dataToSync.logo_url) {
+        dataToSync.logo_url = getFileUrl(dataToSync.logo_url);
+      }
+      setFormData(prev => ({ ...prev, ...dataToSync }));
+      syncCompanyProfile(dataToSync);
       alert("Company profile updated and synchronized successfully!");
     } catch (error) {
       console.error("Failed to update profile", error);
@@ -210,7 +215,7 @@ export default function CompanyProfile() {
                         background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
                       }}>
-                        {formData.logo_url ? <img src={formData.logo_url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <FaBuilding size={40} color="rgba(255,255,255,0.1)" />}
+                        {formData.logo_url ? <img src={getFileUrl(formData.logo_url)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : <FaBuilding size={40} color="rgba(255,255,255,0.1)" />}
                       </div>
                       <button type="button" onClick={() => fileInputRef.current?.click()} style={{ position: 'absolute', bottom: '-10px', right: '-10px', width: '36px', height: '36px', borderRadius: '10px', background: '#0a84ff', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(10,132,255,0.4)' }} title="Upload / Change Logo">
                         <FaPen size={12} />

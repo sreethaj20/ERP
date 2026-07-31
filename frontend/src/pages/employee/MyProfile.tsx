@@ -11,7 +11,7 @@ import {
   FaGlobe, FaHome, FaExclamationCircle, FaFingerprint, FaCamera, FaSignOutAlt, FaTrash
 } from "react-icons/fa";
 import { formatLongExperience } from "../../utils/dateHelpers";
-import { initiateOffboarding } from "../../utils/storage";
+import { initiateOffboarding, getFileUrl } from "../../utils/storage";
 import { changePassword } from "../../services/authService";
 import { FaTicketAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -113,7 +113,10 @@ export default function MyProfile() {
       }
 
       await updateMyProfile(updates);
+      const updated = await getMyProfile().catch(() => null);
+      if (updated) setCurrentUser(updated);
       setIsEditing(false);
+      window.dispatchEvent(new Event("storage"));
       alert("✅ Profile updated successfully!");
     } catch (e) {
       console.error("Failed to update profile:", e);
@@ -123,7 +126,7 @@ export default function MyProfile() {
 
   const handleCancel = () => {
     setEditName(currentUser.name || currentUser.full_name || "");
-    setEditPhoto(currentUser.photo || "");
+    setEditPhoto(currentUser.profile_photo_url || currentUser.photo || "");
     setEditPhone(currentUser.phone || currentUser.personal_mobile || "");
     setEditPersonalEmail(currentUser.personal_email || "");
     setEditDob(currentUser.dob || "");
@@ -173,7 +176,8 @@ export default function MyProfile() {
   })();
 
   const displayName = isEditing ? editName : (currentUser.name || currentUser.full_name || sessionStorage.getItem("userName") || "User");
-  const displayPhoto = isEditing ? editPhoto : (currentUser.photo || "");
+  const rawPhoto = isEditing ? editPhoto : (currentUser.profile_photo_url || currentUser.photo || "");
+  const displayPhoto = getFileUrl(rawPhoto);
 
   return (
     <div className="dashboard-container">

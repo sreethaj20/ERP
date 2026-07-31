@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaBell, FaUserCircle, FaArrowLeft, FaCoffee, FaPlay } from 'react-icons/fa';
 import Logo from './Logo';
-import { logoutUser, getNotifications, markNotificationRead, getData, getActiveShiftSession, startShiftSession, getEmployeeShift, takeBreak, endBreak } from '../utils/storage';
+import { logoutUser, getNotifications, markNotificationRead, getData, getActiveShiftSession, startShiftSession, getEmployeeShift, takeBreak, endBreak, getFileUrl } from '../utils/storage';
 import { parseISOToLocalDate, getOrSetDailyLoginTime } from '../utils/formatters';
 import { useTheme } from '../context/ThemeContext';
 import { useLogoutLogic } from '../hooks/useLogoutLogic';
@@ -410,7 +410,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{displayRole}</div>
             </div>
             {userPhoto ? (
-              <img src={userPhoto} alt={userName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+              <img src={getFileUrl(userPhoto)} alt={userName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
               <FaUserCircle size={32} color="var(--text-secondary)" />
             )}

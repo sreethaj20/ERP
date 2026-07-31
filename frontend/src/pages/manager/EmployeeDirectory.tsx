@@ -8,7 +8,8 @@ import {
     getOffboardingByEmpId,
     getITTickets,
     getInterviewsData,
-    getAttendanceByEmployee
+    getAttendanceByEmployee,
+    getFileUrl
 } from "../../utils/storage";
 import {
     FaUser,
@@ -105,7 +106,7 @@ export default function EmployeeDirectory() {
                                         onClick={() => setSelectedEmp(emp)}
                                     >
                                         <div style={avatarCircle}>
-                                            {emp.photo ? <img src={emp.photo} alt="" style={avatarImg} /> : emp.name.charAt(0)}
+                                            {(emp.photo || emp.profile_photo_url) ? <img src={getFileUrl(emp.photo || emp.profile_photo_url)} alt="" style={avatarImg} /> : emp.name.charAt(0)}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={empName}>{emp.name}</div>
@@ -137,7 +138,7 @@ export default function EmployeeDirectory() {
                             <GlassCard>
                                 <div style={profileHeader}>
                                     <div style={largeAvatar}>
-                                        {selectedEmp.photo ? <img src={selectedEmp.photo} alt="" style={avatarImg} /> : selectedEmp.name.charAt(0)}
+                                        {(selectedEmp.photo || selectedEmp.profile_photo_url) ? <img src={getFileUrl(selectedEmp.photo || selectedEmp.profile_photo_url)} alt="" style={avatarImg} /> : selectedEmp.name.charAt(0)}
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>

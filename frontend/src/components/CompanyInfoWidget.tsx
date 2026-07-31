@@ -1,60 +1,105 @@
 import React, { useEffect, useState } from 'react';
 import GlassCard from './GlassCard';
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaGlobe } from 'react-icons/fa';
-import { getCompanyProfile } from '../utils/storage';
+import { getCompanyProfile, getFileUrl } from '../utils/storage';
 
 const CompanyInfoWidget = () => {
     const [company, setCompany] = useState<any>({
-        company_name: "Mercure",
-        company_tagline: "Start your journey",
-        company_industry: "Technology",
+        company_name: "Mercure Solutions",
+        company_tagline: "Accelerating Innovation, Delivering Solutions",
+        company_industry: "ITES",
         logo_url: "",
-        contact_email: "hr@mercure.com",
-        website: "https://mercure.com"
+        contact_email: "info@mercuresolution.com",
+        contact_phone: "+91 9550620209",
+        website: "www.mercuresolution.com",
+        address_line1: "M Floor, Mahaveer the water Park, Hitec City",
+        city: "Hyderabad",
+        state: "Telangana",
+        pincode: "500084"
     });
+    const [logoError, setLogoError] = useState(false);
+
+    const loadCompanyData = async () => {
+        try {
+            // First check local session profile for immediate updates
+            const stored = sessionStorage.getItem("companyProfile");
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    if (parsed && typeof parsed === 'object') {
+                        const formattedLogo = parsed.logo_url ? getFileUrl(parsed.logo_url) : "";
+                        setCompany((prev: any) => ({ ...prev, ...parsed, logo_url: formattedLogo }));
+                        setLogoError(false);
+                    }
+                } catch (err) {}
+            }
+
+            // Fetch from storage/API
+            const data = await getCompanyProfile(true);
+            if (data && Object.keys(data).length > 0) {
+                const formattedLogo = data.logo_url ? getFileUrl(data.logo_url) : "";
+                setCompany((prev: any) => ({ ...prev, ...data, logo_url: formattedLogo }));
+                setLogoError(false);
+            }
+        } catch (e) {
+            console.warn("Error loading company info:", e);
+        }
+    };
 
     useEffect(() => {
-        const loadCompany = async () => {
-            try {
-                const data = await getCompanyProfile();
-                if (data && Object.keys(data).length > 0) {
-                    setCompany((prev: any) => ({ ...prev, ...data }));
-                } else {
-                    // Fallback to local storage if API is empty or fails
-                    const stored = sessionStorage.getItem("companyProfile");
-                    if (stored) setCompany((prev: any) => ({ ...prev, ...JSON.parse(stored) }));
-                }
-            } catch (e) {
-                const stored = sessionStorage.getItem("companyProfile");
-                if (stored) setCompany((prev: any) => ({ ...prev, ...JSON.parse(stored) }));
+        loadCompanyData();
+
+        const handleCustomUpdate = (evt: any) => {
+            if (evt?.detail) {
+                const detail = { ...evt.detail };
+                if (detail.logo_url) detail.logo_url = getFileUrl(detail.logo_url);
+                setCompany((prev: any) => ({ ...prev, ...detail }));
+                setLogoError(false);
+            } else {
+                loadCompanyData();
             }
         };
 
-        loadCompany();
-        window.addEventListener("companyProfileUpdated", loadCompany);
-        window.addEventListener("storage", loadCompany);
+        window.addEventListener("companyProfileUpdated", handleCustomUpdate);
+        window.addEventListener("storage", loadCompanyData);
         return () => {
-            window.removeEventListener("companyProfileUpdated", loadCompany);
-            window.removeEventListener("storage", loadCompany);
+            window.removeEventListener("companyProfileUpdated", handleCustomUpdate);
+            window.removeEventListener("storage", loadCompanyData);
         };
     }, []);
 
+    const formatWebsiteUrl = (rawUrl?: string) => {
+        if (!rawUrl) return "#";
+        const trimmed = rawUrl.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        return `https://${trimmed}`;
+    };
+
     if (!company) return null;
+
+    const fullAddress = [company.address_line1, company.address_line2, company.city, company.state, company.pincode]
+        .filter(Boolean)
+        .join(", ");
+
+    const displayLogoUrl = company.logo_url ? getFileUrl(company.logo_url) : "";
 
     return (
         <GlassCard title="Company Information" subtitle={company.company_tagline || "Our Organization"}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
                 {/* Header with Logo */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', paddingBottom: '15px', borderBottom: '1px solid var(--border-light)' }}>
-                    {company.logo_url ? (
+                    {displayLogoUrl && !logoError ? (
                         <img
-                            src={company.logo_url}
-                            alt="Logo"
-                            style={{ width: '50px', height: '50px', objectFit: 'contain', background: 'transparent', padding: '0' }}
+                            src={displayLogoUrl}
+                            alt=""
+                            onError={() => setLogoError(true)}
+                            style={{ width: '50px', height: '50px', objectFit: 'contain', background: 'transparent', padding: '0', borderRadius: '8px' }}
                         />
                     ) : (
-                        <div style={{ width: '50px', height: '50px', background: 'var(--accent-blue)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '24px' }}>
-                            {company.company_name?.charAt(0) || "C"}
+                        <div style={{ width: '50px', height: '50px', background: 'linear-gradient(135deg, var(--accent-blue), #005bb5)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '22px', color: '#fff', boxShadow: '0 4px 12px rgba(10,132,255,0.3)', flexShrink: 0 }}>
+                            {company.company_name?.charAt(0) || "M"}
                         </div>
                     )}
                     <div>
@@ -65,11 +110,11 @@ const CompanyInfoWidget = () => {
 
                 {/* Details */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
-                    {(company.address_line1 || company.city) && (
+                    {fullAddress && (
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                             <FaMapMarkerAlt style={{ color: 'var(--accent-red)', marginTop: '3px', minWidth: '14px' }} />
-                            <span style={{ color: 'var(--text-secondary)' }}>
-                                {company.address_line1}, {company.city}, {company.state} {company.pincode}
+                            <span style={{ color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                {fullAddress}
                             </span>
                         </div>
                     )}
@@ -91,7 +136,12 @@ const CompanyInfoWidget = () => {
                     {company.website && (
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                             <FaGlobe style={{ color: 'var(--accent-blue)', minWidth: '14px' }} />
-                            <a href={company.website} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-blue)', textDecoration: 'none' }}>
+                            <a
+                                href={formatWebsiteUrl(company.website)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'var(--accent-blue)', textDecoration: 'none', wordBreak: 'break-all' }}
+                            >
                                 {company.website.replace(/^https?:\/\//, '')}
                             </a>
                         </div>

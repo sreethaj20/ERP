@@ -4,6 +4,7 @@ import GlassCard from "../../components/GlassCard";
 import GlassButton from "../../components/GlassButton";
 import { FaBullhorn, FaBuilding, FaSitemap, FaCheckCircle, FaTrash, FaPlus, FaSave, FaGlobe, FaEnvelope, FaPhone, FaShieldAlt } from "react-icons/fa";
 import api from "../../api/apiClient";
+import { getFileUrl } from "../../utils/storage";
 
 export default function OrganizationManagement() {
     const [activeTab, setActiveTab] = useState("announcements");
@@ -228,7 +229,7 @@ export default function OrganizationManagement() {
                     <GlassCard title="Branding" subtitle="Organization Identity">
                         <div style={{ textAlign: 'center', padding: '20px 0' }}>
                            <div style={{ width: '100px', height: '100px', background: 'rgba(255,255,255,0.05)', borderRadius: '25%', margin: '0 auto 15px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>
-                                {company.logo_url ? <img src={company.logo_url} style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <FaBuilding color="var(--accent-blue)" />}
+                                {company.logo_url ? <img src={getFileUrl(company.logo_url)} style={{ width: '80%', height: '80%', objectFit: 'contain' }} /> : <FaBuilding color="var(--accent-blue)" />}
                            </div>
                            <h2 style={{ fontSize: '20px', fontWeight: '800' }}>{company.company_name}</h2>
                            <p style={{ fontSize: '13px', color: 'var(--text-tertiary)' }}>{company.company_tagline || "Workplace management system"}</p>

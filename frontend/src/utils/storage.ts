@@ -449,6 +449,9 @@ export const refreshCompanyProfile = async () => {
     try {
         const data = await fetchData('company-profile');
         if (data) {
+            if (data.logo_url) {
+                data.logo_url = getFileUrl(data.logo_url);
+            }
             if (data.company_name && (/antigravity/i.test(data.company_name) || /mercure\s+hrms/i.test(data.company_name))) {
                 data.company_name = "Mercure";
             }
@@ -779,10 +782,16 @@ export const getCompanyProfile = async (force: boolean = false) => {
 
 export const updateCompanyProfile = async (data: any) => {
     const res = await api.put('manager/company-profile', data);
-    _companyProfile = res.data;
+    const updated = res.data || {};
+    if (updated.logo_url) {
+        updated.logo_url = getFileUrl(updated.logo_url);
+    }
+    _companyProfile = updated;
+    sessionStorage.setItem("companyProfile", JSON.stringify(_companyProfile));
     // Also update local dispatch for widget sync
     window.dispatchEvent(new Event("companyProfileUpdated"));
-    return res.data;
+    window.dispatchEvent(new CustomEvent("companyProfileUpdated", { detail: _companyProfile }));
+    return _companyProfile;
 };
 export const getNotifications = () => _notifications;
 export const getActivities = () => _activities;
@@ -2133,10 +2142,11 @@ export const getFileUrl = (path: string) => {
 
     // In production, the API and Frontend often share the same host
     const serverUrl = api.defaults.baseURL?.includes('http')
-        ? api.defaults.baseURL.replace('/api/v1', '')
+        ? api.defaults.baseURL.replace(/\/api\/v1\/?$/, '')
         : window.location.origin;
 
-    const cleanPath = path.startsWith('uploads/') ? path : `uploads/${path}`;
+    const stripped = path.replace(/^\/+/, '');
+    const cleanPath = stripped.startsWith('uploads/') ? stripped : `uploads/${stripped}`;
     return `${serverUrl}/${cleanPath}`;
 };
 

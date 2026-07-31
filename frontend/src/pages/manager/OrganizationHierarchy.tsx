@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { getEmployees } from "../../utils/storage";
+import { getEmployees, getFileUrl } from "../../utils/storage";
 import { FaUserTie, FaUserShield, FaUserEdit, FaUsers, FaAngleRight, FaAngleDown, FaSitemap } from "react-icons/fa";
 
 interface Employee {
@@ -89,7 +89,7 @@ export default function OrganizationHierarchy() {
                         )}
 
                         <img
-                            src={emp.photo || `https://ui-avatars.com/api/?name=${emp.name}&background=random`}
+                            src={(emp.photo || (emp as any).profile_photo_url) ? getFileUrl(emp.photo || (emp as any).profile_photo_url) : `https://ui-avatars.com/api/?name=${emp.name}&background=random`}
                             alt={emp.name}
                             style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-light)' }}
                         />
