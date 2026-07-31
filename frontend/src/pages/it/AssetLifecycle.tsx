@@ -5,6 +5,8 @@ import { getAssets, createMaintenanceLog, createTransfer, processReturn, updateI
 import { getEmployees } from "../../services/hrService";
 import { FaWrench, FaExchangeAlt, FaUndo, FaTrash } from "react-icons/fa";
 
+import { getEmployees as getStorageEmployees } from "../../utils/storage";
+
 export default function AssetLifecycle() {
     const [assets, setAssets] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
@@ -12,11 +14,16 @@ export default function AssetLifecycle() {
     const loadData = async () => {
         try {
             const [assetData, empData] = await Promise.all([
-                getAssets(),
-                getEmployees()
+                getAssets().catch(() => []),
+                getEmployees().catch(() => [])
             ]);
             setAssets(assetData || []);
-            setEmployees(empData || []);
+            
+            let allEmps = empData || [];
+            if (!allEmps || allEmps.length === 0) {
+                allEmps = getStorageEmployees() || [];
+            }
+            setEmployees(allEmps || []);
         } catch (error) {
             console.error("Error loading asset lifecycle data:", error);
         }
@@ -38,26 +45,36 @@ export default function AssetLifecycle() {
     const [damageCost, setDamageCost] = useState("0");
 
     const getAssignedEmpName = (assetIdInput: string) => {
-        if (!assetIdInput.trim()) return "N/A";
+        if (!assetIdInput || !assetIdInput.trim()) return "N/A";
         const cleanQuery = assetIdInput.trim().toLowerCase();
+
+        // 1. Find matching asset by asset_id, id, serial_number or name
         const foundAsset = assets.find((a: any) => {
             const aId = String(a.asset_id || a.id || "").toLowerCase();
+            const sNum = String(a.serial_number || "").toLowerCase();
             const aName = String(a.name || "").toLowerCase();
-            return aId === cleanQuery || cleanQuery.includes(aId) || aId.includes(cleanQuery);
+            return aId === cleanQuery || cleanQuery === aId || sNum === cleanQuery || aName.includes(cleanQuery);
+        }) || assets.find((a: any) => {
+            const aId = String(a.asset_id || a.id || "").toLowerCase();
+            return aId.includes(cleanQuery) || cleanQuery.includes(aId);
         });
 
         if (!foundAsset) return "Asset Not Found";
 
-        const assignedId = foundAsset.assigned_to || foundAsset.employee_id || foundAsset.assigned_employee_id || foundAsset.user_id;
-        const assignedName = foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name;
+        // 2. Extract employee info from found asset
+        const assignedId = foundAsset.assigned_to || foundAsset.employee_id || foundAsset.assigned_employee_id || foundAsset.user_id || foundAsset.allocated_to || foundAsset.current_employee_id;
+        const assignedName = foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name || foundAsset.allocated_to_name;
 
         if (assignedName) return `${assignedName}${assignedId ? ` (${assignedId})` : ''}`;
 
         if (assignedId) {
-            const emp = employees.find((e: any) =>
-                String(e.employee_id || e.id || "").toLowerCase() === String(assignedId).toLowerCase()
-            );
-            if (emp) return `${emp.name || emp.first_name || 'Employee'} (${emp.employee_id || emp.id})`;
+            const cleanAssignedId = String(assignedId).toLowerCase().trim();
+            const emp = employees.find((e: any) => {
+                const eId = String(e.employee_id || e.id || "").toLowerCase().trim();
+                const eCode = String(e.code || "").toLowerCase().trim();
+                return eId === cleanAssignedId || eCode === cleanAssignedId;
+            });
+            if (emp) return `${emp.name || emp.first_name || 'Employee'} (${emp.employee_id || emp.id || assignedId})`;
             return `Employee ID: ${assignedId}`;
         }
 
