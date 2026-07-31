@@ -13,18 +13,37 @@ class AssetRepository:
 
     def get_multi(self, db: Session, skip: int = 0, limit: int = 2000) -> List[Asset]:
         from app.models.employee import Employee
-        from sqlalchemy import cast, String
+        from app.models.asset import AssetAllocation
+        from sqlalchemy import cast, String, func
+        
         results = (
             db.query(Asset, Employee.first_name, Employee.last_name, Employee.name)
-            .join(Employee, (Employee.employee_id == Asset.current_employee_id) | (cast(Employee.id, String) == Asset.current_employee_id), isouter=True)
+            .join(Employee, (func.lower(Employee.employee_id) == func.lower(Asset.current_employee_id)) | (cast(Employee.id, String) == Asset.current_employee_id), isouter=True)
             .filter(Asset.deleted_at == None)
             .offset(skip).limit(limit).all()
         )
         
         assets = []
         for a, fn, ln, emp_full_name in results:
-            # Create a shallow copy or ensure attributes are set for Pydantic
-            # Pydantic's from_orm/model_validate will pick these up
+            # If current_employee_id is missing, self-heal from active allocation record
+            if not a.current_employee_id:
+                active_alloc = db.query(AssetAllocation).filter(
+                    (AssetAllocation.asset_id == a.asset_id) | (AssetAllocation.asset_id == str(a.id)),
+                    AssetAllocation.allocation_status == "allocated"
+                ).order_by(AssetAllocation.allocated_at.desc()).first()
+                
+                if active_alloc:
+                    a.current_employee_id = active_alloc.employee_id
+                    a.status = "Allocated"
+                    emp = db.query(Employee).filter(
+                        (func.lower(Employee.employee_id) == func.lower(active_alloc.employee_id)) |
+                        (cast(Employee.id, String) == active_alloc.employee_id)
+                    ).first()
+                    if emp:
+                        emp_full_name = emp.name or f"{emp.first_name or ''} {emp.last_name or ''}".strip()
+                        fn = emp.first_name
+                        ln = emp.last_name
+
             a.type = a.category
             a.allocated_to = a.current_employee_id
             resolved_name = f"{fn or ''} {ln or ''}".strip() or emp_full_name or ""

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { getAssets, createMaintenanceLog, createTransfer, processReturn, updateITAsset } from "../../services/itService";
+import { getAssets, getAllocations, createMaintenanceLog, createTransfer, processReturn, updateITAsset } from "../../services/itService";
 import { getEmployees } from "../../services/hrService";
 import { FaWrench, FaExchangeAlt, FaUndo, FaTrash } from "react-icons/fa";
 
@@ -10,12 +10,14 @@ import { getEmployees as getStorageEmployees } from "../../utils/storage";
 export default function AssetLifecycle() {
     const [assets, setAssets] = useState<any[]>([]);
     const [employees, setEmployees] = useState<any[]>([]);
+    const [allocations, setAllocations] = useState<any[]>([]);
 
     const loadData = async () => {
         try {
-            const [assetData, empData] = await Promise.all([
+            const [assetData, empData, allocData] = await Promise.all([
                 getAssets().catch(() => []),
-                getEmployees().catch(() => [])
+                getEmployees().catch(() => []),
+                getAllocations().catch(() => [])
             ]);
             setAssets(assetData || []);
             
@@ -24,6 +26,7 @@ export default function AssetLifecycle() {
                 allEmps = getStorageEmployees() || [];
             }
             setEmployees(allEmps || []);
+            setAllocations(allocData || []);
         } catch (error) {
             console.error("Error loading asset lifecycle data:", error);
         }
@@ -64,8 +67,21 @@ export default function AssetLifecycle() {
         if (!foundAsset) return "Asset Not Found";
 
         // 2. Extract employee info from found asset
-        const assignedId = foundAsset.current_employee_id || foundAsset.allocated_to || foundAsset.assigned_to || foundAsset.assigned_employee_id || foundAsset.user_id || foundAsset.employee_id;
-        const assignedNameRaw = foundAsset.allocated_to_name || foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name;
+        let assignedId = foundAsset.current_employee_id || foundAsset.allocated_to || foundAsset.assigned_to || foundAsset.assigned_employee_id || foundAsset.user_id || foundAsset.employee_id;
+        let assignedNameRaw = foundAsset.allocated_to_name || foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name;
+
+        // Fallback: Check allocations list if current_employee_id is not directly set on asset
+        if (!assignedId && allocations && allocations.length > 0) {
+            const activeAlloc = allocations.find((al: any) => {
+                const alAssetId = String(al.asset_id || al.id || "").toLowerCase();
+                const fAssetId = String(foundAsset.asset_id || foundAsset.id || "").toLowerCase();
+                return (alAssetId === fAssetId || alAssetId === cleanQuery) && al.allocation_status !== "returned";
+            });
+            if (activeAlloc) {
+                assignedId = activeAlloc.employee_id;
+                assignedNameRaw = activeAlloc.employee_name;
+            }
+        }
 
         // Try looking up employee in employees list to get full up-to-date name
         let matchedEmpName = "";
