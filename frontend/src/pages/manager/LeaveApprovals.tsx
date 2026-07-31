@@ -105,7 +105,7 @@ export default function LeaveApprovals() {
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
                   {['Employee', 'Role', 'Leave Type', 'Period', 'Days', 'Reason', 'Status', 'Action'].map(h => (
-                    <th key={h} style={{ padding: '10px 12px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
+                    <th key={h} style={{ padding: '10px 12px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -129,44 +129,44 @@ export default function LeaveApprovals() {
                   
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                      <td style={{ padding: '12px' }}>
+                      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{empName}</div>
                         <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{empDisplayId}</div>
                       </td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', color: rColor, background: `${rColor}18`, textTransform: 'capitalize' }}>
+                      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', color: rColor, background: `${rColor}18`, textTransform: 'capitalize', whiteSpace: 'nowrap', display: 'inline-block' }}>
                           {empRole}
                         </span>
                       </td>
-                      <td style={{ padding: '12px', color: 'var(--accent-blue)', fontWeight: '600' }}>{leave.leave_type}</td>
-                      <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '12px', fontFamily: 'monospace' }}>
+                      <td style={{ padding: '12px', color: 'var(--accent-blue)', fontWeight: '600', whiteSpace: 'nowrap' }}>{leave.leave_type}</td>
+                      <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                         {fromD} → {toD}
                       </td>
-                      <td style={{ padding: '12px', fontWeight: '700', color: 'var(--text-primary)' }}>{days}d</td>
-                      <td style={{ padding: '12px', color: 'var(--text-secondary)', minWidth: '220px', maxWidth: '350px', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.4' }} title={leave.reason}>{leave.reason || '—'}</td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: s.bg, color: s.color }}>
+                      <td style={{ padding: '12px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{days}d</td>
+                      <td style={{ padding: '12px', color: 'var(--text-secondary)', minWidth: '180px', maxWidth: '300px', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.4' }} title={leave.reason}>{leave.reason || '—'}</td>
+                      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: s.bg, color: s.color, whiteSpace: 'nowrap', display: 'inline-block' }}>
                           {s.label}
                         </span>
                       </td>
-                      <td style={{ padding: '12px' }}>
+                      <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
                         {showAction ? (
-                          <div style={{ display: 'flex', gap: '8px' }}>
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
                             <button
                               onClick={() => handleAction(leave.leave_id || leave.id, 'approve')}
-                              style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(48,209,88,0.15)', color: '#30d158', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                              style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(48,209,88,0.15)', color: '#30d158', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', flexShrink: 0 }}
                             >
                               <FaCheck size={10} /> Approve
                             </button>
                             <button
                               onClick={() => handleAction(leave.leave_id || leave.id, 'reject')}
-                              style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(255,69,58,0.15)', color: '#ff453a', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                              style={{ padding: '6px 14px', borderRadius: '8px', border: 'none', background: 'rgba(255,69,58,0.15)', color: '#ff453a', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', flexShrink: 0 }}
                             >
                               <FaTimes size={10} /> Reject
                             </button>
                           </div>
                         ) : (
-                          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
                             {sStatus === 'approved' ? '✓ Done' : sStatus === 'rejected' ? '✕ Done' : 'Waiting...'}
                           </span>
                         )}
