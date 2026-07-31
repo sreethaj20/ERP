@@ -62,10 +62,12 @@ export default function AssetLifecycle() {
         if (!foundAsset) return "Asset Not Found";
 
         // 2. Extract employee info from found asset
-        const assignedId = foundAsset.assigned_to || foundAsset.employee_id || foundAsset.assigned_employee_id || foundAsset.user_id || foundAsset.allocated_to || foundAsset.current_employee_id;
-        const assignedName = foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name || foundAsset.allocated_to_name;
+        const assignedId = foundAsset.current_employee_id || foundAsset.allocated_to || foundAsset.assigned_to || foundAsset.assigned_employee_id || foundAsset.user_id || foundAsset.employee_id;
+        const assignedNameRaw = foundAsset.allocated_to_name || foundAsset.assigned_employee_name || foundAsset.employee_name || foundAsset.assigned_to_name;
 
-        if (assignedName) return `${assignedName}${assignedId ? ` (${assignedId})` : ''}`;
+        // Try looking up employee in employees list to get full up-to-date name
+        let matchedEmpName = "";
+        let matchedEmpId = assignedId ? String(assignedId) : "";
 
         if (assignedId) {
             const cleanAssignedId = String(assignedId).toLowerCase().trim();
@@ -74,8 +76,21 @@ export default function AssetLifecycle() {
                 const eCode = String(e.code || "").toLowerCase().trim();
                 return eId === cleanAssignedId || eCode === cleanAssignedId;
             });
-            if (emp) return `${emp.name || emp.first_name || 'Employee'} (${emp.employee_id || emp.id || assignedId})`;
-            return `Employee ID: ${assignedId}`;
+            if (emp) {
+                const fullName = (emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`).trim();
+                matchedEmpName = fullName || emp.first_name || 'Employee';
+                matchedEmpId = emp.employee_id || emp.id || assignedId;
+            }
+        }
+
+        const finalName = matchedEmpName || (assignedNameRaw && String(assignedNameRaw).trim() !== String(assignedId).trim() ? assignedNameRaw : "");
+
+        if (finalName) {
+            return `${finalName}${matchedEmpId ? ` (${matchedEmpId})` : ''}`;
+        }
+
+        if (matchedEmpId) {
+            return `Employee ID: ${matchedEmpId}`;
         }
 
         return "Unassigned / In Stock";
@@ -100,12 +115,14 @@ export default function AssetLifecycle() {
 
     const handleTransfer = async () => {
         if (!transAsset || !toEmp) return;
+        const targetAssetId = transAsset;
         await createTransfer({
             asset_id: transAsset,
             to_employee: toEmp
         });
-        setTransAsset(""); setToEmp("");
+        setToEmp("");
         await loadData();
+        setTransAsset(targetAssetId);
         alert("Asset transfer recorded!");
     };
 

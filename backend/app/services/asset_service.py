@@ -120,14 +120,17 @@ class AssetService:
     def return_asset(self, db: Session, asset_id: str, return_condition: str, damage_cost: float = 0):
         db_obj = db.query(Asset).filter(Asset.asset_id == asset_id).first()
         if not db_obj:
-            db_obj = db.query(Asset).filter(Asset.id == asset_id).first()
+            try:
+                db_obj = db.query(Asset).filter(Asset.id == int(asset_id)).first()
+            except (ValueError, TypeError):
+                pass
             
         if not db_obj:
             raise ResourceNotFoundException("Asset", asset_id)
             
         # 1. Close ANY active allocation (allocated or transferred)
         allocation = db.query(AssetAllocation).filter(
-            AssetAllocation.asset_id == db_obj.asset_id,
+            (AssetAllocation.asset_id == db_obj.asset_id) | (AssetAllocation.asset_id == str(db_obj.id)),
             AssetAllocation.allocation_status.in_(["allocated", "transferred"])
         ).order_by(AssetAllocation.allocated_at.desc()).first()
         
@@ -151,23 +154,36 @@ class AssetService:
         return asset_allocation_repo.get_active_by_employee(db, employee_id)
 
     def transfer_asset(self, db: Session, asset_id: str, to_employee_id: str):
-        """Unfied transfer logic: Closes old, opens new, updates Asset."""
+        """Unified transfer logic: Closes old, opens new, updates Asset."""
         db_obj = db.query(Asset).filter(Asset.asset_id == asset_id).first()
         if not db_obj:
-            db_obj = db.query(Asset).filter(Asset.id == asset_id).first()
+            try:
+                db_obj = db.query(Asset).filter(Asset.id == int(asset_id)).first()
+            except (ValueError, TypeError):
+                pass
             
         if not db_obj:
             raise ResourceNotFoundException("Asset", asset_id)
             
-        # Validate target employee exists
+        # Validate target employee exists (try employee_id, primary key id, or user_id)
         from app.models.employee import Employee
         target_emp = db.query(Employee).filter(Employee.employee_id == to_employee_id).first()
         if not target_emp:
+            try:
+                target_emp = db.query(Employee).filter(Employee.id == int(to_employee_id)).first()
+            except (ValueError, TypeError):
+                pass
+        if not target_emp:
+            target_emp = db.query(Employee).filter(Employee.user_id == to_employee_id).first()
+
+        if not target_emp:
             raise ResourceNotFoundException("Employee", to_employee_id)
+
+        canonical_emp_id = target_emp.employee_id or str(target_emp.id)
 
         # 1. Close current allocation (any that isn't already returned)
         current_alloc = db.query(AssetAllocation).filter(
-            AssetAllocation.asset_id == db_obj.asset_id,
+            (AssetAllocation.asset_id == db_obj.asset_id) | (AssetAllocation.asset_id == str(db_obj.id)),
             AssetAllocation.allocation_status != "returned"
         ).order_by(AssetAllocation.allocated_at.desc()).first()
         
@@ -177,26 +193,34 @@ class AssetService:
             db.add(current_alloc)
             
         # 2. Update asset status and owner
-        db_obj.current_employee_id = to_employee_id
+        db_obj.current_employee_id = canonical_emp_id
         db_obj.status = "Allocated"
         db.add(db_obj)
         
         # 3. Create new allocation record via Repo
         new_alloc_data = AssetAllocationCreate(
-            asset_id=db_obj.asset_id,
-            employee_id=to_employee_id,
+            asset_id=db_obj.asset_id or str(db_obj.id),
+            employee_id=canonical_emp_id,
             allocated_by="SYSTEM-TRANSFER",
             allocation_type="Permanent",
             asset_condition="Good",
             allocation_date=datetime.now().strftime("%Y-%m-%d")
         )
-        # Using repo.create usually commits, so we use it as the final step
         return asset_allocation_repo.create(db, new_alloc_data)
 
     def record_maintenance(self, db: Session, asset_id: str, issue: str, vendor: str, cost: float, recorded_by: str):
         from app.models.asset import AssetMaintenance
+        asset = db.query(Asset).filter(Asset.asset_id == asset_id).first()
+        if not asset:
+            try:
+                asset = db.query(Asset).filter(Asset.id == int(asset_id)).first()
+            except (ValueError, TypeError):
+                pass
+
+        real_asset_id = (asset.asset_id if asset else asset_id) or str(asset.id if asset else asset_id)
+
         db_obj = AssetMaintenance(
-            asset_id=asset_id,
+            asset_id=real_asset_id,
             description=issue,
             performed_by=vendor,
             cost=cost,
@@ -206,7 +230,6 @@ class AssetService:
         db.add(db_obj)
         
         # update asset status to maintenance
-        asset = db.query(Asset).filter(Asset.asset_id == asset_id).first()
         if asset:
             asset.status = "Maintenance"
             db.add(asset)

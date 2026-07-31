@@ -13,20 +13,22 @@ class AssetRepository:
 
     def get_multi(self, db: Session, skip: int = 0, limit: int = 2000) -> List[Asset]:
         from app.models.employee import Employee
+        from sqlalchemy import cast, String
         results = (
-            db.query(Asset, Employee.first_name, Employee.last_name)
-            .join(Employee, Employee.employee_id == Asset.current_employee_id, isouter=True)
+            db.query(Asset, Employee.first_name, Employee.last_name, Employee.name)
+            .join(Employee, (Employee.employee_id == Asset.current_employee_id) | (cast(Employee.id, String) == Asset.current_employee_id), isouter=True)
             .filter(Asset.deleted_at == None)
             .offset(skip).limit(limit).all()
         )
         
         assets = []
-        for a, fn, ln in results:
+        for a, fn, ln, emp_full_name in results:
             # Create a shallow copy or ensure attributes are set for Pydantic
             # Pydantic's from_orm/model_validate will pick these up
             a.type = a.category
             a.allocated_to = a.current_employee_id
-            a.allocated_to_name = f"{fn or ''} {ln or ''}".strip() or a.current_employee_id
+            resolved_name = f"{fn or ''} {ln or ''}".strip() or emp_full_name or ""
+            a.allocated_to_name = resolved_name if resolved_name else a.current_employee_id
             
             # 🛡️ Data Guard: Ensure status is never null for frontend filter
             if not a.status:
