@@ -108,8 +108,12 @@ export default function BottomDock() {
                             `dock-item ${isActive ? 'active' : ''}`
                         }
                     >
-                        <span className="dock-icon">{item.icon}</span>
-                        {location.pathname === item.path && <span className="dock-label">{item.name}</span>}
+                        {({ isActive }) => (
+                            <>
+                                <span className="dock-icon">{item.icon}</span>
+                                {isActive && <span className="dock-label">{item.name}</span>}
+                            </>
+                        )}
                     </NavLink>
                 ))}
 
