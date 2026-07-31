@@ -125,11 +125,11 @@ export default function CompanyProfile() {
     e.preventDefault();
     try {
       setSaving(true);
-      await updateCompanyProfile(formData);
+      const updated = await updateCompanyProfile(formData);
       syncCompanyProfile({
-        company_name: formData.company_name,
-        company_logo: formData.logo_url,
-        company_tagline: formData.company_tagline
+        company_name: updated?.company_name || formData.company_name,
+        company_logo: updated?.logo_url || formData.logo_url,
+        company_tagline: updated?.company_tagline || formData.company_tagline
       });
       alert("Company profile updated and synchronized successfully!");
     } catch (error) {

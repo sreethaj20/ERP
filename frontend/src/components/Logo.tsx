@@ -35,7 +35,7 @@ const Logo: React.FC<LogoProps> = ({
                         parsed.company_name = "Mercure";
                         sessionStorage.setItem("companyProfile", JSON.stringify(parsed));
                     }
-                    if (parsed.logo_url && !parsed.logo_url.includes('.jpeg')) setLogoSrc(parsed.logo_url);
+                    if (parsed.logo_url) setLogoSrc(parsed.logo_url);
                     if (parsed.company_tagline) setTagline(parsed.company_tagline);
                     if (parsed.company_name) {
                         const cleanName = parsed.company_name.replace(/antigravity/gi, "Mercure").replace(/\s+HRMS/gi, "");

@@ -64,10 +64,11 @@ class StorageService:
                 
         return path, file_size
 
-    def get_public_url(self, path: str, expires_in: int = 3600) -> str:
+    def get_public_url(self, path: str, expires_in: Optional[int] = None) -> str:
         """
         Returns a public URL for a given relative path.
-        For S3, generates a Pre-signed URL to ensure security (prevents data breaching).
+        For S3, returns a permanent public URL so links do not expire after 1 hour.
+        If expires_in is explicitly passed, generates a temporary pre-signed URL.
         """
         if not path:
             return ""
@@ -76,17 +77,16 @@ class StorageService:
             return path
             
         if self.use_s3:
-            try:
-                # Generate a pre-signed URL for the S3 object
-                url = self.s3_client.generate_presigned_url(
-                    'get_object',
-                    Params={'Bucket': self.bucket, 'Key': str(path).lstrip('/')},
-                    ExpiresIn=expires_in
-                )
-                return url
-            except Exception as e:
-                # Fallback to public URL if pre-signing fails (e.g. config error)
-                return f"{self.base_url}/{str(path).lstrip('/')}"
+            if expires_in is not None:
+                try:
+                    return self.s3_client.generate_presigned_url(
+                        'get_object',
+                        Params={'Bucket': self.bucket, 'Key': str(path).lstrip('/')},
+                        ExpiresIn=expires_in
+                    )
+                except Exception:
+                    return f"{self.base_url}/{str(path).lstrip('/')}"
+            return f"{self.base_url}/{str(path).lstrip('/')}"
         else:
             return f"/uploads/{str(path).lstrip('/')}"
 
