@@ -124,15 +124,20 @@ export default function AssetLifecycle() {
 
     const handleMaintenance = async () => {
         if (!maintAsset || !issue) return;
-        await createMaintenanceLog({
-            asset_id: maintAsset,
-            issue_description: issue,
-            service_vendor: vendor,
-            maintenance_cost: cost
-        });
-        setMaintAsset(""); setIssue(""); setVendor(""); setCost("");
-        await loadData();
-        alert("Asset sent for maintenance!");
+        try {
+            await createMaintenanceLog({
+                asset_id: maintAsset,
+                issue_description: issue,
+                service_vendor: vendor || undefined,
+                maintenance_cost: parseFloat(cost) || 0
+            });
+            setMaintAsset(""); setIssue(""); setVendor(""); setCost("");
+            await loadData();
+            alert("Asset sent for maintenance!");
+        } catch (err: any) {
+            console.error("Error submitting maintenance log:", err);
+            alert(err.response?.data?.detail || "Failed to record maintenance.");
+        }
     };
 
     const handleTransfer = async () => {

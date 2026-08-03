@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Any
 from app.db.session import get_db
 from app.core.dependencies import get_current_user, get_current_user_with_role
 from app.models.user import User
@@ -121,16 +121,21 @@ class MaintenanceCreate(PydanticBase):
     asset_id: str
     issue_description: str
     service_vendor: Optional[str] = None
-    maintenance_cost: float = 0.0
+    maintenance_cost: Optional[Any] = 0.0
 
 @router.post("/maintenance")
 def add_it_maintenance_log(obj_in: MaintenanceCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role("it"))):
+    try:
+        cost_val = float(obj_in.maintenance_cost) if obj_in.maintenance_cost not in (None, "") else 0.0
+    except (ValueError, TypeError):
+        cost_val = 0.0
+
     return asset_service.record_maintenance(
         db, 
         obj_in.asset_id, 
         obj_in.issue_description, 
-        obj_in.service_vendor, 
-        obj_in.maintenance_cost,
+        obj_in.service_vendor or "", 
+        cost_val,
         current_user.username
     )
 
