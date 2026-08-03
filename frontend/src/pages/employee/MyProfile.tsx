@@ -11,7 +11,7 @@ import {
   FaGlobe, FaHome, FaExclamationCircle, FaFingerprint, FaCamera, FaSignOutAlt, FaTrash
 } from "react-icons/fa";
 import { formatLongExperience } from "../../utils/dateHelpers";
-import { initiateOffboarding, getFileUrl } from "../../utils/storage";
+import { initiateOffboarding, getFileUrl, refreshEmployees } from "../../utils/storage";
 import { changePassword } from "../../services/authService";
 import { FaTicketAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
@@ -115,6 +115,7 @@ export default function MyProfile() {
       await updateMyProfile(updates);
       const updated = await getMyProfile().catch(() => null);
       if (updated) setCurrentUser(updated);
+      await refreshEmployees().catch(() => {});
       setIsEditing(false);
       window.dispatchEvent(new Event("storage"));
       alert("✅ Profile updated successfully!");
@@ -786,15 +787,15 @@ export default function MyProfile() {
                   </div>
                 )}
                 <div>
-                  <label style={{ fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: "700" }}>Current Password</label>
+                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: "700", marginBottom: "4px" }}>Current Password</label>
                   <input type="password" value={pwdData.old} onChange={e => setPwdData({ ...pwdData, old: e.target.value })} style={editInputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: "700" }}>New Password</label>
+                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: "700", marginBottom: "4px" }}>New Password</label>
                   <input type="password" value={pwdData.new} onChange={e => setPwdData({ ...pwdData, new: e.target.value })} style={editInputStyle} />
                 </div>
                 <div>
-                  <label style={{ fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: "700" }}>Confirm New Password</label>
+                  <label style={{ display: "block", fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", fontWeight: "700", marginBottom: "4px" }}>Confirm New Password</label>
                   <input type="password" value={pwdData.confirm} onChange={e => setPwdData({ ...pwdData, confirm: e.target.value })} style={editInputStyle} />
                 </div>
 
@@ -939,10 +940,15 @@ const TaxRow = ({ label, value, color }: { label: string; value: string; color?:
 );
 
 const editInputStyle: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.05)',
+  display: 'block',
+  width: '100%',
+  marginTop: '6px',
+  boxSizing: 'border-box',
+  background: 'rgba(255, 255, 255, 0.05)',
   border: '1px solid var(--accent-blue)',
   borderRadius: '10px',
   color: '#fff',
-  padding: '8px 14px',
+  padding: '10px 14px',
+  fontSize: '14px',
   outline: 'none'
 };

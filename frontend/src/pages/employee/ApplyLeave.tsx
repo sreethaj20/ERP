@@ -7,7 +7,7 @@ import { applyLeave, getMyLeaveBalance } from "../../services/employeeService";
 
 export default function ApplyLeave() {
   const userId = sessionStorage.getItem("userId");
-  const [leaveType, setLeaveType] = useState("Casual");
+  const [leaveType, setLeaveType] = useState("Casual/Earned");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [reason, setReason] = useState("");
@@ -29,14 +29,17 @@ export default function ApplyLeave() {
 
   const getAvailableBalance = (type: string) => {
     if (!balancesData) return 0;
-    const key = `${type.toLowerCase()}_leave`;
+    const lower = type.toLowerCase();
+    if (lower.includes("casual") || lower.includes("earned")) {
+      return (balancesData["casual_leave"] || 0) + (balancesData["earned_leave"] || 0);
+    }
+    const key = `${lower}_leave`;
     return balancesData[key] || 0;
   };
 
   const balances = [
-    { type: "Casual", available: getAvailableBalance("Casual"), total: 12, color: "#0a84ff" },
-    { type: "Sick", available: getAvailableBalance("Sick"), total: 10, color: "#ff453a" },
-    { type: "Earned", available: getAvailableBalance("Earned"), total: 15, color: "#30d158" },
+    { type: "Casual/Earned", available: getAvailableBalance("Casual/Earned"), total: 12, color: "#0a84ff" },
+    { type: "Sick", available: getAvailableBalance("Sick"), total: 12, color: "#ff453a" },
     { type: "Maternity", available: getAvailableBalance("Maternity"), total: 90, color: "#bf5af2" },
     { type: "Paternity", available: getAvailableBalance("Paternity"), total: 15, color: "#007aff" },
     { type: "Bereavement", available: getAvailableBalance("Bereavement"), total: 5, color: "#ff9f0a" },
@@ -92,7 +95,7 @@ export default function ApplyLeave() {
       setFromDate("");
       setToDate("");
       setReason("");
-      setLeaveType("Casual");
+      setLeaveType("Casual/Earned");
       fetchData(); // refresh balances
     } catch (e: any) {
       let errorText = "Submission failed.";
@@ -137,9 +140,8 @@ export default function ApplyLeave() {
             <div style={inputGroup}>
               <label style={labelStyle}>Leave Category</label>
               <select className="apple-input" value={leaveType} onChange={(e) => setLeaveType(e.target.value)}>
-                <option value="Casual">Casual Leave ({getAvailableBalance("Casual")} left)</option>
+                <option value="Casual/Earned">Casual/Earned Leave ({getAvailableBalance("Casual/Earned")} left)</option>
                 <option value="Sick">Sick Leave ({getAvailableBalance("Sick")} left)</option>
-                <option value="Earned">Earned Leave ({getAvailableBalance("Earned")} left)</option>
                 <option value="Maternity">Maternity Leave ({getAvailableBalance("Maternity")} left)</option>
                 <option value="Paternity">Paternity Leave ({getAvailableBalance("Paternity")} left)</option>
                 <option value="Bereavement">Bereavement Leave ({getAvailableBalance("Bereavement")} left)</option>

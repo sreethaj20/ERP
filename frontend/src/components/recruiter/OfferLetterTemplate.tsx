@@ -406,7 +406,7 @@ const OfferLetterTemplate: React.FC<OfferLetterTemplateProps> = ({ candidate, of
                             <h3 style={page3SectionTitleStyle}>5. Leave Policies</h3>
                             <p>You will be entitled to leave as per company policy, including:</p>
                             <BulletList style={page3ListStyle}>
-                                <li>Casual Leave (CL): 12</li>
+                                <li>Casual / Earned Leave: 12</li>
                                 <li>Sick Leave (SL): 12</li>
                                 <li>Public Holidays: As per the company's approved holiday list</li>
                             </BulletList>

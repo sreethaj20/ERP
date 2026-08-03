@@ -150,9 +150,8 @@ export const EMPLOYMENT_TYPE_OPTIONS = [
 
 // Leave Types
 export const LEAVE_TYPES = [
-    { value: 'Casual Leave', label: 'Casual Leave' },
+    { value: 'Casual/Earned Leave', label: 'Casual/Earned Leave' },
     { value: 'Sick Leave', label: 'Sick Leave' },
-    { value: 'Earned Leave', label: 'Earned Leave' },
     { value: 'Maternity Leave', label: 'Maternity Leave' },
     { value: 'Paternity Leave', label: 'Paternity Leave' },
     { value: 'Unpaid Leave', label: 'Unpaid Leave' },

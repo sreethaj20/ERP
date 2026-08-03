@@ -50,7 +50,11 @@ export default function LeaveManagement() {
 
     const getAvailable = (type: string) => {
         if (!balancesData) return 0;
-        const key = `${type.toLowerCase()}_leave`;
+        const lower = type.toLowerCase();
+        if (lower.includes("casual") || lower.includes("earned")) {
+            return (balancesData["casual_leave"] || 0) + (balancesData["earned_leave"] || 0);
+        }
+        const key = `${lower}_leave`;
         return balancesData[key] || 0;
     };
 
@@ -186,9 +190,8 @@ const handleLeaveSubmit = async () => {
                                 <div style={inputGroup}>
                                     <label style={labelStyle}>Leave Category</label>
                                     <select className="apple-input" value={leaveType} onChange={(e) => setLeaveType(e.target.value)}>
-                                        <option value="Casual">Casual Leave</option>
+                                        <option value="Casual/Earned">Casual/Earned Leave</option>
                                         <option value="Sick">Sick Leave</option>
-                                        <option value="Earned">Earned Leave</option>
                                         <option value="Maternity">Maternity Leave</option>
                                         <option value="Paternity">Paternity Leave</option>
                                         <option value="Bereavement">Bereavement Leave</option>
@@ -238,9 +241,8 @@ const handleLeaveSubmit = async () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                         <GlassCard title="Quick Balance" subtitle="Remaining quota overview">
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '10px' }}>
-                                <MiniBalance label="Casual" val={getAvailable("Casual")} total={24} color="#0a84ff" />
-                                <MiniBalance label="Sick" val={getAvailable("Sick")} total={15} color="#ff453a" />
-                                <MiniBalance label="Earned" val={getAvailable("Earned")} total={30} color="#30d158" />
+                                <MiniBalance label="Casual/Earned" val={getAvailable("Casual/Earned")} total={12} color="#0a84ff" />
+                                <MiniBalance label="Sick" val={getAvailable("Sick")} total={12} color="#ff453a" />
                             </div>
                         </GlassCard>
                         <GlassCard title="Approval Policy" subtitle="Workflow info">
@@ -302,9 +304,8 @@ const handleLeaveSubmit = async () => {
 
             {activeTab === 'balance' && (
                 <div className="grid-3">
-                    <BalanceCard title="Casual Leave" val={getAvailable("Casual")} quota={24} color="#0a84ff" />
-                    <BalanceCard title="Sick Leave" val={getAvailable("Sick")} quota={15} color="#ff453a" />
-                    <BalanceCard title="Earned Leave" val={getAvailable("Earned")} quota={30} color="#30d158" />
+                    <BalanceCard title="Casual/Earned Leave" val={getAvailable("Casual/Earned")} quota={12} color="#0a84ff" />
+                    <BalanceCard title="Sick Leave" val={getAvailable("Sick")} quota={12} color="#ff453a" />
                     <BalanceCard title="Maternity" val={getAvailable("maternity")} quota={90} color="#bf5af2" />
                     <BalanceCard title="Paternity" val={getAvailable("paternity")} quota={15} color="#007aff" />
                     <BalanceCard title="Bereavement" val={getAvailable("bereavement")} quota={5} color="#ff9f0a" />

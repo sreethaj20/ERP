@@ -41,8 +41,13 @@ class LeaveService:
         # Mapping leave type to field name
         type_map = {
             "casual": "casual_leave",
+            "casual leave": "casual_leave",
+            "casual/earned": "casual_leave",
+            "casual/earned leave": "casual_leave",
             "sick": "sick_leave",
+            "sick leave": "sick_leave",
             "earned": "earned_leave",
+            "earned leave": "earned_leave",
             "maternity": "maternity_leave",
             "paternity": "paternity_leave",
             "bereavement": "bereavement_leave",
@@ -50,8 +55,10 @@ class LeaveService:
         }
         balance_field = type_map.get(obj_in.leave_type.lower())
         if not balance_field or not hasattr(balance, balance_field):
-             # Fallback for dynamic types if any
-             balance_field = obj_in.leave_type.lower().replace(" ", "_") + "_leave"
+            if "casual" in obj_in.leave_type.lower():
+                balance_field = "casual_leave"
+            else:
+                balance_field = obj_in.leave_type.lower().replace(" ", "_").replace("/", "_") + "_leave"
              
         available = getattr(balance, balance_field, Decimal("0.00"))
         
@@ -119,8 +126,13 @@ class LeaveService:
                 if balance:
                     type_map = {
                         "casual": "casual_leave",
+                        "casual leave": "casual_leave",
+                        "casual/earned": "casual_leave",
+                        "casual/earned leave": "casual_leave",
                         "sick": "sick_leave",
+                        "sick leave": "sick_leave",
                         "earned": "earned_leave",
+                        "earned leave": "earned_leave",
                         "maternity": "maternity_leave",
                         "paternity": "paternity_leave",
                         "bereavement": "bereavement_leave",
@@ -128,10 +140,12 @@ class LeaveService:
                     }
                     field = type_map.get(db_obj.leave_type.lower())
                     if not field or not hasattr(balance, field):
-                        # Fallback for dynamic types or those with spaces (e.g. 'Casual Leave' -> 'casual_leave')
-                        field = db_obj.leave_type.lower().replace(" ", "_")
-                        if not field.endswith("_leave"):
-                            field += "_leave"
+                        if "casual" in db_obj.leave_type.lower():
+                            field = "casual_leave"
+                        else:
+                            field = db_obj.leave_type.lower().replace(" ", "_").replace("/", "_")
+                            if not field.endswith("_leave"):
+                                field += "_leave"
                     
                     if hasattr(balance, field):
                         current_val = getattr(balance, field) or Decimal("0.00")
@@ -406,9 +420,9 @@ class LeaveBalanceService:
             
             default_data = {
                 "employee_id": employee_id,
-                "casual_leave": policies.get("casual", 24.0),
-                "sick_leave": policies.get("sick", 15.0),
-                "earned_leave": policies.get("earned", 30.0),
+                "casual_leave": policies.get("casual", 12.0),
+                "sick_leave": policies.get("sick", 12.0),
+                "earned_leave": 0.0,
                 "maternity_leave": policies.get("maternity", 90.0),
                 "paternity_leave": policies.get("paternity", 15.0),
                 "bereavement_leave": policies.get("bereavement", 5.0),

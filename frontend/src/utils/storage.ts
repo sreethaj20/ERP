@@ -1033,7 +1033,7 @@ export const updateEmployeeLeaveBalance = async (id: any, newBalances: any) => {
     const emp = _employees.find(e => String(e.id) === String(id) || String(e.employee_id) === String(id));
     if (!emp) return;
 
-    const currentBalances = emp.leave_balances || { casual: 12, sick: 12, earned: 15, maternity: 0 };
+    const currentBalances = emp.leave_balances || { casual: 12, sick: 12, earned: 0, maternity: 0 };
     const merged = { ...currentBalances, ...newBalances };
 
     return updateEmployee(emp.employee_id || emp.id, { leave_balances: merged });

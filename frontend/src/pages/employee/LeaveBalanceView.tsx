@@ -36,16 +36,12 @@ export default function LeaveBalanceView() {
         <div style={{ color: "var(--text-secondary)" }}>Loading balances...</div>
       ) : balances ? (
         <div className="grid-3">
-          <GlassCard title="Casual Leave" subtitle="Annual Balance">
-            <h2 style={balanceStyle}>{balances.casual_leave} Days Left</h2>
+          <GlassCard title="Casual/Earned Leave" subtitle="Annual Balance">
+            <h2 style={balanceStyle}>{(parseFloat(balances.casual_leave || 0) + parseFloat(balances.earned_leave || 0)).toFixed(1)} Days Left</h2>
           </GlassCard>
   
           <GlassCard title="Sick Leave" subtitle="Annual Balance">
             <h2 style={balanceStyle}>{balances.sick_leave} Days Left</h2>
-          </GlassCard>
-  
-          <GlassCard title="Earned Leave" subtitle="Annual Balance">
-            <h2 style={balanceStyle}>{balances.earned_leave} Days Left</h2>
           </GlassCard>
   
           <GlassCard title="Maternity Leave" subtitle="Special Category">

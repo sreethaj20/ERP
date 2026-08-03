@@ -266,7 +266,7 @@ class EmployeeService:
                 employee_id=new_emp.employee_id,
                 sick_leave=Decimal("12.0"),
                 casual_leave=Decimal("12.0"),
-                earned_leave=Decimal("15.0")
+                earned_leave=Decimal("0.0")
             )
             db.add(lb)
             db.commit()
@@ -480,8 +480,8 @@ class EmployeeService:
             default_balance = LeaveBalance(
                 employee_id=res.employee_id,
                 sick_leave=Decimal("12.0"),    # 12 SL/year
-                casual_leave=Decimal("12.0"),  # 12 CL/year
-                earned_leave=Decimal("15.0"),  # 15 EL/year
+                casual_leave=Decimal("12.0"),  # 12 Casual/Earned/year
+                earned_leave=Decimal("0.0"),  # Combined into Casual/Earned
                 optional_leave=Decimal("2.0"), # 2 Optional/year
                 maternity_leave=Decimal("0.0"),
                 paternity_leave=Decimal("0.0"),
@@ -594,25 +594,13 @@ class EmployeeService:
         elif 'ifsc_code' in obj_data:
             obj_data['bank_ifsc_code'] = obj_data['ifsc_code']
 
-        # Re-create obj_in with the mapped data to ensure repository handles it correctly
-        from app.schemas.employee import EmployeeUpdate
-        obj_in = EmployeeUpdate(**obj_data)
+        # Ensure bi-directional sync between photo and profile_photo_url
+        if 'profile_photo_url' in obj_data and not obj_data.get('photo'):
+            obj_data['photo'] = obj_data['profile_photo_url']
+        elif 'photo' in obj_data and not obj_data.get('profile_photo_url'):
+            obj_data['profile_photo_url'] = obj_data['photo']
 
-        # SYNC LEAVE BALANCES (Feature 45)
-        if 'leave_balances' in obj_data and obj_data['leave_balances']:
-            from app.services.leave_service import leave_balance_service
-            from app.schemas.leave import LeaveBalanceUpdate
-            from decimal import Decimal
-            lb_data = obj_data['leave_balances']
-            # Convert float/int to Decimal for backend consistency
-            clean_lb = {k: Decimal(str(v)) for k, v in lb_data.items() if v is not None}
-            try:
-                leave_balance_service.update_balance(db, employee_id, LeaveBalanceUpdate(**clean_lb))
-                print(f"[STORAGE SYNC] Updated leave balances for {employee_id}")
-            except Exception as e:
-                print(f"[STORAGE SYNC ERROR] Failed to sync leave balances for {employee_id}: {e}")
-
-        # 🛡️ Level 4: S3 Sync for Photos & Documents (Base64 Handling)
+        # 🛡️ Level 4: S3 Sync for Photos & Documents (Base64 Handling) - Done BEFORE obj_in model creation
         for field in ["profile_photo_url", "photo", "aadhaar_file_url", "pan_file_url", "resume_url", "bank_proof_url"]:
             val = obj_data.get(field)
             old_val = getattr(db_obj, field, None)
@@ -638,17 +626,14 @@ class EmployeeService:
                     if old_val and old_val != path and not old_val.startswith(("http", "data:")):
                         storage_service.delete_file(old_val)
 
-                    # Update both the data and the obj_in instance
+                    # Update obj_data
                     obj_data[field] = path
-                    setattr(obj_in, field, path)
                     
                     # Sync photo fields specifically for profile updates
                     if field == "profile_photo_url":
                         obj_data["photo"] = path
-                        setattr(obj_in, "photo", path)
                     elif field == "photo":
                         obj_data["profile_photo_url"] = path
-                        setattr(obj_in, "profile_photo_url", path)
                         
                     print(f"[STORAGE SYNC] Processed base64 {field} for {employee_id} -> {path}")
                 except Exception as e:
@@ -658,10 +643,26 @@ class EmployeeService:
                 storage_service.delete_file(old_val)
                 if field == "profile_photo_url":
                     obj_data["photo"] = ""
-                    setattr(obj_in, "photo", "")
                 elif field == "photo":
                     obj_data["profile_photo_url"] = ""
-                    setattr(obj_in, "profile_photo_url", "")
+
+        # Re-create obj_in with the mapped and base64-processed data to ensure repository handles it correctly
+        from app.schemas.employee import EmployeeUpdate
+        obj_in = EmployeeUpdate(**obj_data)
+
+        # SYNC LEAVE BALANCES (Feature 45)
+        if 'leave_balances' in obj_data and obj_data['leave_balances']:
+            from app.services.leave_service import leave_balance_service
+            from app.schemas.leave import LeaveBalanceUpdate
+            from decimal import Decimal
+            lb_data = obj_data['leave_balances']
+            # Convert float/int to Decimal for backend consistency
+            clean_lb = {k: Decimal(str(v)) for k, v in lb_data.items() if v is not None}
+            try:
+                leave_balance_service.update_balance(db, employee_id, LeaveBalanceUpdate(**clean_lb))
+                print(f"[STORAGE SYNC] Updated leave balances for {employee_id}")
+            except Exception as e:
+                print(f"[STORAGE SYNC ERROR] Failed to sync leave balances for {employee_id}: {e}")
 
         res = employee_repo.update(db, db_obj, obj_in)
         

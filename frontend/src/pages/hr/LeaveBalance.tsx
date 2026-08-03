@@ -46,9 +46,8 @@ export default function LeaveBalance() {
             </select>
 
             <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} style={inputStyle}>
-              <option value="casual">Casual Leave</option>
+              <option value="casual">Casual / Earned Leave</option>
               <option value="sick">Sick Leave</option>
-              <option value="earned">Earned Leave</option>
               <option value="maternity">Maternity Leave</option>
               <option value="paternity">Paternity Leave</option>
               <option value="bereavement">Bereavement Leave</option>
@@ -72,9 +71,8 @@ export default function LeaveBalance() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-light)', textAlign: 'left', color: 'var(--text-tertiary)' }}>
                   <th style={{ padding: '12px 8px' }}>Employee</th>
-                  <th style={{ padding: '12px 8px' }}>Casual</th>
+                  <th style={{ padding: '12px 8px' }}>Casual/Earned</th>
                   <th style={{ padding: '12px 8px' }}>Sick</th>
-                  <th style={{ padding: '12px 8px' }}>Earned</th>
                   <th style={{ padding: '12px 8px' }}>Maternity</th>
                   <th style={{ padding: '12px 8px' }}>Paternity</th>
                   <th style={{ padding: '12px 8px' }}>Berev.</th>
@@ -89,9 +87,8 @@ export default function LeaveBalance() {
                         <div style={{ fontWeight: '600' }}>{emp.name}</div>
                         <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{emp.id}</div>
                       </td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{b.casual}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{(parseFloat(b.casual || 0) + parseFloat(b.earned || 0))}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-orange)' }}>{b.sick}</td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-green)' }}>{b.earned}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-purple)' }}>{b.maternity}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{b.paternity || 0}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-red)' }}>{b.bereavement || 0}</td>

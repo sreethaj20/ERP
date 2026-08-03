@@ -183,7 +183,12 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
 
       const employees = await getData('employee');
       if (Array.isArray(employees)) {
-        const user = employees.find((e: any) => e.id === userId);
+        const empId = sessionStorage.getItem('employeeId') || localStorage.getItem('employeeId');
+        const user = employees.find((e: any) => 
+          String(e.id) === String(userId) || 
+          String(e.user_id) === String(userId) || 
+          (empId && String(e.employee_id) === String(empId))
+        );
         if (user) setUserPhoto(user.profile_photo_url || user.photo || null);
       }
     };

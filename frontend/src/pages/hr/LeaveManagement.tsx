@@ -79,9 +79,8 @@ export default function LeaveManagement() {
 
   // Default policies if DB is empty
   const defaultPolicies = [
-    { leave_type: "Casual", total_days: 24 },
-    { leave_type: "Sick", total_days: 15 },
-    { leave_type: "Earned", total_days: 30 },
+    { leave_type: "Casual/Earned", total_days: 12 },
+    { leave_type: "Sick", total_days: 12 },
     { leave_type: "Maternity", total_days: 90 },
     { leave_type: "Paternity", total_days: 15 },
     { leave_type: "Bereavement", total_days: 5 },

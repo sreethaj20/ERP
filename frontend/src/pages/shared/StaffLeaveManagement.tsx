@@ -18,7 +18,7 @@ export default function StaffLeaveManagement({ role, roleLabel }: Props) {
     const [loading, setLoading] = useState(false);
 
     // Apply Leave State
-    const [leaveType, setLeaveType] = useState("Casual");
+    const [leaveType, setLeaveType] = useState("Casual/Earned");
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [reason, setReason] = useState("");
@@ -195,7 +195,7 @@ export default function StaffLeaveManagement({ role, roleLabel }: Props) {
                             <div>
                                 <label style={labelStyle}>Leave Type</label>
                                 <select className="glass-input" value={leaveType} onChange={e => setLeaveType(e.target.value)} style={inputStyle}>
-                                    {["Casual", "Sick", "Earned", "Maternity", "Paternity", "Bereavement", "Unpaid"].map(t => <option key={t} value={t}>{t} Leave</option>)}
+                                    {["Casual/Earned", "Sick", "Maternity", "Paternity", "Bereavement", "Unpaid"].map(t => <option key={t} value={t}>{t} Leave</option>)}
                                 </select>
                             </div>
 
@@ -276,9 +276,8 @@ export default function StaffLeaveManagement({ role, roleLabel }: Props) {
                             <>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "16px", marginTop: "20px" }}>
                                 {[
-                                    { type: "Casual", total: 24, left: balances.casual_leave, color: "#0a84ff" },
-                                    { type: "Sick", total: 15, left: balances.sick_leave, color: "#30d158" },
-                                    { type: "Earned", total: 30, left: balances.earned_leave, color: "#bf5af2" },
+                                    { type: "Casual/Earned", total: 12, left: (parseFloat(balances.casual_leave || 0) + parseFloat(balances.earned_leave || 0)), color: "#0a84ff" },
+                                    { type: "Sick", total: 12, left: balances.sick_leave, color: "#30d158" },
                                     { type: "Maternity", total: 90, left: balances.maternity_leave || 0, color: "#ff9f0a" },
                                     { type: "Paternity", total: 15, left: balances.paternity_leave || 0, color: "#007aff" },
                                     { type: "Bereavement", total: 5, left: balances.bereavement_leave || 0, color: "#ff453a" },
