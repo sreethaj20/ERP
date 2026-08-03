@@ -7,6 +7,7 @@ export default function LeaveBalance() {
   const [empId, setEmpId] = useState("");
   const [leaveType, setLeaveType] = useState("casual");
   const [totalDays, setTotalDays] = useState("");
+  const [carryForward, setCarryForward] = useState(true);
   const [employees, setEmployees] = useState(getEmployees());
 
   const handleAllocate = () => {
@@ -15,11 +16,11 @@ export default function LeaveBalance() {
       return;
     }
     
-    updateEmployeeLeaveBalance(empId, { [leaveType]: parseInt(totalDays) });
+    updateEmployeeLeaveBalance(empId, { [leaveType]: parseInt(totalDays) }, carryForward);
     setEmployees(getEmployees());
     setEmpId("");
     setTotalDays("");
-    alert("Leave balance allocated successfully");
+    alert(empId === "ALL" ? "Leave balance allocated to all employees with carry-forward successfully!" : "Leave balance allocated successfully!");
   };
 
   return (
@@ -28,7 +29,7 @@ export default function LeaveBalance() {
 
       <div style={{ marginTop: "35px" }}>
         <h1 style={{ fontSize: "32px", fontWeight: "700" }}>Leave Balance Allocation</h1>
-        <div className="subtitle">Set and manage annual leave quotas for employees</div>
+        <div className="subtitle">Set and manage leave quotas with automatic carry-forward for employees</div>
       </div>
 
       <div className="grid-3" style={{ marginTop: "20px" }}>
@@ -39,7 +40,8 @@ export default function LeaveBalance() {
               onChange={(e) => setEmpId(e.target.value)} 
               style={inputStyle}
             >
-              <option value="">Select Employee</option>
+              <option value="">Select Employee / All</option>
+              <option value="ALL" style={{ fontWeight: 'bold', color: 'var(--accent-blue)' }}>⚡ All Employees (Bulk Allocation)</option>
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>{emp.name} ({emp.id})</option>
               ))}
@@ -61,6 +63,16 @@ export default function LeaveBalance() {
               style={inputStyle}
             />
 
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '10px', cursor: 'pointer' }}>
+              <input 
+                type="checkbox" 
+                checked={carryForward} 
+                onChange={e => setCarryForward(e.target.checked)} 
+                style={{ accentColor: '#0a84ff' }}
+              />
+              Carry forward leftover leaves from previous month
+            </label>
+
             <button style={btnStyle} onClick={handleAllocate}>Update Balance</button>
           </div>
         </GlassCard>
@@ -73,6 +85,7 @@ export default function LeaveBalance() {
                   <th style={{ padding: '12px 8px' }}>Employee</th>
                   <th style={{ padding: '12px 8px' }}>Casual/Earned</th>
                   <th style={{ padding: '12px 8px' }}>Sick</th>
+                  <th style={{ padding: '12px 8px' }}>Carry Fwd</th>
                   <th style={{ padding: '12px 8px' }}>Maternity</th>
                   <th style={{ padding: '12px 8px' }}>Paternity</th>
                   <th style={{ padding: '12px 8px' }}>Berev.</th>
@@ -80,7 +93,7 @@ export default function LeaveBalance() {
               </thead>
               <tbody>
                 {employees.map(emp => {
-                  const b = emp.leave_balances || { casual: 0, sick: 0, earned: 0, maternity: 0 };
+                  const b = emp.leave_balances || { casual: 0, sick: 0, earned: 0, maternity: 0, carry_forward: 0 };
                   return (
                     <tr key={emp.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
                       <td style={{ padding: '12px 8px' }}>
@@ -89,6 +102,7 @@ export default function LeaveBalance() {
                       </td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{(parseFloat(b.casual || 0) + parseFloat(b.earned || 0))}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-orange)' }}>{b.sick}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-green)', fontWeight: '700' }}>{b.carry_forward || b.carry_forward_days || 0}d</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-purple)' }}>{b.maternity}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{b.paternity || 0}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-red)' }}>{b.bereavement || 0}</td>

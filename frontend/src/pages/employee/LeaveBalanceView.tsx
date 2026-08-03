@@ -60,6 +60,12 @@ export default function LeaveBalanceView() {
             <h2 style={{ ...balanceStyle, color: '#ff9f0a' }}>{balances.total_used} Days</h2>
           </GlassCard>
   
+          <GlassCard title="Carried Forward" subtitle="Unused from Previous Month">
+            <h2 style={{ ...balanceStyle, color: '#30d158' }}>
+              {parseFloat(balances.carry_forward_days || balances.carry_forward || 0).toFixed(1)} Days
+            </h2>
+          </GlassCard>
+  
           <GlassCard title="Total Available" subtitle="Combined Quota">
             <h2 style={{ ...balanceStyle, color: '#30d158' }}>
                 {(

@@ -368,18 +368,24 @@ class LeavePolicyService:
         db.commit()
         db.refresh(policy)
 
-        # 🔄 AUTOMATIC SYNC (Feature 46): Update all existing employee balances to reflect new policy
+        # 🔄 AUTOMATIC CARRY-FORWARD & SYNC:
+        # When HR updates monthly policy, carry forward any leftover leaves from previous month to all employees
         try:
             field_name = f"{leave_type.lower().replace(' ', '_')}_leave"
-            # Special mapping for common names if needed
             if "casual" in field_name: field_name = "casual_leave"
             if "sick" in field_name: field_name = "sick_leave"
             if "earned" in field_name: field_name = "earned_leave"
             
-            # Perform mass update for all active records
-            db.query(LeaveBalance).filter(LeaveBalance.deleted_at == None).update({field_name: total_days})
+            balances = db.query(LeaveBalance).filter(LeaveBalance.deleted_at == None).all()
+            for b in balances:
+                current_val = float(getattr(b, field_name, 0.0) or 0.0)
+                leftover = max(0.0, current_val)
+                prev_carry = float(getattr(b, "carry_forward_days", 0.0) or 0.0)
+                setattr(b, "carry_forward_days", prev_carry + leftover)
+                setattr(b, field_name, float(total_days) + leftover)
+                db.add(b)
             db.commit()
-            print(f"[SYNC] Propagated {leave_type} policy change ({total_days} days) to all employees.")
+            print(f"[SYNC] Updated {leave_type} policy ({total_days} days) with leftover carry-forward for all employees.")
         except Exception as e:
             print(f"[SYNC ERROR] Failed to propagate policy change: {e}")
             db.rollback()
@@ -454,7 +460,17 @@ class LeaveBalanceService:
         db_obj = leave_balance_repo.get(db, employee_id)
         if not db_obj:
             raise ResourceNotFoundException("Leave Balance", employee_id)
-        return leave_balance_repo.update(db, db_obj, obj_in)
+        
+        # Calculate carry-forward for updated leave fields
+        update_data = obj_in.dict(exclude_unset=True)
+        for field in ["casual_leave", "sick_leave", "maternity_leave", "paternity_leave", "bereavement_leave"]:
+            if field in update_data and update_data[field] is not None:
+                current_val = float(getattr(db_obj, field, 0.0) or 0.0)
+                leftover = max(0.0, current_val)
+                if leftover > 0:
+                    update_data[field] = float(update_data[field]) + leftover
+                    update_data["carry_forward_days"] = float(getattr(db_obj, "carry_forward_days", 0.0) or 0.0) + leftover
+        return leave_balance_repo.update(db, db_obj, LeaveBalanceUpdate(**update_data))
 
     def update(self, db: Session, id: int, obj_in: LeaveBalanceUpdate):
         from app.models.leave import LeaveBalance

@@ -1029,14 +1029,38 @@ export const updateEmployee = async (id: string | number, updates: any) => {
     return res;
 };
 
-export const updateEmployeeLeaveBalance = async (id: any, newBalances: any) => {
-    const emp = _employees.find(e => String(e.id) === String(id) || String(e.employee_id) === String(id));
-    if (!emp) return;
+export const updateEmployeeLeaveBalance = async (id: any, newBalances: any, carryForward: boolean = true) => {
+    const targetEmployees = (id === "ALL" || id === "ALL_EMPLOYEES")
+        ? _employees 
+        : _employees.filter(e => String(e.id) === String(id) || String(e.employee_id) === String(id));
 
-    const currentBalances = emp.leave_balances || { casual: 12, sick: 12, earned: 0, maternity: 0 };
-    const merged = { ...currentBalances, ...newBalances };
+    if (targetEmployees.length === 0) return;
 
-    return updateEmployee(emp.employee_id || emp.id, { leave_balances: merged });
+    for (const emp of targetEmployees) {
+        const currentBalances = emp.leave_balances || { casual: 12, sick: 12, earned: 0, maternity: 0, carry_forward: 0 };
+        const updatedBalances: any = { ...currentBalances };
+
+        let totalLeftover = 0;
+        for (const [key, newQuotaRaw] of Object.entries(newBalances)) {
+            if (key === "carry_forward" || key.startsWith("carry_forward_")) continue;
+            const newQuota = Number(newQuotaRaw) || 0;
+            const currentVal = Number(currentBalances[key]) || 0;
+            const leftover = Math.max(0, currentVal); // Leftover days from previous month
+
+            if (carryForward) {
+                updatedBalances[key] = newQuota + leftover;
+                totalLeftover += leftover;
+            } else {
+                updatedBalances[key] = newQuota;
+            }
+        }
+
+        if (carryForward) {
+            updatedBalances.carry_forward = (Number(currentBalances.carry_forward) || 0) + totalLeftover;
+        }
+
+        await updateEmployee(emp.employee_id || emp.id, { leave_balances: updatedBalances });
+    }
 };
 
 export const getITAllocations = () => _it_allocations;
