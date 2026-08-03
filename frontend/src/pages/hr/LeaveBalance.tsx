@@ -16,11 +16,11 @@ export default function LeaveBalance() {
       return;
     }
     
-    updateEmployeeLeaveBalance(empId, { [leaveType]: parseInt(totalDays) }, carryForward);
+    updateEmployeeLeaveBalance(empId, { [leaveType]: parseInt(totalDays) });
     setEmployees(getEmployees());
     setEmpId("");
     setTotalDays("");
-    alert(empId === "ALL" ? "Leave balance allocated to all employees with carry-forward successfully!" : "Leave balance allocated successfully!");
+    alert(empId === "ALL" ? "Leave quota updated for all employees!" : "Leave quota updated successfully!");
   };
 
   return (

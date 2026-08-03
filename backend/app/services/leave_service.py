@@ -485,15 +485,13 @@ class LeaveBalanceService:
         if not db_obj:
             raise ResourceNotFoundException("Leave Balance", employee_id)
         
-        # Calculate carry-forward for updated leave fields
         update_data = obj_in.dict(exclude_unset=True)
+        used = float(getattr(db_obj, 'total_used', 0.0) or 0.0)
         for field in ["casual_leave", "sick_leave", "maternity_leave", "paternity_leave", "bereavement_leave"]:
             if field in update_data and update_data[field] is not None:
-                current_val = float(getattr(db_obj, field, 0.0) or 0.0)
-                leftover = max(0.0, current_val)
-                if leftover > 0:
-                    update_data[field] = float(update_data[field]) + leftover
-                    update_data["carry_forward_days"] = float(getattr(db_obj, "carry_forward_days", 0.0) or 0.0) + leftover
+                val = float(update_data[field])
+                # Subtract used leaves from new quota to get net remaining available balance
+                update_data[field] = max(0.0, val - used)
         return leave_balance_repo.update(db, db_obj, LeaveBalanceUpdate(**update_data))
 
     def update(self, db: Session, id: int, obj_in: LeaveBalanceUpdate):
