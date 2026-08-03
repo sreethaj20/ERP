@@ -31,10 +31,12 @@ export default function ApplyLeave() {
     if (!balancesData) return 0;
     const lower = type.toLowerCase();
     if (lower.includes("casual") || lower.includes("earned")) {
-      return (balancesData["casual_leave"] || 0) + (balancesData["earned_leave"] || 0);
+      const sum = parseFloat(balancesData["casual_leave"] || 0) + parseFloat(balancesData["earned_leave"] || 0);
+      return isNaN(sum) ? 0 : (Number.isInteger(sum) ? sum : parseFloat(sum.toFixed(2)));
     }
     const key = `${lower}_leave`;
-    return balancesData[key] || 0;
+    const val = parseFloat(balancesData[key] || 0);
+    return isNaN(val) ? 0 : (Number.isInteger(val) ? val : parseFloat(val.toFixed(2)));
   };
 
   const balances = [

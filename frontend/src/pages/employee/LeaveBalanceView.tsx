@@ -41,7 +41,7 @@ export default function LeaveBalanceView() {
           </GlassCard>
   
           <GlassCard title="Sick Leave" subtitle="Annual Balance">
-            <h2 style={balanceStyle}>{balances.sick_leave} Days Left</h2>
+            <h2 style={balanceStyle}>{parseFloat(balances.sick_leave || 0).toFixed(1)} Days Left</h2>
           </GlassCard>
   
           <GlassCard title="Maternity Leave" subtitle="Special Category">
