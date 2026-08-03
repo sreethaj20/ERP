@@ -330,25 +330,33 @@ const TabButton = ({ active, onClick, icon, label }: any) => (
     </button>
 );
 
-const MiniBalance = ({ label, val, total, color }: any) => (
-    <div style={{ fontSize: '12px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-            <span>{label}</span>
-            <span style={{ fontWeight: '700' }}>{val}/{total}</span>
+const MiniBalance = ({ label, val, total, color }: any) => {
+    const numVal = typeof val === 'number' ? val : parseFloat(String(val) || '0');
+    const displayVal = isNaN(numVal) ? '0.00' : numVal.toFixed(2);
+    return (
+        <div style={{ fontSize: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <span>{label}</span>
+                <span style={{ fontWeight: '700' }}>{displayVal}/{total}</span>
+            </div>
+            <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}>
+                <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, (numVal / total) * 100))}%`, background: color, borderRadius: '2px' }} />
+            </div>
         </div>
-        <div style={{ height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}>
-            <div style={{ height: '100%', width: `${(val / total) * 100}%`, background: color, borderRadius: '2px' }} />
-        </div>
-    </div>
-);
+    );
+};
 
-const BalanceCard = ({ title, val, quota, color, subtitle, isUsed }: any) => (
-    <GlassCard title={title} subtitle={subtitle || `${quota} Days Quota`}>
-        <h2 style={{ fontSize: '32px', fontWeight: '800', marginTop: '10px', color: color }}>
-            {val} {isUsed ? 'Days' : 'Left'}
-        </h2>
-    </GlassCard>
-);
+const BalanceCard = ({ title, val, quota, color, subtitle, isUsed }: any) => {
+    const numVal = typeof val === 'number' ? val : parseFloat(String(val) || '0');
+    const displayVal = isNaN(numVal) ? '0.00' : numVal.toFixed(2);
+    return (
+        <GlassCard title={title} subtitle={subtitle || `${quota} Days Quota`}>
+            <h2 style={{ fontSize: '32px', fontWeight: '800', marginTop: '10px', color: color }}>
+                {displayVal} {isUsed ? 'Days' : 'Left'}
+            </h2>
+        </GlassCard>
+    );
+};
 
 const inputGroup = { display: "flex", flexDirection: "column" as const, gap: "6px" };
 const labelStyle = { fontSize: "12px", fontWeight: "600", color: "var(--text-tertiary)", textTransform: "uppercase" as const, letterSpacing: "0.5px" };
