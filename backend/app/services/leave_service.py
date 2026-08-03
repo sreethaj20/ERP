@@ -401,6 +401,20 @@ class LeaveBalanceService:
         from app.models.leave import LeaveBalance
         from app.models.employee import Employee
         
+        # Auto-Heal Legacy Past Records for all employees
+        try:
+            legacy_records = db.query(LeaveBalance).filter(LeaveBalance.earned_leave > 0, LeaveBalance.deleted_at == None).all()
+            for rec in legacy_records:
+                c = float(rec.casual_leave or 0.0)
+                e = float(rec.earned_leave or 0.0)
+                rec.casual_leave = Decimal(str(c + e))
+                rec.earned_leave = Decimal("0.0")
+                db.add(rec)
+            if legacy_records:
+                db.commit()
+        except Exception:
+            db.rollback()
+
         query = db.query(LeaveBalance).join(Employee, LeaveBalance.employee_id == Employee.employee_id)\
             .filter(LeaveBalance.deleted_at == None, Employee.deleted_at == None)
         
@@ -451,6 +465,16 @@ class LeaveBalanceService:
                 balance.bereavement_leave = default_data["bereavement_leave"]
                 balance.total_credited = default_data["total_credited"]
                 balance.total_used = 0.0
+                db.add(balance)
+                db.commit()
+                db.refresh(balance)
+        else:
+            # Auto-Heal Past Legacy Data for single balance fetch
+            earned = float(getattr(balance, 'earned_leave', 0.0) or 0.0)
+            if earned > 0:
+                casual = float(getattr(balance, 'casual_leave', 0.0) or 0.0)
+                balance.casual_leave = Decimal(str(casual + earned))
+                balance.earned_leave = Decimal("0.0")
                 db.add(balance)
                 db.commit()
                 db.refresh(balance)

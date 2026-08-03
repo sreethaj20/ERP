@@ -12,7 +12,14 @@ export const applyLeave = async (payload: any) => {
 
 export const getMyLeaveBalance = async () => {
     const response = await api.get("employee/leave-balance");
-    return response.data;
+    const data = response.data || {};
+    const casual = parseFloat(data.casual_leave || 0);
+    const earned = parseFloat(data.earned_leave || 0);
+    if (earned > 0) {
+        data.casual_leave = (casual + earned).toFixed(2);
+        data.earned_leave = "0.00";
+    }
+    return data;
 };
 
 export const cancelLeave = async (leaveId: string) => {
