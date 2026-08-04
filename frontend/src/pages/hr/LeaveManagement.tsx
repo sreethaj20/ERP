@@ -49,6 +49,15 @@ export default function LeaveManagement() {
     };
   }, [location.pathname]);
 
+  const handleAction = async (leaveId: string, status: 'approved' | 'rejected') => {
+    try {
+      await api.patch(`hr/leaves/${leaveId}/status?status=${status}`);
+      fetchData();
+    } catch (e: any) {
+      alert(e?.response?.data?.detail || "Action failed");
+    }
+  };
+
   const handleSavePolicy = async () => {
     if (!editingPolicy || !newDays) return;
     try {
@@ -126,16 +135,18 @@ export default function LeaveManagement() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
-                  {['Employee', 'Hierarchy', 'Dept', 'Type', 'From', 'To', 'Days', 'Status', 'Applied'].map(h => (
+                  {['Employee', 'Hierarchy', 'Dept', 'Type', 'From', 'To', 'Days', 'Reason', 'Status', 'Actions'].map(h => (
                     <th key={h} style={{ padding: '10px 12px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {allLeaves.map((leave, i) => {
+                  const sStatus = (leave.status || '').toLowerCase();
                   const s = getS(leave.status);
                   const fromD = leave.start_date;
                   const toD = leave.end_date;
+                  const isPending = sStatus === 'pending' || sStatus === 'recommended' || sStatus === 'recommendation-review';
 
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
@@ -152,13 +163,31 @@ export default function LeaveManagement() {
                       <td style={{ padding: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{fromD}</td>
                       <td style={{ padding: '12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{toD}</td>
                       <td style={{ padding: '12px', fontWeight: '700' }}>{leave.total_days}d</td>
+                      <td style={{ padding: '12px', color: 'var(--text-secondary)', minWidth: '160px', maxWidth: '250px', wordBreak: 'break-word' }} title={leave.reason}>{leave.reason || '—'}</td>
                       <td style={{ padding: '12px' }}>
                         <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: s.bg, color: s.color }}>
                           {s.label}
                         </span>
                       </td>
-                      <td style={{ padding: '12px', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-                        {leave.created_at ? new Date(leave.created_at).toLocaleDateString('en-IN') : '—'}
+                      <td style={{ padding: '12px' }}>
+                        {isPending ? (
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button
+                              onClick={() => handleAction(leave.leave_id || leave.id, 'approved')}
+                              style={{ background: 'rgba(48,209,88,0.15)', color: '#30d158', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <FaCheck size={10} /> Approve
+                            </button>
+                            <button
+                              onClick={() => handleAction(leave.leave_id || leave.id, 'rejected')}
+                              style={{ background: 'rgba(255,69,58,0.15)', color: '#ff453a', border: 'none', padding: '5px 10px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <FaTimes size={10} /> Reject
+                            </button>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>Finalized</span>
+                        )}
                       </td>
                     </tr>
                   );

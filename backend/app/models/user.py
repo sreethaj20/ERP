@@ -22,6 +22,7 @@ class User(Base):
     is_mfa_enabled = Column(Boolean(), default=False)
     mfa_secret = Column(String(100), nullable=True)
     last_login_at = Column(DateTime)
+    last_logout_at = Column(DateTime, nullable=True)
     
     # 🕵️ Governance & Recovery
     reset_token = Column(String(100), nullable=True)

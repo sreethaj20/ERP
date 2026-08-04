@@ -94,6 +94,23 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # 🔒 Cross-Browser Logout Check: Validate token iat against user.last_logout_at
+    if getattr(user, 'last_logout_at', None):
+        iat = payload.get("iat")
+        if iat:
+            from datetime import datetime, timezone, timedelta
+            iat_dt = datetime.fromtimestamp(iat, tz=timezone.utc)
+            logout_dt = user.last_logout_at
+            if logout_dt.tzinfo is None:
+                logout_dt = logout_dt.replace(tzinfo=timezone.utc)
+            if iat_dt <= (logout_dt + timedelta(seconds=2)):
+                print(f"[AUTH] Token issued ({iat_dt}) before/during last_logout_at ({logout_dt}) for user {user.email}")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session logged out across browsers",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+    
     print(f"[AUTH] Authenticated: {user.email} (Role: {user.role})")
     
     if user and user.is_active:

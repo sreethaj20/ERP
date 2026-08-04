@@ -50,14 +50,16 @@ export default function LeaveManagement() {
 
     const getAvailable = (type: string) => {
         if (!balancesData) return 0;
-        const lower = type.toLowerCase();
+        const lower = type.toLowerCase().trim();
         if (lower.includes("casual") || lower.includes("earned")) {
-            const sum = parseFloat(balancesData["casual_leave"] || 0) + parseFloat(balancesData["earned_leave"] || 0);
-            return isNaN(sum) ? 0 : (Number.isInteger(sum) ? sum : parseFloat(sum.toFixed(2)));
+            const casualVal = parseFloat(String(balancesData["casual_leave"] || 0));
+            const earnedVal = parseFloat(String(balancesData["earned_leave"] || 0));
+            const sum = (isNaN(casualVal) ? 0 : casualVal) + (isNaN(earnedVal) ? 0 : earnedVal);
+            return isNaN(sum) ? 0 : sum;
         }
         const key = `${lower}_leave`;
-        const val = parseFloat(balancesData[key] || 0);
-        return isNaN(val) ? 0 : (Number.isInteger(val) ? val : parseFloat(val.toFixed(2)));
+        const val = parseFloat(String(balancesData[key] || 0));
+        return isNaN(val) ? 0 : val;
     };
 
 const handleLeaveSubmit = async () => {
@@ -330,9 +332,15 @@ const TabButton = ({ active, onClick, icon, label }: any) => (
     </button>
 );
 
+const formatDays = (val: any) => {
+    const num = typeof val === 'number' ? val : parseFloat(String(val) || '0');
+    if (isNaN(num)) return '0';
+    return Number.isInteger(num) ? num.toString() : num.toFixed(1);
+};
+
 const MiniBalance = ({ label, val, total, color }: any) => {
     const numVal = typeof val === 'number' ? val : parseFloat(String(val) || '0');
-    const displayVal = isNaN(numVal) ? '0.00' : numVal.toFixed(2);
+    const displayVal = formatDays(val);
     return (
         <div style={{ fontSize: '12px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -347,8 +355,7 @@ const MiniBalance = ({ label, val, total, color }: any) => {
 };
 
 const BalanceCard = ({ title, val, quota, color, subtitle, isUsed }: any) => {
-    const numVal = typeof val === 'number' ? val : parseFloat(String(val) || '0');
-    const displayVal = isNaN(numVal) ? '0.00' : numVal.toFixed(2);
+    const displayVal = formatDays(val);
     return (
         <GlassCard title={title} subtitle={subtitle || `${quota} Days Quota`}>
             <h2 style={{ fontSize: '32px', fontWeight: '800', marginTop: '10px', color: color }}>

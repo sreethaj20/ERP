@@ -44,21 +44,28 @@ class LeaveService:
             "casual leave": "casual_leave",
             "casual/earned": "casual_leave",
             "casual/earned leave": "casual_leave",
+            "casual / earned": "casual_leave",
+            "casual / earned leave": "casual_leave",
+            "earned": "casual_leave",
+            "earned leave": "casual_leave",
             "sick": "sick_leave",
             "sick leave": "sick_leave",
-            "earned": "earned_leave",
-            "earned leave": "earned_leave",
             "maternity": "maternity_leave",
+            "maternity leave": "maternity_leave",
             "paternity": "paternity_leave",
+            "paternity leave": "paternity_leave",
             "bereavement": "bereavement_leave",
-            "unpaid": "unpaid_leave"
+            "bereavement leave": "bereavement_leave",
+            "unpaid": "unpaid_leave",
+            "unpaid leave": "unpaid_leave"
         }
-        balance_field = type_map.get(obj_in.leave_type.lower())
+        leave_type_clean = obj_in.leave_type.lower().strip()
+        balance_field = type_map.get(leave_type_clean)
         if not balance_field or not hasattr(balance, balance_field):
-            if "casual" in obj_in.leave_type.lower():
+            if "casual" in leave_type_clean or "earned" in leave_type_clean:
                 balance_field = "casual_leave"
             else:
-                balance_field = obj_in.leave_type.lower().replace(" ", "_").replace("/", "_") + "_leave"
+                balance_field = leave_type_clean.replace(" ", "_").replace("/", "_") + "_leave"
              
         available = getattr(balance, balance_field, Decimal("0.00"))
         
@@ -90,38 +97,29 @@ class LeaveService:
         if not employee_service.verify_subordinate_authority(db, db_obj.employee_id, approver_employee_id, approver_role):
             raise HTTPException(status_code=403, detail="You do not have authority over this employee's requests.")
         
+        previous_status = db_obj.status
         if action.lower() == "reject":
             db_obj.status = "Rejected"
             db_obj.rejection_reason = rejection_reason
         else:
-            # 1. Fetch initiator info to determine workflow
             from app.models.employee import Employee
             initiator = db.query(Employee).filter(Employee.employee_id == db_obj.employee_id).first()
-            initiator_role = (initiator.role or 'employee').lower()
-            # Professional Staff requiring Manager-level approval
+            initiator_role = (initiator.role or 'employee').lower() if initiator else 'employee'
             admin_roles = ['hr', 'teamleader', 'tl', 'recruiter', 'it', 'manager']
-            
-            # Workflow Selection
-            if initiator_role in admin_roles:
-                # FLOW B (Administrative/Leadership Staff): Final Approval by Manager ONLY
-                if approver_role.lower() in ["manager", "admin"]:
-                    db_obj.status = "Approved"
-                    db_obj.approved_by = approver_employee_id
-                else:
+
+            # Workflow & Approval Selection: HR, Manager, and Admin have master approval authority over all employees
+            if approver_role.lower() in ["hr", "manager", "admin"]:
+                db_obj.status = "Approved"
+                db_obj.approved_by = approver_employee_id
+            elif approver_role.lower() in ["teamleader", "tl"]:
+                if initiator_role in admin_roles:
                     # Team Leaders cannot approve HR/TL/IT/Recruiter leaves
-                    raise HTTPException(status_code=403, detail="Approvals for administrative or leadership staff must be finalized by a Manager.")
-            else:
-                # FLOW A (Operational Workforce): Team Leader is Primary/Final Authority
-                if approver_role.lower() in ["teamleader", "tl"]:
-                    db_obj.status = "Approved"
-                    db_obj.approved_by = approver_employee_id
-                elif approver_role.lower() in ["manager", "hr", "admin"]:
-                    # Managers/HR have override authority over all staff
-                    db_obj.status = "Approved"
-                    db_obj.approved_by = approver_employee_id
+                    raise HTTPException(status_code=403, detail="Approvals for administrative or leadership staff must be finalized by a Manager or HR.")
+                db_obj.status = "Approved"
+                db_obj.approved_by = approver_employee_id
             
-            # 2. Finalize Balance Deduction on 'Approved' status
-            if db_obj.status == "Approved":
+            # 2. Finalize Balance Deduction on transition to 'Approved' status
+            if db_obj.status == "Approved" and previous_status != "Approved":
                 balance = leave_balance_repo.get(db, db_obj.employee_id)
                 if balance:
                     type_map = {
@@ -129,21 +127,28 @@ class LeaveService:
                         "casual leave": "casual_leave",
                         "casual/earned": "casual_leave",
                         "casual/earned leave": "casual_leave",
+                        "casual / earned": "casual_leave",
+                        "casual / earned leave": "casual_leave",
+                        "earned": "casual_leave",
+                        "earned leave": "casual_leave",
                         "sick": "sick_leave",
                         "sick leave": "sick_leave",
-                        "earned": "earned_leave",
-                        "earned leave": "earned_leave",
                         "maternity": "maternity_leave",
+                        "maternity leave": "maternity_leave",
                         "paternity": "paternity_leave",
+                        "paternity leave": "paternity_leave",
                         "bereavement": "bereavement_leave",
-                        "unpaid": "unpaid_leave"
+                        "bereavement leave": "bereavement_leave",
+                        "unpaid": "unpaid_leave",
+                        "unpaid leave": "unpaid_leave"
                     }
-                    field = type_map.get(db_obj.leave_type.lower())
+                    leave_type_clean = db_obj.leave_type.lower().strip()
+                    field = type_map.get(leave_type_clean)
                     if not field or not hasattr(balance, field):
-                        if "casual" in db_obj.leave_type.lower():
+                        if "casual" in leave_type_clean or "earned" in leave_type_clean:
                             field = "casual_leave"
                         else:
-                            field = db_obj.leave_type.lower().replace(" ", "_").replace("/", "_")
+                            field = leave_type_clean.replace(" ", "_").replace("/", "_")
                             if not field.endswith("_leave"):
                                 field += "_leave"
                     
@@ -151,7 +156,8 @@ class LeaveService:
                         current_val = getattr(balance, field) or Decimal("0.00")
                         leave_days = db_obj.total_days or Decimal("0.00")
                         # Perform high-precision deduction
-                        setattr(balance, field, Decimal(str(current_val)) - Decimal(str(leave_days)))
+                        new_val = max(Decimal("0.00"), Decimal(str(current_val)) - Decimal(str(leave_days)))
+                        setattr(balance, field, new_val)
                         balance.total_used = Decimal(str(balance.total_used or 0)) + Decimal(str(leave_days))
                         db.add(balance)
 
@@ -312,15 +318,9 @@ class LeaveService:
                 .join(Employee, LeaveRequest.employee_id == Employee.employee_id)\
                 .filter(LeaveRequest.employee_id == employee_id, LeaveRequest.deleted_at == None)
             
-        today = date.today()
         results = query.order_by(LeaveRequest.created_at.desc()).all()
         final_objects = []
         for leave, fn, ln, role, dept in results:
-            # Auto-remove finalized leaves after the end date passes to keep queues clean
-            if leave.status and leave.status.lower() in ["approved", "rejected"]:
-                if leave.end_date and leave.end_date < today:
-                    continue
-            
             # Attach extra data for manual serialization in API layers
             leave.name = f"{fn or ''} {ln or ''}".strip()
             leave.employee_name = leave.name
@@ -430,8 +430,12 @@ class LeaveBalanceService:
     def get_balance(self, db: Session, employee_id: str):
         balance = leave_balance_repo.get(db, employee_id)
         
-        # Self-Healing: If balance is missing OR exists but has 0 total credited (malformed/legacy)
-        should_initialize = not balance or (float(getattr(balance, 'total_credited', 0)) == 0)
+        # Self-Healing: Only initialize if balance is completely missing or total_credited, total_used, and casual_leave are all 0
+        should_initialize = not balance or (
+            float(getattr(balance, 'total_credited', 0) or 0) == 0 and 
+            float(getattr(balance, 'total_used', 0) or 0) == 0 and
+            float(getattr(balance, 'casual_leave', 0) or 0) == 0
+        )
         
         if should_initialize:
             from datetime import datetime
@@ -447,7 +451,7 @@ class LeaveBalanceService:
                 "paternity_leave": policies.get("paternity", 15.0),
                 "bereavement_leave": policies.get("bereavement", 5.0),
                 "unpaid_leave": 0.0,
-                "total_credited": sum(policies.values()) if policies else 179.0,
+                "total_credited": sum(policies.values()) if policies else 134.0,
                 "total_used": 0.0,
                 "carry_forward_days": 0.0,
                 "year": datetime.now().year,
@@ -464,16 +468,16 @@ class LeaveBalanceService:
                 balance.paternity_leave = default_data["paternity_leave"]
                 balance.bereavement_leave = default_data["bereavement_leave"]
                 balance.total_credited = default_data["total_credited"]
-                balance.total_used = 0.0
                 db.add(balance)
                 db.commit()
                 db.refresh(balance)
-        else:
-            # Auto-Heal Past Legacy Data for single balance fetch
+        
+        if balance:
+            # Auto-Heal Past Legacy Data for single balance fetch: fold any non-zero earned_leave into casual_leave
             earned = float(getattr(balance, 'earned_leave', 0.0) or 0.0)
-            if earned > 0:
+            if earned != 0:
                 casual = float(getattr(balance, 'casual_leave', 0.0) or 0.0)
-                balance.casual_leave = Decimal(str(casual + earned))
+                balance.casual_leave = Decimal(str(max(0.0, casual + earned)))
                 balance.earned_leave = Decimal("0.0")
                 db.add(balance)
                 db.commit()

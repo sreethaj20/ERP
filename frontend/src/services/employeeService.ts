@@ -15,7 +15,7 @@ export const getMyLeaveBalance = async () => {
     const data = response.data || {};
     const casual = parseFloat(data.casual_leave || 0);
     const earned = parseFloat(data.earned_leave || 0);
-    if (earned > 0) {
+    if (earned !== 0) {
         data.casual_leave = (casual + earned).toFixed(2);
         data.earned_leave = "0.00";
     }

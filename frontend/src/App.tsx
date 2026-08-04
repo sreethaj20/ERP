@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 
 // Auth
 import { getRole, initStorage } from './utils/storage';
+import api from './api/apiClient';
 import LoginPage from './pages/auth/LoginPage';
 import RoleGuard from './components/RoleGuard';
 
@@ -102,7 +103,56 @@ import Layout from "./components/Layout";
 function App() {
     const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" || localStorage.getItem("isLoggedIn") === "true";
     const [hydrated, setHydrated] = React.useState(false);
-    
+
+    // 🌐 Multi-Tab Sync: Listen for cross-tab logout events
+    React.useEffect(() => {
+        const handleStorageChange = (e: StorageEvent) => {
+            if (e.key === 'shift_user_logged_out' || (e.key === 'isLoggedIn' && !e.newValue) || e.key === null) {
+                console.log('[AUTH] Cross-tab logout event detected, redirecting to login...');
+                sessionStorage.clear();
+                localStorage.clear();
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+            }
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
+    }, []);
+
+    // 🌐 Multi-Browser Sync: Verify session validity on tab focus or periodic interval
+    React.useEffect(() => {
+        if (!isLoggedIn) return;
+
+        const checkSession = async () => {
+            try {
+                await api.get('auth/me');
+            } catch (err: any) {
+                if (err?.response?.status === 401) {
+                    console.warn('[AUTH] Session invalidated on backend (multi-browser logout detected)');
+                    sessionStorage.clear();
+                    localStorage.clear();
+                    if (window.location.pathname !== '/login') {
+                        window.location.href = '/login';
+                    }
+                }
+            }
+        };
+
+        const onFocus = () => {
+            checkSession();
+        };
+
+        window.addEventListener('focus', onFocus);
+        const interval = setInterval(checkSession, 30000);
+
+        return () => {
+            window.removeEventListener('focus', onFocus);
+            clearInterval(interval);
+        };
+    }, [isLoggedIn]);
+
     React.useEffect(() => {
         if (isLoggedIn) {
             initStorage().then(() => setHydrated(true)).catch(() => setHydrated(true));

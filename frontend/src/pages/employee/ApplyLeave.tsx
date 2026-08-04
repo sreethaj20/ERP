@@ -29,14 +29,16 @@ export default function ApplyLeave() {
 
   const getAvailableBalance = (type: string) => {
     if (!balancesData) return 0;
-    const lower = type.toLowerCase();
+    const lower = type.toLowerCase().trim();
     if (lower.includes("casual") || lower.includes("earned")) {
-      const sum = parseFloat(balancesData["casual_leave"] || 0) + parseFloat(balancesData["earned_leave"] || 0);
-      return isNaN(sum) ? 0 : (Number.isInteger(sum) ? sum : parseFloat(sum.toFixed(2)));
+      const casualVal = parseFloat(String(balancesData["casual_leave"] || 0));
+      const earnedVal = parseFloat(String(balancesData["earned_leave"] || 0));
+      const sum = (isNaN(casualVal) ? 0 : casualVal) + (isNaN(earnedVal) ? 0 : earnedVal);
+      return isNaN(sum) ? 0 : sum;
     }
     const key = `${lower}_leave`;
-    const val = parseFloat(balancesData[key] || 0);
-    return isNaN(val) ? 0 : (Number.isInteger(val) ? val : parseFloat(val.toFixed(2)));
+    const val = parseFloat(String(balancesData[key] || 0));
+    return isNaN(val) ? 0 : val;
   };
 
   const balances = [

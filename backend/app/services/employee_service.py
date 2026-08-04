@@ -483,8 +483,10 @@ class EmployeeService:
                 casual_leave=Decimal("12.0"),  # 12 Casual/Earned/year
                 earned_leave=Decimal("0.0"),  # Combined into Casual/Earned
                 optional_leave=Decimal("2.0"), # 2 Optional/year
-                maternity_leave=Decimal("0.0"),
-                paternity_leave=Decimal("0.0"),
+                maternity_leave=Decimal("90.0"),
+                paternity_leave=Decimal("15.0"),
+                bereavement_leave=Decimal("5.0"),
+                total_credited=Decimal("134.0"),
                 total_used=Decimal("0.0")
             )
             db.add(default_balance)

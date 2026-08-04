@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 
 from app.db.session import get_db
-from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, blacklist_token
+from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token, blacklist_token, revoke_user_tokens
 from app.core.dependencies import get_current_user, get_current_active_user
 from app.core.rate_limiter import limiter, get_remote_address, is_account_locked, record_failed_attempt, reset_failed_attempts
 from app.core.config import settings
@@ -289,10 +289,13 @@ def refresh_token_endpoint(
 @router.post("/logout", response_model=dict)
 def logout(
     request: Request,
-    response: Response
+    response: Response,
+    db: Session = Depends(get_db)
 ):
-    """Revokes active tokens and clears HttpOnly cookies."""
-    # Extract access token from cookie to blacklist jti
+    """Revokes active tokens, updates user last_logout_at, and clears HttpOnly cookies globally."""
+    user_id_to_revoke = None
+    
+    # Extract access token from cookie to blacklist jti and get user_id
     access_token = request.cookies.get("access_token")
     if access_token:
         try:
@@ -300,6 +303,8 @@ def logout(
             jti = payload.get("jti")
             if jti:
                 blacklist_token(jti)
+            if payload.get("sub"):
+                user_id_to_revoke = payload.get("sub")
         except Exception:
             pass
 
@@ -311,12 +316,27 @@ def logout(
             ref_jti = ref_payload.get("jti")
             if ref_jti:
                 blacklist_token(ref_jti)
+            if not user_id_to_revoke and ref_payload.get("sub"):
+                user_id_to_revoke = ref_payload.get("sub")
         except Exception:
             pass
 
+    if user_id_to_revoke:
+        # Revoke in-memory globally
+        revoke_user_tokens(user_id_to_revoke)
+        # Revoke in DB
+        try:
+            user = db.query(User).filter(User.id == int(user_id_to_revoke)).first()
+            if user:
+                user.last_logout_at = datetime.now(timezone.utc)
+                user.is_online = False
+                db.commit()
+        except Exception as e:
+            print(f"[AUTH] Error updating user last_logout_at on logout: {e}")
+
     response.delete_cookie(key="access_token", samesite=settings.COOKIE_SAMESITE, secure=settings.COOKIE_SECURE)
     response.delete_cookie(key="refresh_token", samesite=settings.COOKIE_SAMESITE, secure=settings.COOKIE_SECURE)
-    return {"message": "Logged out successfully"}
+    return {"message": "Logged out successfully across all sessions"}
 
 @router.get("/me", response_model=UserOut)
 def read_users_me(

@@ -48,10 +48,12 @@ export const logoutUser = async () => {
     await api.post('auth/logout').catch(e => console.warn('[AUTH] Backend logout failed:', e));
     sessionStorage.clear();
     localStorage.clear();
-    localStorage.setItem("shift_user_logged_out", "true");
-    sessionStorage.setItem("shift_user_logged_out", "true");
+    const logoutTime = Date.now().toString();
+    localStorage.setItem("shift_user_logged_out", logoutTime);
+    sessionStorage.setItem("shift_user_logged_out", logoutTime);
     _companyProfile = null;
     _currentUser = null;
+    window.dispatchEvent(new Event('storage'));
     window.location.href = "/login";
 };
 

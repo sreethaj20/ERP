@@ -10,6 +10,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # In-memory Token Blacklist (stores jti -> expiry timestamp)
 _token_blacklist = set()
 
+# In-memory User Revocation Registry (stores user_id -> revocation timestamp in seconds)
+_user_revocation_timestamps: dict = {}
+
 def blacklist_token(jti: str):
     """Add JWT ID (jti) to the token blacklist."""
     if jti:
@@ -18,6 +21,23 @@ def blacklist_token(jti: str):
 def is_token_blacklisted(jti: str) -> bool:
     """Check if JWT ID (jti) has been revoked."""
     return jti in _token_blacklist if jti else False
+
+def revoke_user_tokens(user_id: Union[str, int]):
+    """Revoke all tokens for a user ID globally."""
+    if user_id is not None:
+        import time
+        _user_revocation_timestamps[str(user_id)] = time.time()
+
+def is_user_revoked(user_id: Union[str, int], iat: Optional[Union[float, int]]) -> bool:
+    """Check if user session was revoked globally after token was issued."""
+    if user_id is None or iat is None:
+        return False
+    revoked_at = _user_revocation_timestamps.get(str(user_id))
+    if revoked_at is not None:
+        # If token was issued BEFORE (or equal to) the global user logout, consider it revoked
+        # Allow 2 second tolerance for clock differences during logout processing
+        return float(iat) <= (revoked_at + 2.0)
+    return False
 
 def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     now = datetime.now(timezone.utc)
@@ -70,6 +90,11 @@ def decode_token(token: str, expected_type: str = "access") -> dict:
     jti = payload.get("jti")
     if jti and is_token_blacklisted(jti):
         raise JWTError("Token has been revoked")
+        
+    sub = payload.get("sub")
+    iat = payload.get("iat")
+    if sub and is_user_revoked(sub, iat):
+        raise JWTError("User session has been logged out globally across browsers")
         
     return payload
 
