@@ -447,7 +447,12 @@ class LeaveBalanceService:
 
     def get_balance(self, db: Session, employee_id: str):
         balance = leave_balance_repo.get(db, employee_id)
-        
+        from app.models.employee import Employee
+        emp = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        gender = (emp.gender or "").lower().strip() if emp else ""
+        is_male = gender in ["male", "m", "man"]
+        is_female = gender in ["female", "f", "woman"]
+
         # Self-Healing: Only initialize if balance is completely missing or total_credited, total_used, and casual_leave are all 0
         should_initialize = not balance or (
             float(getattr(balance, 'total_credited', 0) or 0) == 0 and 
@@ -460,13 +465,16 @@ class LeaveBalanceService:
             # Fetch policies for dynamic defaults
             policies = {p.leave_type.lower(): float(p.total_days) for p in leave_policy_service.get_all(db)}
             
+            default_maternity = 0.0 if is_male else (policies.get("maternity") or policies.get("maternity leave") or 90.0)
+            default_paternity = 0.0 if is_female else (policies.get("paternity") or policies.get("paternity leave") or 15.0)
+
             default_data = {
                 "employee_id": employee_id,
                 "casual_leave": policies.get("casual") or policies.get("casual leave") or 12.0,
                 "sick_leave": policies.get("sick") or policies.get("sick leave") or 12.0,
                 "earned_leave": 0.0,
-                "maternity_leave": policies.get("maternity") or policies.get("maternity leave") or 90.0,
-                "paternity_leave": policies.get("paternity") or policies.get("paternity leave") or 15.0,
+                "maternity_leave": default_maternity,
+                "paternity_leave": default_paternity,
                 "bereavement_leave": policies.get("bereavement") or policies.get("bereavement leave") or 5.0,
                 "unpaid_leave": 0.0,
                 "total_credited": sum(policies.values()) if policies else 134.0,
@@ -486,6 +494,19 @@ class LeaveBalanceService:
                 balance.paternity_leave = default_data["paternity_leave"]
                 balance.bereavement_leave = default_data["bereavement_leave"]
                 balance.total_credited = default_data["total_credited"]
+                db.add(balance)
+                db.commit()
+                db.refresh(balance)
+        else:
+            # Enforce gender-based zero balance for non-applicable categories on existing records
+            updated = False
+            if is_male and float(getattr(balance, 'maternity_leave', 0) or 0) > 0:
+                balance.maternity_leave = Decimal("0.00")
+                updated = True
+            elif is_female and float(getattr(balance, 'paternity_leave', 0) or 0) > 0:
+                balance.paternity_leave = Decimal("0.00")
+                updated = True
+            if updated:
                 db.add(balance)
                 db.commit()
                 db.refresh(balance)

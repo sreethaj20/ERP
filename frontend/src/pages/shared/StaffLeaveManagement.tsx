@@ -281,22 +281,26 @@ export default function StaffLeaveManagement({ role, roleLabel }: Props) {
                                     { type: "Maternity", total: 90, left: balances.maternity_leave ?? balances.maternity ?? 0, color: "#ff9f0a" },
                                     { type: "Paternity", total: 15, left: balances.paternity_leave ?? balances.paternity ?? 0, color: "#007aff" },
                                     { type: "Bereavement", total: 5, left: balances.bereavement_leave ?? balances.bereavement ?? 0, color: "#ff453a" },
-                                ].map(b => (
-                                    <div key={b.type} style={{
-                                        padding: "18px", borderRadius: "16px",
-                                        background: "rgba(255,255,255,0.03)",
-                                        border: `1px solid var(--border-light)`,
-                                        borderTop: `3px solid ${b.color}`,
-                                        textAlign: "center"
-                                    }}>
-                                        <div style={{ fontSize: "32px", fontWeight: "800", color: "var(--text-primary)" }}>{b.left || 0}</div>
-                                        <div style={{ fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.5px", margin: "4px 0" }}>{b.type}</div>
-                                        <div style={{ fontSize: "10px", color: "var(--text-tertiary)" }}>Available</div>
-                                        <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", marginTop: "10px" }}>
-                                            <div style={{ height: "100%", width: `${Math.max(0, (parseFloat(b.left as string || "0") / b.total) * 100 || 0)}%`, background: b.color, borderRadius: "2px" }} />
+                                ].map(b => {
+                                    const numVal = parseFloat(String(b.left ?? 0));
+                                    const formattedVal = isNaN(numVal) ? '0' : (numVal % 1 === 0 ? numVal.toString() : numVal.toFixed(2));
+                                    return (
+                                        <div key={b.type} style={{
+                                            padding: "18px", borderRadius: "16px",
+                                            background: "rgba(255,255,255,0.03)",
+                                            border: `1px solid var(--border-light)`,
+                                            borderTop: `3px solid ${b.color}`,
+                                            textAlign: "center"
+                                        }}>
+                                            <div style={{ fontSize: "32px", fontWeight: "800", color: "var(--text-primary)" }}>{formattedVal}</div>
+                                            <div style={{ fontSize: "11px", color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: "0.5px", margin: "4px 0" }}>{b.type}</div>
+                                            <div style={{ fontSize: "10px", color: "var(--text-tertiary)" }}>Available</div>
+                                            <div style={{ height: "4px", background: "rgba(255,255,255,0.05)", borderRadius: "2px", marginTop: "10px" }}>
+                                                <div style={{ height: "100%", width: `${Math.max(0, (numVal / b.total) * 100 || 0)}%`, background: b.color, borderRadius: "2px" }} />
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div style={{ marginTop: "20px", padding: "16px", borderRadius: "14px", background: "rgba(255,69,58,0.06)", border: "1px solid rgba(255,69,58,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                                 <span style={{ fontWeight: "600", color: "var(--text-secondary)", fontSize: "14px" }}>Total Days Used This Year</span>
