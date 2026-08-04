@@ -29,11 +29,11 @@ const GlassCard: React.FC<GlassCardProps> = ({
     <div
       className={`glass-card ${className}`}
       style={{
-        backdropFilter: 'blur(25px)',
+        backdropFilter: 'blur(20px)',
         background: 'var(--glass-bg)',
         border: '1px solid var(--border-light)',
-        borderRadius: '24px',
-        padding: '24px',
+        borderRadius: 'var(--card-radius)',
+        padding: 'clamp(1rem, 2.5vw, 1.5rem)',
         ...style
       }}
       onClick={onClick}

@@ -1,1 +1,19 @@
-/* Cleaned up for new theme */
+/* Responsive Reset & Base Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 100%; /* 1rem = 16px baseline */
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}

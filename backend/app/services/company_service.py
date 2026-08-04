@@ -68,6 +68,12 @@ class CompanyService:
             except Exception as e:
                 logger.error(f"Failed to process leave policy: {e}")
         
+        # Extract clean relative key if full/presigned URLs were sent in update_data
+        if update_data.get("logo_url") and not update_data["logo_url"].startswith("data:"):
+            update_data["logo_url"] = storage_service.extract_relative_key(update_data["logo_url"])
+        if update_data.get("leave_policy_url") and not update_data["leave_policy_url"].startswith("data:"):
+            update_data["leave_policy_url"] = storage_service.extract_relative_key(update_data["leave_policy_url"])
+        
         if db_obj:
             old_logo = db_obj.logo_url
             old_policy = db_obj.leave_policy_url

@@ -105,22 +105,22 @@ export default function LeaveManagement() {
     <div className="dashboard-container">
       <Header role={currentRole} title={`${currentRole} Leave Oversight`} />
 
-      <div style={{ marginBottom: "30px" }}>
-        <h1 style={{ fontSize: "32px", fontWeight: "700" }}>{currentRole} Status Oversight</h1>
-        <p className="subtitle">Monitoring all employee leave requests and approvals across the organization</p>
+      <div style={{ marginBottom: "clamp(1rem, 3vw, 1.875rem)" }}>
+        <h1 style={{ fontSize: "clamp(1.35rem, 1rem + 1.8vw, 2rem)", fontWeight: "700" }}>{currentRole} Status Oversight</h1>
+        <p className="subtitle" style={{ fontSize: "clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem)" }}>Monitoring all employee leave requests and approvals across the organization</p>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(8.5rem, 100%, 12rem), 1fr))', gap: 'clamp(0.625rem, 1.5vw, 1rem)', marginBottom: 'clamp(1.25rem, 3vw, 1.75rem)' }}>
         {[
           { label: 'Pending', value: allLeaves.filter(l => (l.status || '').toLowerCase() === 'pending').length, color: '#ff9f0a' },
           { label: 'Recommended', value: allLeaves.filter(l => (l.status || '').toLowerCase() === 'recommended').length, color: '#0a84ff' },
           { label: 'Approved', value: allLeaves.filter(l => (l.status || '').toLowerCase() === 'approved').length, color: '#30d158' },
           { label: 'Rejected', value: allLeaves.filter(l => (l.status || '').toLowerCase() === 'rejected').length, color: '#ff453a' },
         ].map(stat => (
-          <div key={stat.label} style={{ flex: 1, padding: '14px 16px', borderRadius: '14px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-light)' }}>
-            <div style={{ fontSize: '26px', fontWeight: '700', color: 'var(--text-primary)' }}>{stat.value}</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '4px' }}>{stat.label}</div>
+          <div key={stat.label} style={{ flex: 1, padding: 'clamp(0.75rem, 1.5vw, 1rem)', borderRadius: 'var(--input-radius)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-light)' }}>
+            <div style={{ fontSize: 'clamp(1.25rem, 1rem + 1vw, 1.625rem)', fontWeight: '700', color: 'var(--text-primary)' }}>{stat.value}</div>
+            <div style={{ fontSize: '0.6875rem', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '0.25rem' }}>{stat.label}</div>
           </div>
         ))}
       </div>

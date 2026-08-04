@@ -213,16 +213,9 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const displayRole = roleMap[roleKey] || (role.charAt(0).toUpperCase() + role.slice(1).replace(/([A-Z])/g, ' $1').trim());
 
   return (
-    <div className="top-header" style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '40px',
-      paddingBottom: '20px',
-      borderBottom: '1px solid var(--border-light)'
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+    <div className="top-header">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 2vw, 1.5rem)', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 1.5vw, 1.25rem)' }}>
           {!isDashboard && (
             <button
               onClick={() => navigate(-1)}
@@ -230,10 +223,10 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 100%)',
                 border: '1px solid rgba(255, 255, 255, 0.15)',
                 color: '#ffffff',
-                width: '40px',
-                height: '40px',
+                width: 'clamp(2.25rem, 5vw, 2.5rem)',
+                height: 'clamp(2.25rem, 5vw, 2.5rem)',
                 padding: '0',
-                borderRadius: '12px',
+                borderRadius: '0.75rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -242,6 +235,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
                 boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+                flexShrink: 0
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.background = 'linear-gradient(135deg, rgba(10, 132, 255, 0.35) 0%, rgba(10, 132, 255, 0.15) 100%)';
@@ -257,14 +251,16 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               }}
               title="Go Back"
             >
-              <FaArrowLeft size={15} />
+              <FaArrowLeft size={14} />
             </button>
           )}
-          <Logo width="260px" height="68px" layout="horizontal" showTagline={false} />
+          <div style={{ maxWidth: 'clamp(140px, 30vw, 260px)' }}>
+            <Logo width="100%" height="auto" layout="horizontal" showTagline={false} />
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.75rem, 2vw, 1.25rem)', flexWrap: 'wrap' }}>
         <div
           style={{
             display: 'flex',

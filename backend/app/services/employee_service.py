@@ -640,6 +640,9 @@ class EmployeeService:
                     print(f"[STORAGE SYNC] Processed base64 {field} for {employee_id} -> {path}")
                 except Exception as e:
                     print(f"[EMPLOYEE SERVICE ERROR] Failed to process base64 {field}: {e}")
+            elif val and isinstance(val, str) and not val.startswith("data:"):
+                # Clean full/presigned URLs into relative keys
+                obj_data[field] = storage_service.extract_relative_key(val)
             elif val == "" and old_val and not old_val.startswith(("http", "data:")):
                 # Clean up file when explicitly cleared
                 storage_service.delete_file(old_val)
