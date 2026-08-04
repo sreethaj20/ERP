@@ -257,18 +257,6 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           <div style={{ maxWidth: 'clamp(140px, 30vw, 260px)' }}>
             <Logo width="100%" height="auto" layout="horizontal" showTagline={false} />
           </div>
-          {title && (
-            <div className="header-title-badge" style={{
-              fontSize: 'clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem)',
-              fontWeight: 600,
-              color: 'var(--text-secondary)',
-              paddingLeft: '0.75rem',
-              borderLeft: '1px solid var(--border-light)',
-              whiteSpace: 'nowrap'
-            }}>
-              {title}
-            </div>
-          )}
         </div>
       </div>
 
