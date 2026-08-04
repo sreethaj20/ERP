@@ -42,22 +42,29 @@ class LeaveService:
         type_map = {
             "casual": "casual_leave",
             "casual leave": "casual_leave",
+            "casual_leave": "casual_leave",
             "casual/earned": "casual_leave",
             "casual/earned leave": "casual_leave",
             "casual / earned": "casual_leave",
             "casual / earned leave": "casual_leave",
             "earned": "casual_leave",
             "earned leave": "casual_leave",
+            "earned_leave": "casual_leave",
             "sick": "sick_leave",
             "sick leave": "sick_leave",
+            "sick_leave": "sick_leave",
             "maternity": "maternity_leave",
             "maternity leave": "maternity_leave",
+            "maternity_leave": "maternity_leave",
             "paternity": "paternity_leave",
             "paternity leave": "paternity_leave",
+            "paternity_leave": "paternity_leave",
             "bereavement": "bereavement_leave",
             "bereavement leave": "bereavement_leave",
+            "bereavement_leave": "bereavement_leave",
             "unpaid": "unpaid_leave",
-            "unpaid leave": "unpaid_leave"
+            "unpaid leave": "unpaid_leave",
+            "unpaid_leave": "unpaid_leave"
         }
         leave_type_clean = obj_in.leave_type.lower().strip()
         balance_field = type_map.get(leave_type_clean)
@@ -65,7 +72,8 @@ class LeaveService:
             if "casual" in leave_type_clean or "earned" in leave_type_clean:
                 balance_field = "casual_leave"
             else:
-                balance_field = leave_type_clean.replace(" ", "_").replace("/", "_") + "_leave"
+                clean_name = leave_type_clean.replace(" ", "_").replace("/", "_")
+                balance_field = clean_name if clean_name.endswith("_leave") else f"{clean_name}_leave"
              
         available = getattr(balance, balance_field, Decimal("0.00"))
         
@@ -125,22 +133,29 @@ class LeaveService:
                     type_map = {
                         "casual": "casual_leave",
                         "casual leave": "casual_leave",
+                        "casual_leave": "casual_leave",
                         "casual/earned": "casual_leave",
                         "casual/earned leave": "casual_leave",
                         "casual / earned": "casual_leave",
                         "casual / earned leave": "casual_leave",
                         "earned": "casual_leave",
                         "earned leave": "casual_leave",
+                        "earned_leave": "casual_leave",
                         "sick": "sick_leave",
                         "sick leave": "sick_leave",
+                        "sick_leave": "sick_leave",
                         "maternity": "maternity_leave",
                         "maternity leave": "maternity_leave",
+                        "maternity_leave": "maternity_leave",
                         "paternity": "paternity_leave",
                         "paternity leave": "paternity_leave",
+                        "paternity_leave": "paternity_leave",
                         "bereavement": "bereavement_leave",
                         "bereavement leave": "bereavement_leave",
+                        "bereavement_leave": "bereavement_leave",
                         "unpaid": "unpaid_leave",
-                        "unpaid leave": "unpaid_leave"
+                        "unpaid leave": "unpaid_leave",
+                        "unpaid_leave": "unpaid_leave"
                     }
                     leave_type_clean = db_obj.leave_type.lower().strip()
                     field = type_map.get(leave_type_clean)
@@ -148,9 +163,8 @@ class LeaveService:
                         if "casual" in leave_type_clean or "earned" in leave_type_clean:
                             field = "casual_leave"
                         else:
-                            field = leave_type_clean.replace(" ", "_").replace("/", "_")
-                            if not field.endswith("_leave"):
-                                field += "_leave"
+                            clean_field = leave_type_clean.replace(" ", "_").replace("/", "_")
+                            field = clean_field if clean_field.endswith("_leave") else f"{clean_field}_leave"
                     
                     if hasattr(balance, field):
                         current_val = getattr(balance, field) or Decimal("0.00")
@@ -371,10 +385,14 @@ class LeavePolicyService:
         # 🔄 AUTOMATIC CARRY-FORWARD & SYNC:
         # When HR updates monthly policy, carry forward any leftover leaves from previous month to all employees
         try:
-            field_name = f"{leave_type.lower().replace(' ', '_')}_leave"
+            clean_type = leave_type.lower().strip().replace(' ', '_')
+            field_name = clean_type if clean_type.endswith('_leave') else f"{clean_type}_leave"
             if "casual" in field_name: field_name = "casual_leave"
             if "sick" in field_name: field_name = "sick_leave"
             if "earned" in field_name: field_name = "earned_leave"
+            if "maternity" in field_name: field_name = "maternity_leave"
+            if "paternity" in field_name: field_name = "paternity_leave"
+            if "bereavement" in field_name: field_name = "bereavement_leave"
             
             balances = db.query(LeaveBalance).filter(LeaveBalance.deleted_at == None).all()
             for b in balances:
@@ -444,12 +462,12 @@ class LeaveBalanceService:
             
             default_data = {
                 "employee_id": employee_id,
-                "casual_leave": policies.get("casual", 12.0),
-                "sick_leave": policies.get("sick", 12.0),
+                "casual_leave": policies.get("casual") or policies.get("casual leave") or 12.0,
+                "sick_leave": policies.get("sick") or policies.get("sick leave") or 12.0,
                 "earned_leave": 0.0,
-                "maternity_leave": policies.get("maternity", 90.0),
-                "paternity_leave": policies.get("paternity", 15.0),
-                "bereavement_leave": policies.get("bereavement", 5.0),
+                "maternity_leave": policies.get("maternity") or policies.get("maternity leave") or 90.0,
+                "paternity_leave": policies.get("paternity") or policies.get("paternity leave") or 15.0,
+                "bereavement_leave": policies.get("bereavement") or policies.get("bereavement leave") or 5.0,
                 "unpaid_leave": 0.0,
                 "total_credited": sum(policies.values()) if policies else 134.0,
                 "total_used": 0.0,

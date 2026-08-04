@@ -276,11 +276,11 @@ export default function StaffLeaveManagement({ role, roleLabel }: Props) {
                             <>
                             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "16px", marginTop: "20px" }}>
                                 {[
-                                    { type: "Casual/Earned", total: 12, left: (parseFloat(balances.casual_leave || 0) + parseFloat(balances.earned_leave || 0)), color: "#0a84ff" },
-                                    { type: "Sick", total: 12, left: balances.sick_leave, color: "#30d158" },
-                                    { type: "Maternity", total: 90, left: balances.maternity_leave || 0, color: "#ff9f0a" },
-                                    { type: "Paternity", total: 15, left: balances.paternity_leave || 0, color: "#007aff" },
-                                    { type: "Bereavement", total: 5, left: balances.bereavement_leave || 0, color: "#ff453a" },
+                                    { type: "Casual/Earned", total: 12, left: (parseFloat(balances.casual_leave ?? balances.casual ?? 0) + parseFloat(balances.earned_leave ?? balances.earned ?? 0)), color: "#0a84ff" },
+                                    { type: "Sick", total: 12, left: balances.sick_leave ?? balances.sick ?? 0, color: "#30d158" },
+                                    { type: "Maternity", total: 90, left: balances.maternity_leave ?? balances.maternity ?? 0, color: "#ff9f0a" },
+                                    { type: "Paternity", total: 15, left: balances.paternity_leave ?? balances.paternity ?? 0, color: "#007aff" },
+                                    { type: "Bereavement", total: 5, left: balances.bereavement_leave ?? balances.bereavement ?? 0, color: "#ff453a" },
                                 ].map(b => (
                                     <div key={b.type} style={{
                                         padding: "18px", borderRadius: "16px",

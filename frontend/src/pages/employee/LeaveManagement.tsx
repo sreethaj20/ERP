@@ -52,13 +52,14 @@ export default function LeaveManagement() {
         if (!balancesData) return 0;
         const lower = type.toLowerCase().trim();
         if (lower.includes("casual") || lower.includes("earned")) {
-            const casualVal = parseFloat(String(balancesData["casual_leave"] || 0));
-            const earnedVal = parseFloat(String(balancesData["earned_leave"] || 0));
+            const casualVal = parseFloat(String(balancesData["casual_leave"] ?? balancesData["casual"] ?? 0));
+            const earnedVal = parseFloat(String(balancesData["earned_leave"] ?? balancesData["earned"] ?? 0));
             const sum = (isNaN(casualVal) ? 0 : casualVal) + (isNaN(earnedVal) ? 0 : earnedVal);
             return isNaN(sum) ? 0 : sum;
         }
-        const key = `${lower}_leave`;
-        const val = parseFloat(String(balancesData[key] || 0));
+        const keyWithLeave = lower.endsWith("_leave") ? lower : `${lower}_leave`;
+        const keyWithoutLeave = lower.replace(/_leave$/, "");
+        const val = parseFloat(String(balancesData[keyWithLeave] ?? balancesData[keyWithoutLeave] ?? 0));
         return isNaN(val) ? 0 : val;
     };
 

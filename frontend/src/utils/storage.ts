@@ -1047,7 +1047,7 @@ export const updateEmployeeLeaveBalance = async (id: any, newBalances: any) => {
     if (targetEmployees.length === 0) return;
 
     for (const emp of targetEmployees) {
-        const currentBalances = emp.leave_balances || { casual: 12, sick: 12, earned: 0, maternity: 0, total_used: 0 };
+        const currentBalances = emp.leave_balances || { casual: 12, sick: 12, earned: 0, maternity: 90, casual_leave: 12, sick_leave: 12, maternity_leave: 90, total_used: 0 };
         const used = Number(currentBalances.total_used || emp.used_leaves || 0) || 0;
         const updatedBalances: any = { ...currentBalances };
 
@@ -1057,6 +1057,11 @@ export const updateEmployeeLeaveBalance = async (id: any, newBalances: any) => {
             // Subtract used leaves from total quota so remaining balance is net available
             const netAvailable = Math.max(0, newQuota - used);
             updatedBalances[key] = netAvailable;
+            if (key.endsWith("_leave")) {
+                updatedBalances[key.replace(/_leave$/, "")] = netAvailable;
+            } else {
+                updatedBalances[`${key}_leave`] = netAvailable;
+            }
         }
 
         await updateEmployee(emp.employee_id || emp.id, { leave_balances: updatedBalances });

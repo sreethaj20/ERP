@@ -51,15 +51,15 @@ export default function LeaveBalanceView() {
           </GlassCard>
   
           <GlassCard title="Maternity Leave" subtitle="Special Category">
-            <h2 style={balanceStyle}>{formatDays(balances.maternity_leave)} Days Left</h2>
+            <h2 style={balanceStyle}>{formatDays(balances.maternity_leave ?? balances.maternity)} Days Left</h2>
           </GlassCard>
 
           <GlassCard title="Paternity Leave" subtitle="Special Category">
-            <h2 style={balanceStyle}>{formatDays(balances.paternity_leave)} Days Left</h2>
+            <h2 style={balanceStyle}>{formatDays(balances.paternity_leave ?? balances.paternity)} Days Left</h2>
           </GlassCard>
 
           <GlassCard title="Bereavement" subtitle="Special Category">
-            <h2 style={balanceStyle}>{formatDays(balances.bereavement_leave)} Days Left</h2>
+            <h2 style={balanceStyle}>{formatDays(balances.bereavement_leave ?? balances.bereavement)} Days Left</h2>
           </GlassCard>
   
           <GlassCard title="Used Leaves" subtitle="Year to date">
@@ -75,12 +75,12 @@ export default function LeaveBalanceView() {
           <GlassCard title="Total Available" subtitle="Combined Quota">
             <h2 style={{ ...balanceStyle, color: '#30d158' }}>
                 {formatDays(
-                  parseFloat(balances.casual_leave || 0) + 
-                  parseFloat(balances.sick_leave || 0) + 
-                  parseFloat(balances.earned_leave || 0) +
-                  parseFloat(balances.maternity_leave || 0) +
-                  parseFloat(balances.paternity_leave || 0) +
-                  parseFloat(balances.bereavement_leave || 0)
+                  parseFloat(balances.casual_leave ?? balances.casual ?? 0) + 
+                  parseFloat(balances.sick_leave ?? balances.sick ?? 0) + 
+                  parseFloat(balances.earned_leave ?? balances.earned ?? 0) +
+                  parseFloat(balances.maternity_leave ?? balances.maternity ?? 0) +
+                  parseFloat(balances.paternity_leave ?? balances.paternity ?? 0) +
+                  parseFloat(balances.bereavement_leave ?? balances.bereavement ?? 0)
                 )} Days
             </h2>
           </GlassCard>

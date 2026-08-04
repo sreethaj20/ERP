@@ -100,12 +100,12 @@ export default function LeaveBalance() {
                         <div style={{ fontWeight: '600' }}>{emp.name}</div>
                         <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{emp.id}</div>
                       </td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{(parseFloat(b.casual || 0) + parseFloat(b.earned || 0))}</td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-orange)' }}>{b.sick}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{(parseFloat(b.casual ?? b.casual_leave ?? 0) + parseFloat(b.earned ?? b.earned_leave ?? 0))}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-orange)' }}>{b.sick ?? b.sick_leave ?? 0}</td>
                       <td style={{ padding: '12px 8px', color: 'var(--accent-green)', fontWeight: '700' }}>{b.carry_forward || b.carry_forward_days || 0}d</td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-purple)' }}>{b.maternity}</td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{b.paternity || 0}</td>
-                      <td style={{ padding: '12px 8px', color: 'var(--accent-red)' }}>{b.bereavement || 0}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-purple)' }}>{b.maternity ?? b.maternity_leave ?? 0}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-blue)' }}>{b.paternity ?? b.paternity_leave ?? 0}</td>
+                      <td style={{ padding: '12px 8px', color: 'var(--accent-red)' }}>{b.bereavement ?? b.bereavement_leave ?? 0}</td>
                     </tr>
                   );
                 })}

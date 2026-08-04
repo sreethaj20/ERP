@@ -189,7 +189,15 @@ class EmployeeService:
                     "maternity": float(balance.maternity_leave),
                     "paternity": float(balance.paternity_leave),
                     "bereavement": float(balance.bereavement_leave),
-                    "unpaid": float(balance.unpaid_leave)
+                    "unpaid": float(balance.unpaid_leave),
+                    "casual_leave": float(balance.casual_leave),
+                    "sick_leave": float(balance.sick_leave),
+                    "earned_leave": float(balance.earned_leave),
+                    "maternity_leave": float(balance.maternity_leave),
+                    "paternity_leave": float(balance.paternity_leave),
+                    "bereavement_leave": float(balance.bereavement_leave),
+                    "unpaid_leave": float(balance.unpaid_leave),
+                    "total_used": float(getattr(balance, "total_used", 0.0) or 0.0)
                 }
             
             # 🛠️ Auto-Heal: Ensure master data is synced from lifecycle tables
@@ -355,7 +363,15 @@ class EmployeeService:
                         "maternity": float(balance.maternity_leave),
                         "paternity": float(balance.paternity_leave),
                         "bereavement": float(balance.bereavement_leave),
-                        "unpaid": float(balance.unpaid_leave)
+                        "unpaid": float(balance.unpaid_leave),
+                        "casual_leave": float(balance.casual_leave),
+                        "sick_leave": float(balance.sick_leave),
+                        "earned_leave": float(balance.earned_leave),
+                        "maternity_leave": float(balance.maternity_leave),
+                        "paternity_leave": float(balance.paternity_leave),
+                        "bereavement_leave": float(balance.bereavement_leave),
+                        "unpaid_leave": float(balance.unpaid_leave),
+                        "total_used": float(getattr(balance, "total_used", 0.0) or 0.0)
                     }
                 
                 final_list.append(self.hydrate_employee(emp_dict))
@@ -382,7 +398,15 @@ class EmployeeService:
                         "maternity": float(balance.maternity_leave),
                         "paternity": float(balance.paternity_leave),
                         "bereavement": float(balance.bereavement_leave),
-                        "unpaid": float(balance.unpaid_leave)
+                        "unpaid": float(balance.unpaid_leave),
+                        "casual_leave": float(balance.casual_leave),
+                        "sick_leave": float(balance.sick_leave),
+                        "earned_leave": float(balance.earned_leave),
+                        "maternity_leave": float(balance.maternity_leave),
+                        "paternity_leave": float(balance.paternity_leave),
+                        "bereavement_leave": float(balance.bereavement_leave),
+                        "unpaid_leave": float(balance.unpaid_leave),
+                        "total_used": float(getattr(balance, "total_used", 0.0) or 0.0)
                     }
                     
                 final_list.append(self.hydrate_employee(emp))
