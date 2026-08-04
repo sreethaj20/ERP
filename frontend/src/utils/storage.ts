@@ -133,6 +133,9 @@ export const initStorage = async () => {
             refreshHolidays()
         ];
 
+        // Common tasks for all roles
+        tasks.push(refreshHolidays());
+
         // Conditional role-based data injection
         if (role === "manager") {
             tasks.push(
@@ -173,7 +176,7 @@ export const initStorage = async () => {
         } else {
             tasks.push(
                 refreshAttendance(),
-                refreshLeaves(), refreshCompanyProfile(), refreshPreboarding(), refreshOnboarding(), refreshOffboarding(), refreshHolidays()
+                refreshLeaves(), refreshCompanyProfile(), refreshPreboarding(), refreshOnboarding(), refreshOffboarding()
             );
         }
 
@@ -771,7 +774,12 @@ export const getEmployeePreboardingList = async () => {
 export const getOffboardingRequests = () => _offboarding;
 
 export const getRoles = () => _roles;
-export const getHolidays = () => _holidays;
+export const getHolidays = () => {
+    if (!_holidays || _holidays.length === 0) {
+        refreshHolidays();
+    }
+    return _holidays || [];
+};
 export const getAnnouncements = async (force: boolean = false) => {
     if (_announcements.length === 0 || force) await refreshAnnouncements();
     return _announcements;

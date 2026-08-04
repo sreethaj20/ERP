@@ -567,6 +567,8 @@ th, td {
     white-space: nowrap;
     flex-shrink: 0;
     -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
     -webkit-tap-highlight-color: transparent !important;
 }
 

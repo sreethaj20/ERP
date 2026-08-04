@@ -123,6 +123,8 @@
   outline: none !important;
   border: none !important;
   -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
   -webkit-tap-highlight-color: transparent !important;
 }
 
