@@ -257,6 +257,18 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           <div style={{ maxWidth: 'clamp(140px, 30vw, 260px)' }}>
             <Logo width="100%" height="auto" layout="horizontal" showTagline={false} />
           </div>
+          {title && (
+            <div className="header-title-badge" style={{
+              fontSize: 'clamp(0.8125rem, 0.75rem + 0.3vw, 0.9375rem)',
+              fontWeight: 600,
+              color: 'var(--text-secondary)',
+              paddingLeft: '0.75rem',
+              borderLeft: '1px solid var(--border-light)',
+              whiteSpace: 'nowrap'
+            }}>
+              {title}
+            </div>
+          )}
         </div>
       </div>
 
@@ -271,17 +283,18 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
         >
           <div
             style={{
-              fontSize: '14px',
+              fontSize: 'clamp(0.75rem, 0.7rem + 0.3vw, 0.875rem)',
               color: 'var(--text-secondary)',
               fontWeight: 500,
               letterSpacing: '0.2px'
             }}
           >
-            Welcome back, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>!
+            Welcome, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>
+            <span style={{ fontSize: '0.6875rem', color: 'var(--accent-blue)', marginLeft: '0.375rem', fontWeight: 600, textTransform: 'uppercase' }}>({displayRole})</span>
           </div>
           <div
             style={{
-              fontSize: '12px',
+              fontSize: '0.75rem',
               color: session?.on_break ? '#ff9f0a' : isOvertime ? '#30d158' : 'var(--accent-blue, #0a84ff)',
               fontWeight: 600,
               fontFamily: 'monospace',
@@ -329,19 +342,19 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
         </div>
 
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(0.5rem, 1.5vw, 1rem)' }}>
           {/* Notifications */}
           <div style={{ position: 'relative' }}>
             <div
               onClick={() => setShowNotifications(!showNotifications)}
-              style={{ position: 'relative', cursor: 'pointer', color: showNotifications ? 'var(--accent-blue)' : 'var(--text-secondary)', transition: 'all 0.2s' }}
+              style={{ position: 'relative', cursor: 'pointer', color: showNotifications ? 'var(--accent-blue)' : 'var(--text-secondary)', transition: 'all 0.2s', padding: '4px' }}
             >
-              <FaBell size={20} />
+              <FaBell size={18} />
               {unreadCount > 0 && (
                 <span style={{
-                  position: 'absolute', top: '-5px', right: '-5px',
+                  position: 'absolute', top: '-2px', right: '-2px',
                   background: 'var(--accent-red)', color: 'white',
-                  fontSize: '10px', padding: '2px 5px', borderRadius: '10px',
+                  fontSize: '9px', padding: '2px 4px', borderRadius: '10px',
                   fontWeight: 'bold', border: '2px solid #1c1c1e'
                 }}>{unreadCount}</span>
               )}
@@ -349,13 +362,13 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
 
             {showNotifications && (
               <div style={{
-                position: 'absolute', top: '40px', right: '0', width: '320px',
+                position: 'absolute', top: '36px', right: '0', width: 'clamp(260px, 80vw, 320px)',
                 background: '#1c1c1e', border: '1px solid var(--border-light)',
                 borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
                 zIndex: 1000, overflow: 'hidden'
               }}>
-                <div style={{ padding: '15px 20px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: '700', fontSize: '14px' }}>Notifications</span>
+                <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: '700', fontSize: '13px' }}>Notifications</span>
                   {unreadCount > 0 && (
                     <button
                       onClick={() => notifications.forEach(n => !n.read && markNotificationRead(n.id))}
@@ -365,9 +378,9 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
                     </button>
                   )}
                 </div>
-                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                   {notifications.length === 0 ? (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '13px' }}>
+                    <div style={{ padding: '30px 16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>
                       No new notifications
                     </div>
                   ) : (
@@ -379,41 +392,33 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
                           setShowNotifications(false);
                         }}
                         style={{
-                          padding: '15px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)',
+                          padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.03)',
                           cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(0,122,255,0.05)',
                           transition: 'all 0.2s'
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '11px', fontWeight: '700', color: n.read ? 'var(--text-tertiary)' : 'var(--accent-blue)', textTransform: 'uppercase' }}>{n.type}</span>
+                          <span style={{ fontSize: '10px', fontWeight: '700', color: n.read ? 'var(--text-tertiary)' : 'var(--accent-blue)', textTransform: 'uppercase' }}>{n.type}</span>
                           <span style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
-                        <p style={{ fontSize: '13px', margin: 0, color: n.read ? 'var(--text-secondary)' : '#fff', lineHeight: '1.4' }}>{n.message}</p>
+                        <p style={{ fontSize: '12px', margin: 0, color: n.read ? 'var(--text-secondary)' : '#fff', lineHeight: '1.4' }}>{n.message}</p>
                       </div>
                     ))
                   )}
                 </div>
-                {notifications.length > 0 && (
-                  <div style={{ padding: '12px', textAlign: 'center', background: 'rgba(255,255,255,0.02)' }}>
-                    <button style={{ background: 'none', border: 'none', color: 'var(--text-tertiary)', fontSize: '12px', cursor: 'pointer' }}>View All Activity</button>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
           <div
             onClick={() => navigate(`/${role.toLowerCase().replace(/\s/g, '')}/profile`)}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingLeft: '5px', cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+            title="View Profile"
           >
-            <div style={{ textAlign: 'right', display: 'none', md: 'block' } as any}>
-              <div style={{ fontSize: '14px', fontWeight: '600' }}>{userName}</div>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>{displayRole}</div>
-            </div>
             {userPhoto ? (
               <img src={getFileUrl(userPhoto)} alt={userName} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
-              <FaUserCircle size={32} color="var(--text-secondary)" />
+              <FaUserCircle size={28} color="var(--text-secondary)" />
             )}
           </div>
         </div>
