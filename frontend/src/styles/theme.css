@@ -168,6 +168,9 @@
 
 /* BUTTONS - Glassy Gradient */
 .apple-btn {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   background: var(--accent-gradient);
   border: none;
   border-radius: 16px;
@@ -176,6 +179,7 @@
   cursor: pointer;
   position: relative;
   overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .apple-btn::before {
@@ -198,7 +202,14 @@
 
 /* RESPONSIVE TABLE & BADGE PROTECTIONS */
 .apple-btn,
-button {
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
 }
 
