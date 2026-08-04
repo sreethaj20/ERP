@@ -33,10 +33,16 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            if (/[\\/]node_modules[\\/](xlsx|file-saver)[\\/]/.test(id)) {
+              return 'vendor-excel';
+            }
+            if (/[\\/]node_modules[\\/](jspdf|jspdf-autotable|html2canvas)[\\/]/.test(id)) {
+              return 'vendor-pdf';
+            }
             if (/[\\/]node_modules[\\/](react-icons|lucide-react)[\\/]/.test(id)) {
               return 'vendor-icons';
             }
-            if (/[\\/]node_modules[\\/](recharts|d3-shape|d3-scale|d3-path)[\\/]/.test(id)) {
+            if (/[\\/]node_modules[\\/](recharts|d3-shape|d3-scale|d3-path|d3-array|d3-interpolate|d3-color)[\\/]/.test(id)) {
               return 'vendor-charts';
             }
             if (/[\\/]node_modules[\\/](framer-motion)[\\/]/.test(id)) {
@@ -48,7 +54,7 @@ export default defineConfig({
             if (/[\\/]node_modules[\\/](react|react-dom|scheduler|loose-envify)[\\/]/.test(id)) {
               return 'vendor-react';
             }
-            return 'vendor-libs';
+            return 'vendor-core';
           }
         }
       }
