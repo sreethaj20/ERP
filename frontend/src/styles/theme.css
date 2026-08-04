@@ -39,8 +39,7 @@
 
 /* CORE GLASS EFFECT - Fixed/Enhanced */
 .glass-card,
-.glass-element,
-.bottom-dock {
+.glass-element {
   position: relative;
   isolation: isolate;
   background: var(--glass-bg);
@@ -52,8 +51,7 @@
 }
 
 /* GLASS GLOW LAYER */
-.glass-card::before,
-.bottom-dock::before {
+.glass-card::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -93,14 +91,17 @@
 .bottom-dock {
   background: var(--glass-heavy);
   backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
   border: 1px solid var(--border-light);
   border-radius: 50px;
+  -webkit-border-radius: 50px;
   padding: 12px 20px;
   display: flex;
   align-items: center;
   gap: 16px;
   box-shadow: var(--shadow-lg);
   transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  overflow: hidden;
 }
 
 .dock-item {
