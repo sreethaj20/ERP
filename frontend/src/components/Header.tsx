@@ -289,8 +289,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
               letterSpacing: '0.2px'
             }}
           >
-            Welcome, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>
-            <span style={{ fontSize: '0.6875rem', color: 'var(--accent-blue)', marginLeft: '0.375rem', fontWeight: 600, textTransform: 'uppercase' }}>({displayRole})</span>
+            Welcome, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>!
           </div>
           <div
             style={{
