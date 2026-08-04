@@ -384,22 +384,37 @@ export default function ManagerDashboard() {
               );
 
               const AccessRow = ({label, desc, icon, iconBg, iconColor, checked, onChange}: any) => (
-              <div className="access-row-card">
-                <div className="access-info">
-                  <div className="access-icon-wrapper" style={{ background: iconBg, color: iconColor }}>
-                    {icon}
-                  </div>
-                  <div>
-                    <div className="access-label">{label}</div>
-                    <div className="access-desc">{desc}</div>
-                  </div>
-                </div>
-                <label className="switch-premium">
-                  <input type="checkbox" checked={checked} onChange={onChange} />
-                  <span className="slider-premium"></span>
-                </label>
-              </div>
-              );
+  <div className="access-row-card">
+    <div className="access-info">
+      <div className="access-icon-wrapper" style={{ background: iconBg, color: iconColor }}>
+        {icon}
+      </div>
+      <div>
+        <div className="access-label">{label}</div>
+        <div className="access-desc">{desc}</div>
+      </div>
+    </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <span style={{
+        fontSize: '11px',
+        fontWeight: '700',
+        textTransform: 'uppercase',
+        letterSpacing: '0.5px',
+        color: checked ? '#30d158' : '#ff453a',
+        background: checked ? 'rgba(48, 209, 88, 0.12)' : 'rgba(255, 69, 58, 0.12)',
+        padding: '4px 10px',
+        borderRadius: '20px',
+        border: `1px solid ${checked ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 69, 58, 0.3)'}`
+      }}>
+        {checked ? 'Granted' : 'Revoked'}
+      </span>
+      <label className="switch-premium">
+        <input type="checkbox" checked={checked} onChange={onChange} />
+        <span className="slider-premium"></span>
+      </label>
+    </div>
+  </div>
+);
 
 
               const iconCircleStyle: React.CSSProperties = {

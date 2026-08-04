@@ -91,6 +91,110 @@ input[type="reset"],
     box-shadow: none;
 }
 
+/* === EMERGENCY CONTROL & PREMIUM SWITCH STYLING === */
+.emergency-control-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.access-row-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    transition: all 0.2s ease;
+}
+
+.access-row-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.access-info {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.access-icon-wrapper {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+}
+
+.access-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+}
+
+.access-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.switch-premium {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.switch-premium input {
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+}
+
+.slider-premium {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.12);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.slider-premium:before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #ffffff;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.switch-premium input:checked + .slider-premium {
+    background-color: #30d158;
+    border-color: rgba(48, 209, 88, 0.4);
+    box-shadow: 0 0 12px rgba(48, 209, 88, 0.3);
+}
+
+.switch-premium input:checked + .slider-premium:before {
+    transform: translateX(22px);
+}
+
 button:focus,
 a:focus,
 input:focus,
