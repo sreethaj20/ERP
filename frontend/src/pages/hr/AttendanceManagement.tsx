@@ -257,41 +257,89 @@ export default function AttendanceManagement() {
 
   const handleExportMonthlySummary = () => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthStr = monthNames[exportMonth];
+    const daysInMonth = new Date(exportYear, exportMonth + 1, 0).getDate();
+    const todayStr = new Date().toLocaleDateString('sv-SE');
+
     const exportData = activeWorkforce.map((m: any) => {
-      const stats = attendance.filter((a: any) => {
-        if (!a.date || !isEmpMatch(a.employee_id, m)) return false;
-        
-        const dateStr = normalizeDate(a.date);
-        const parts = dateStr.split('-');
-        if (parts.length < 3) return false;
-        const aYear = parseInt(parts[0], 10);
-        const aMonth = parseInt(parts[1], 10) - 1;
-        return aMonth === exportMonth && aYear === exportYear;
-      });
+      let presentCount = 0;
+      let halfDayCount = 0;
+      let leaveCount = 0;
+      let lopCount = 0;
+      let weekendCount = 0;
 
-      const present = stats.filter((s: any) => s.status === 'Present' || String(s.status || '').toLowerCase().includes('present')).length;
-      const leaves = stats.filter((s: any) => s.status === 'Leave' || String(s.status || '').toLowerCase().includes('leave')).length;
-      const lop = stats.filter((s: any) => s.status === 'Absent' || String(s.status || '').toLowerCase().includes('absent')).length;
-      const halfDay = stats.filter((s: any) => s.status === 'Half Day' || String(s.status || '').toLowerCase().includes('half')).length;
-      const totalDays = stats.length;
-
-      return {
+      const row: Record<string, any> = {
         "Employee ID": m.employee_id || m.id,
-        "Employee Name": m.name,
-        Department: m.department || 'N/A',
-        Role: m.role || 'N/A',
-        Month: monthNames[exportMonth],
-        Year: exportYear,
-        Present: present,
-        Leaves: leaves,
-        "LOP (Absent)": lop,
-        "Half Day": halfDay,
-        "Total Days Tracked": totalDays
+        "Employee Name": m.name || `${m.first_name || ''} ${m.last_name || ''}`.trim(),
+        "Department": m.department || 'N/A',
+        "Role": m.role || m.designation || 'Staff',
+        "Month": monthStr,
+        "Year": exportYear
       };
+
+      // Day-by-Day columns for every day in the selected month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const dayFormatted = String(day).padStart(2, '0');
+        const monthNumFormatted = String(exportMonth + 1).padStart(2, '0');
+        const dateStr = `${exportYear}-${monthNumFormatted}-${dayFormatted}`;
+        const colHeader = `${dayFormatted}-${monthStr}`;
+
+        const dateObj = new Date(exportYear, exportMonth, day);
+        const dayOfWeek = dateObj.getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+        const att = attendance.find((a: any) => {
+          if (!a.date || !isEmpMatch(a.employee_id, m)) return false;
+          return normalizeDate(a.date) === dateStr;
+        });
+
+        let statusText = "";
+        if (att) {
+          const s = String(att.status || '').toLowerCase();
+          if (s.includes('present') || s.includes('late') || s.includes('active')) {
+            statusText = "Present";
+            presentCount++;
+          } else if (s.includes('half')) {
+            statusText = "Half Day";
+            halfDayCount++;
+          } else if (s.includes('leave')) {
+            statusText = "Leave";
+            leaveCount++;
+          } else if (s.includes('absent') || s.includes('lop')) {
+            statusText = "LOP";
+            lopCount++;
+          } else {
+            statusText = att.status || "Present";
+            presentCount++;
+          }
+        } else {
+          if (isWeekend) {
+            statusText = "Weekend";
+            weekendCount++;
+          } else if (dateStr <= todayStr) {
+            statusText = "LOP";
+            lopCount++;
+          } else {
+            statusText = "-";
+          }
+        }
+
+        row[colHeader] = statusText;
+      }
+
+      // Overview summary at the end
+      row["OVERVIEW: Total Present"] = presentCount;
+      row["OVERVIEW: Total Half Days"] = halfDayCount;
+      row["OVERVIEW: Total Leaves"] = leaveCount;
+      row["OVERVIEW: Total LOP (Absent)"] = lopCount;
+      row["OVERVIEW: Total Weekends"] = weekendCount;
+      row["OVERVIEW: Total Payable Days"] = (presentCount + leaveCount + (halfDayCount * 0.5) + weekendCount);
+
+      return row;
     });
-    
-    downloadCSV(exportData, `Attendance_Monthly_${monthNames[exportMonth]}_${exportYear}.csv`);
-    showToast("Monthly CSV exported successfully!");
+
+    downloadCSV(exportData, `Attendance_Monthly_DayByDay_${monthStr}_${exportYear}.csv`);
+    showToast("Monthly Day-by-Day Summary CSV exported successfully!");
   };
 
   const handleCorrectionStatus = async (id: any, status: 'approved' | 'rejected', comment?: string) => {
