@@ -100,7 +100,7 @@ export default function ManagerDashboard() {
 
   const departmentalViews = [
     { title: "IT Ticket Pulse", subtitle: "System support health", path: "/manager/it-tickets", icon: <FaWrench color="#a2845e" /> },
-    { title: "Employee Queries", subtitle: "Handle non-IT support requests, view query history, and reply to staff", path: "/hr/tickets", icon: <FaUserTie color="#ff9f0a" /> },
+    { title: "HR Governance Hub", subtitle: "Handle non-IT support requests, view query history, and reply to staff", path: "/hr/tickets", icon: <FaUserTie color="#ff9f0a" /> },
     { title: "Recruiting Funnel", subtitle: "Pipeline & job health", path: "/manager/pipeline", icon: <FaSearch color="#ff2d55" /> },
     { title: "Leadership Status", subtitle: "TL & team connectivity", path: "/manager/team-status", icon: <FaUserShield color="#5e5ce6" /> },
     { title: "Staff Timesheets", subtitle: "All roles shift activity", path: "/manager/staff-timesheet", icon: <FaClock color="#30d158" /> },
