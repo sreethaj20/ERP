@@ -151,12 +151,12 @@ export default function TeamAttendance() {
       }
 
       // Overview summary at the end
-      row["OVERVIEW: Total Present"] = presentCount;
-      row["OVERVIEW: Total Half Days"] = halfDayCount;
-      row["OVERVIEW: Total Leaves"] = leaveCount;
-      row["OVERVIEW: Total LOP (Absent)"] = lopCount;
-      row["OVERVIEW: Total Weekends"] = weekendCount;
-      row["OVERVIEW: Total Payable Days"] = (presentCount + leaveCount + (halfDayCount * 0.5) + weekendCount);
+      row["Total Present"] = presentCount;
+      row["Total Half Days"] = halfDayCount;
+      row["Total Leaves"] = leaveCount;
+      row["Total LOP (Absent)"] = lopCount;
+      row["Total Weekends"] = weekendCount;
+      row["Total Payable Days"] = (presentCount + leaveCount + (halfDayCount * 0.5) + weekendCount);
 
       return row;
     });
