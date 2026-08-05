@@ -6,7 +6,7 @@ import {
     FaMoon, FaCalendarAlt, FaSearch, FaUserTie, FaCalendarCheck, FaDownload
 } from "react-icons/fa";
 import shiftService, { ShiftSession, ShiftDefinition, BreakLog } from "../../services/shiftService";
-import { getWorkingDaysInMonth, getEmployees, getEmployeeShift, getHolidays } from "../../utils/storage";
+import { getWorkingDaysInMonth, getEmployees, getEmployeeShift, getHolidays, refreshHolidays } from "../../utils/storage";
 import { formatLocalTime, parseISOToLocalDate, downloadCSV } from "../../utils/formatters";
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
@@ -126,8 +126,8 @@ export default function ShiftTimesheetPage() {
             const shifts = await shiftService.getShifts();
             setAllShifts(shifts);
 
-            const holidays = getHolidays();
-            setAllHolidays(holidays);
+            const holidays = await refreshHolidays();
+            setAllHolidays(holidays || []);
 
             let visibleSessions;
             if (isHR || isManager) {
@@ -347,12 +347,17 @@ export default function ShiftTimesheetPage() {
                 const isOff = (empShift?.week_off_days || ['Sunday']).includes(
                     ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]
                 );
+                const isHoliday = (allHolidays || []).some((h: any) => {
+                    if (!h || !h.date) return false;
+                    const hDate = typeof h.date === 'string' ? h.date.split('T')[0] : '';
+                    return hDate === dateStr;
+                });
 
                 const sessionOnDay = empSessions.find((s: any) => s.date === dateStr);
 
                 let statusText = "-";
                 if (dayNumber >= todayNumber) {
-                    statusText = "-";
+                    statusText = isHoliday ? "Holiday" : (isOff ? "Week Off" : "-");
                 } else if (sessionOnDay) {
                     const workSec = getSessionWorkSec(sessionOnDay);
                     if (isAttendancePresent(sessionOnDay)) {
@@ -366,11 +371,15 @@ export default function ShiftTimesheetPage() {
                     } else if (sessionOnDay.status === 'Absent') {
                         abs++;
                         statusText = "Absent";
+                    } else if (sessionOnDay.status === 'Holiday') {
+                        statusText = "Holiday";
                     } else {
                         statusText = sessionOnDay.status || "-";
                     }
                 } else {
-                    if (isOff) {
+                    if (isHoliday) {
+                        statusText = "Holiday";
+                    } else if (isOff) {
                         statusText = "Week Off";
                     } else {
                         abs++;

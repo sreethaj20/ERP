@@ -2027,22 +2027,33 @@ export const isAdminRole = (role: string) => {
 
 export const getWorkingDaysInMonth = (year: number, month: number, weekOffDays: string[] = ['Sunday'], holidays: any[] = []) => {
     let count = 0;
-    const date = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0).getDate();
 
     // Fallback to Sunday if weekOffDays is empty
     const finalWeekOffs = (weekOffDays && weekOffDays.length > 0) ? weekOffDays : ['Sunday'];
 
-    // Format holidays for easy comparison
-    const holidayDates = holidays.map(h => {
+    const effectiveHolidays = (holidays && holidays.length > 0) ? holidays : getHolidays();
+
+    // Format holidays for easy comparison (YYYY-MM-DD)
+    const holidayDates = effectiveHolidays.map((h: any) => {
+        if (!h || !h.date) return '';
+        if (typeof h.date === 'string') {
+            return h.date.split('T')[0];
+        }
         const d = h.date instanceof Date ? h.date : new Date(h.date);
-        return d.toISOString().split('T')[0];
-    });
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    }).filter(Boolean);
 
     for (let i = 1; i <= lastDay; i++) {
-        date.setDate(i);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-        const dateStr = date.toISOString().split('T')[0];
+        const curDate = new Date(year, month, i);
+        const dayName = curDate.toLocaleDateString('en-US', { weekday: 'long' });
+        const yyyy = curDate.getFullYear();
+        const mm = String(curDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(curDate.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
 
         if (!finalWeekOffs.includes(dayName) && !holidayDates.includes(dateStr)) {
             count++;
