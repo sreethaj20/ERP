@@ -57,15 +57,17 @@ const HRReports = () => {
 
   const loadStats = async () => {
     try {
-      const [employees, attendance, leaves] = await Promise.all([
+      const [employees, attendance, leavesData, balancesData] = await Promise.all([
         getEmployeesAsync().catch(() => []), 
         refreshAttendance().catch(() => []), 
-        refreshLeaves().catch(() => [])
+        api.get('hr/leaves').then(r => r.data).catch(() => refreshLeaves().catch(() => [])),
+        api.get('hr/leave-balance').then(r => r.data).catch(() => [])
       ]);
 
       const empList = Array.isArray(employees) ? employees : [];
       const attList = Array.isArray(attendance) ? attendance : [];
-      const leaveList = Array.isArray(leaves) ? leaves : [];
+      const leaveList = Array.isArray(leavesData) ? leavesData : [];
+      const balanceList = Array.isArray(balancesData) ? balancesData : [];
 
       const todayStr = new Date().toISOString().split('T')[0];
       const presentToday = attList.filter((a: any) => a.date === todayStr && (a.status === 'Present' || a.status === 'In-office' || a.status === 'Work From Home')).length;
@@ -127,21 +129,29 @@ const HRReports = () => {
 
       let leaveCount = 0;
       leaveList.forEach((l: any) => {
-        leaveCount++;
+        const dVal = parseFloat(l.total_days ?? l.days ?? l.duration ?? 1);
+        const days = isNaN(dVal) || dVal <= 0 ? 1 : dVal;
+        leaveCount += days;
         const typeStr = (l.leave_type || l.type || 'Casual').toLowerCase();
-        if (typeStr.includes('sick')) typesMap['Sick Leave']++;
-        else if (typeStr.includes('earned') || typeStr.includes('privilege') || typeStr.includes('paid')) typesMap['Earned Leave']++;
-        else if (typeStr.includes('casual')) typesMap['Casual Leave']++;
-        else typesMap['Emergency / Other']++;
+        if (typeStr.includes('sick')) typesMap['Sick Leave'] += days;
+        else if (typeStr.includes('earned') || typeStr.includes('privilege') || typeStr.includes('paid')) typesMap['Earned Leave'] += days;
+        else if (typeStr.includes('casual')) typesMap['Casual Leave'] += days;
+        else typesMap['Emergency / Other'] += days;
       });
 
-      if (leaveCount === 0) {
-        // Fallback default sample distribution if empty
-        typesMap['Casual Leave'] = 14;
-        typesMap['Sick Leave'] = 8;
-        typesMap['Earned Leave'] = 18;
-        typesMap['Emergency / Other'] = 5;
-        leaveCount = 45;
+      if (leaveCount === 0 && balanceList.length > 0) {
+        balanceList.forEach((b: any) => {
+          const casual = parseFloat(b.casual_leave || 0);
+          const sick = parseFloat(b.sick_leave || 0);
+          const earned = parseFloat(b.earned_leave || 0);
+          const other = parseFloat(b.maternity_leave || 0) + parseFloat(b.paternity_leave || 0) + parseFloat(b.bereavement_leave || 0) + parseFloat(b.unpaid_leave || 0);
+          
+          typesMap['Casual Leave'] += casual;
+          typesMap['Sick Leave'] += sick;
+          typesMap['Earned Leave'] += earned;
+          typesMap['Emergency / Other'] += other;
+          leaveCount += (casual + sick + earned + other);
+        });
       }
 
       setTotalLeavesCount(leaveCount);
