@@ -143,6 +143,11 @@ export default function TeamLeaderStatusView() {
       return rid === fid;
     });
 
+    if (!filtered || filtered.length === 0) {
+      alert("No performance reviews available for the selected filter.");
+      return;
+    }
+
     const exportData = filtered.map(r => ({
       'Date': r.created_at?.split('T')[0] || r.review_date?.split('T')[0] || 'Recent',
       'Month/Year': `${r.review_month || ''} ${r.review_year || ''}`.trim(),
@@ -194,7 +199,7 @@ export default function TeamLeaderStatusView() {
         </p>
       </div>
 
-      <div className="grid-3" style={{ gridTemplateColumns: "2fr 1fr", gap: "24px", marginBottom: "30px" }}>
+      <div style={{ marginBottom: "30px" }}>
         {/* Main Leadership Table */}
         <GlassCard title="Leadership Index" subtitle={`Live team connectivity (${teamStatus.length} leaders)`}>
           {teamStatus.length === 0 ? (
@@ -237,34 +242,7 @@ export default function TeamLeaderStatusView() {
           )}
         </GlassCard>
 
-        {/* Live Analytics */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <GlassCard title="Live Metrics" subtitle="Real-time workforce pulse">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '28px', fontWeight: '800', color: '#30d158' }}>{analytics.headcount || 0}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Headcount</div>
-              </div>
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '28px', fontWeight: '800', color: '#ff453a' }}>{pendingLeaves.length}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>Pending Leaves</div>
-              </div>
-            </div>
-          </GlassCard>
 
-          <GlassCard title="Action Items" subtitle="Immediate attention">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={alertItem}>
-                <FaCircle size={6} color="#ff9f0a" /> 
-                {analytics.onboarding_count || 0} onboarding actions
-              </div>
-              <div style={alertItem}>
-                <FaCircle size={6} color="#30d158" /> 
-                {Number(analytics.department_health || 0).toFixed(1)}% team health
-              </div>
-            </div>
-          </GlassCard>
-        </div>
       </div>
 
       {/* Performance Reviews Feed */}
