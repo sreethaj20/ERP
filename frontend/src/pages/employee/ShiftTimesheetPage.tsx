@@ -75,6 +75,16 @@ function getSessionWorkSec(session: any): number {
     return workSec;
 }
 
+function isAttendancePresent(session: any): boolean {
+    if (!session) return false;
+    const status = (session.status || '').trim();
+    if (status === 'Present' || status === 'Tracking' || status === 'Late Login' || status === 'Early Login' || status === 'Shift Extension') {
+        return true;
+    }
+    if (status === 'Absent' || status === 'Half Day') return false;
+    return getSessionWorkSec(session) > 0;
+}
+
 // Get the shift assigned to an employee at session time (use shift on employee record)
 function getShiftForEmployee(empId: string, allShifts: any[]) {
     return allShifts.find((sh: any) =>
@@ -216,7 +226,7 @@ export default function ShiftTimesheetPage() {
         : getWorkingDaysInMonth(selectedYear, selectedMonth, ['Sunday'], allHolidays);
 
     // Stats calculation based on filteredSessions (which now excludes TL if isTL is true)
-    const totalPresent = filteredSessions.filter(s => s.status === 'Present').length;
+    const totalPresent = filteredSessions.filter(s => isAttendancePresent(s)).length;
     const totalHalfDay = filteredSessions.filter(s => s.status === 'Half Day').length;
     const totalAbsent = filteredSessions.filter(s => s.status === 'Absent').length;
     const totalWorkSecs = filteredSessions.reduce((acc, s) => acc + getSessionWorkSec(s), 0);
@@ -226,14 +236,15 @@ export default function ShiftTimesheetPage() {
     // Separate progress for the current user
     const mySessions = sessions.filter((s: any) => String(s.employee_id) === String(employeeId) && s.date && s.date.includes(String(selectedYear)));
     const myMonthSessions = mySessions.filter((s: any) => {
-        if (s.month !== undefined && s.year !== undefined) {
-            return (s.month - 1) === selectedMonth && s.year === selectedYear;
+        if (s.month !== undefined && s.month !== null && s.year !== undefined && s.year !== null) {
+            const m = (s.month > 0 && s.month <= 12) ? s.month - 1 : s.month;
+            return m === selectedMonth && s.year === selectedYear;
         }
         if (!s.date) return false;
         const d = new Date(s.date + 'T00:00:00');
         return !isNaN(d.getTime()) && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
     });
-    const personalPresent = myMonthSessions.filter(s => s.status === 'Present').length;
+    const personalPresent = myMonthSessions.filter(s => isAttendancePresent(s)).length;
     const personalProgress = `${personalPresent}/${expectedWorkDays}`;
 
     const availableRoles = [...new Set(sessions.map((s: any) => (s.role || '').toLowerCase().replace(/[\s_]+/g, '')))].filter(Boolean);
@@ -272,6 +283,58 @@ export default function ShiftTimesheetPage() {
 
         const selectedMonthName = MONTHS[selectedMonth];
         downloadCSV(exportData, `Shift_Timesheet_${selectedMonthName}_${selectedYear}.csv`);
+    };
+
+    const handleExportMonthlySummaryCSV = () => {
+        if (!uniqueEmps || uniqueEmps.length === 0) {
+            alert("No employee monthly summary data available to export.");
+            return;
+        }
+
+        const exportData = uniqueEmps.map((emp: any) => {
+            const empSessions = sessions.filter((s: any) => {
+                if (String(s.employee_id) !== String(emp.id)) return false;
+                if (s.month !== undefined && s.month !== null && s.year !== undefined && s.year !== null) {
+                    const m = (s.month > 0 && s.month <= 12) ? s.month - 1 : s.month;
+                    if (m !== selectedMonth || s.year !== selectedYear) return false;
+                } else if (s.date) {
+                    const d = new Date(s.date + 'T00:00:00');
+                    if (isNaN(d.getTime())) return false;
+                    if (d.getMonth() !== selectedMonth || d.getFullYear() !== selectedYear) return false;
+                } else {
+                    return false;
+                }
+                return true;
+            });
+
+            const empShift = getEmployeeShift(emp.id);
+            const expDays = empShift
+                ? getWorkingDaysInMonth(selectedYear, selectedMonth, empShift.week_off_days || [], allHolidays)
+                : getWorkingDaysInMonth(selectedYear, selectedMonth, ['Sunday'], allHolidays);
+
+            const pres = empSessions.filter((s: any) => isAttendancePresent(s)).length;
+            const half = empSessions.filter((s: any) => s.status === 'Half Day').length;
+            const abs = empSessions.filter((s: any) => s.status === 'Absent').length;
+            const wkSec = empSessions.reduce((a: number, s: any) => a + getSessionWorkSec(s), 0);
+
+            return {
+                "Employee Name": emp.name || "",
+                "Employee ID": emp.id || "",
+                "Role": emp.role || "",
+                "Assigned Shift": empShift ? empShift.shift_name : "No Shift Assigned",
+                "Shift Timings": empShift ? `${empShift.start_time} - ${empShift.end_time}` : "-",
+                "Month": MONTHS[selectedMonth],
+                "Year": selectedYear,
+                "Expected Working Days": expDays,
+                "Present Days": pres,
+                "Half Days": half,
+                "Absent Days": abs,
+                "Total Work Hours": fmtSeconds(wkSec)
+            };
+        });
+
+        const selectedMonthName = MONTHS[selectedMonth];
+        downloadCSV(exportData, `Monthly_Attendance_Summary_${selectedMonthName}_${selectedYear}.csv`);
     };
 
     return (
@@ -357,8 +420,29 @@ export default function ShiftTimesheetPage() {
             {/* ── Per-Employee Shift Summary (for HR/TL/Manager) ── */}
             {showOthers && uniqueEmps.length > 0 && (
                 <GlassCard style={{ marginBottom: '24px' }}>
-                    <div style={{ fontWeight: '700', fontSize: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <FaCalendarCheck color="#ff9f0a" /> Monthly Attendance Summary — {MONTHS[selectedMonth]} {selectedYear}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                        <div style={{ fontWeight: '700', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <FaCalendarCheck color="#ff9f0a" /> Monthly Attendance Summary — {MONTHS[selectedMonth]} {selectedYear}
+                        </div>
+                        <button
+                            onClick={handleExportMonthlySummaryCSV}
+                            className="apple-btn"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '12px',
+                                padding: '5px 12px',
+                                background: 'rgba(255,159,10,0.15)',
+                                color: '#ff9f0a',
+                                border: '1px solid rgba(255,159,10,0.3)',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                            }}
+                        >
+                            <FaDownload size={11} /> Export Summary CSV
+                        </button>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {/* Header */}
@@ -372,16 +456,25 @@ export default function ShiftTimesheetPage() {
                             <div style={{ textAlign: 'center' }}>Work Hours</div>
                         </div>
                         {uniqueEmps.map((emp: any) => {
-                            const empSessions = sessions.filter((s: any) =>
-                                String(s.employee_id) === String(emp.id) &&
-                                (s.month !== undefined ? (s.month - 1) === selectedMonth : true) &&
-                                (s.year !== undefined ? s.year === selectedYear : true)
-                            );
+                            const empSessions = sessions.filter((s: any) => {
+                                if (String(s.employee_id) !== String(emp.id)) return false;
+                                if (s.month !== undefined && s.month !== null && s.year !== undefined && s.year !== null) {
+                                    const m = (s.month > 0 && s.month <= 12) ? s.month - 1 : s.month;
+                                    if (m !== selectedMonth || s.year !== selectedYear) return false;
+                                } else if (s.date) {
+                                    const d = new Date(s.date + 'T00:00:00');
+                                    if (isNaN(d.getTime())) return false;
+                                    if (d.getMonth() !== selectedMonth || d.getFullYear() !== selectedYear) return false;
+                                } else {
+                                    return false;
+                                }
+                                return true;
+                            });
                             const empShift = getEmployeeShift(emp.id);
                             const expDays = empShift
                                 ? getWorkingDaysInMonth(selectedYear, selectedMonth, empShift.week_off_days || [], allHolidays)
                                 : getWorkingDaysInMonth(selectedYear, selectedMonth, ['Sunday'], allHolidays);
-                            const pres = empSessions.filter((s: any) => s.status === 'Present').length;
+                            const pres = empSessions.filter((s: any) => isAttendancePresent(s)).length;
                             const half = empSessions.filter((s: any) => s.status === 'Half Day').length;
                             const abs = empSessions.filter((s: any) => s.status === 'Absent').length;
 
