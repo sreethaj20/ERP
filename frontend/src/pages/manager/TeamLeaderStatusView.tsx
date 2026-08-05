@@ -284,7 +284,7 @@ export default function TeamLeaderStatusView() {
                   <th style={{ padding: "12px", fontSize: "11px", color: 'var(--text-tertiary)' }}>DATE</th>
                   <th style={{ padding: "12px", fontSize: "11px", color: 'var(--text-tertiary)' }}>LEADER</th>
                   <th style={{ padding: "12px", fontSize: "11px", color: 'var(--text-tertiary)' }}>EMPLOYEE</th>
-                  <th style={{ padding: "12px", fontSize: "11px", color: 'var(--text-tertiary)' }}>SCORE</th>
+                  <th style={{ padding: "12px", fontSize: "11px", color: 'var(--text-tertiary)' }}>RAG STATUS</th>
                   <th style={{ padding: "12px", fontSize: "11px", color: 'var(--text-tertiary)' }}>FEEDBACK SYNOPSIS</th>
                 </tr>
               </thead>
@@ -324,15 +324,27 @@ export default function TeamLeaderStatusView() {
                       <div style={{ fontSize: '11px', color: 'var(--accent-blue)' }}>#{r.employee_id}</div>
                     </td>
                     <td style={{ padding: "16px 12px" }}>
-                      <div style={{ 
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '4px 10px', borderRadius: '8px',
-                        background: Number(r.score) >= 8 ? 'rgba(48,209,88,0.1)' : 'rgba(255,159,10,0.1)',
-                        color: Number(r.score) >= 8 ? '#30d158' : '#ff9f0a',
-                        fontWeight: '800', fontSize: '14px'
-                      }}>
-                        <FaStar size={10} /> {Number(r.score || 0).toFixed(1)}
-                      </div>
+                      {(() => {
+                        const statusVal = r.rag_status || (r.score >= 8 ? 'Green' : r.score >= 5 ? 'Amber' : 'Red');
+                        const color = statusVal === 'Green' ? '#30d158' : statusVal === 'Amber' ? '#ff9f0a' : '#ff453a';
+                        const bg = statusVal === 'Green' ? 'rgba(48,209,88,0.15)' : statusVal === 'Amber' ? 'rgba(255,159,10,0.15)' : 'rgba(255,69,58,0.15)';
+                        return (
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            background: bg,
+                            color: color,
+                            fontWeight: '700',
+                            fontSize: '12px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }}></span>
+                            {statusVal}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td style={{ padding: "16px 12px" }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '400px' }}>
@@ -462,7 +474,7 @@ export default function TeamLeaderStatusView() {
                             <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
                               <th style={{ padding: "12px", fontSize: "11px", textAlign: 'left' }}>Date</th>
                               <th style={{ padding: "12px", fontSize: "11px", textAlign: 'left' }}>Employee</th>
-                              <th style={{ padding: "12px", fontSize: "11px", textAlign: 'left' }}>Score</th>
+                              <th style={{ padding: "12px", fontSize: "11px", textAlign: 'left' }}>RAG Status</th>
                               <th style={{ padding: "12px", fontSize: "11px", textAlign: 'left' }}>TL Feedback</th>
                               <th style={{ padding: "12px", fontSize: "11px", textAlign: 'left' }}>Emp Input</th>
                             </tr>
@@ -472,16 +484,30 @@ export default function TeamLeaderStatusView() {
                               const rid = String(r.submitted_by_id || '').trim().toUpperCase();
                               const fid = String(selectedTL.tl_id || '').trim().toUpperCase();
                               return rid === fid;
-                            }).map((r: any) => (
-                              <tr key={r.id} style={{ borderBottom: "1px dotted rgba(255,255,255,0.05)" }}>
-                                <td style={{ padding: "12px", fontSize: '13px' }}>{r.created_at?.split('T')[0] || r.review_date?.split('T')[0] || 'Recent'}</td>
-                                <td style={{ padding: "12px", fontWeight: 600, fontSize: '13px' }}>{r.employee_name}</td>
-                                <td style={{ padding: "12px" }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                    <FaStar size={12} color="#ffd60a" />
-                                    <span style={{ fontWeight: 800, fontSize: '13px' }}>{Number(r.score || 0).toFixed(1)}</span>
-                                  </div>
-                                </td>
+                            }).map((r: any) => {
+                              const statusVal = r.rag_status || (r.score >= 8 ? 'Green' : r.score >= 5 ? 'Amber' : 'Red');
+                              const color = statusVal === 'Green' ? '#30d158' : statusVal === 'Amber' ? '#ff9f0a' : '#ff453a';
+                              const bg = statusVal === 'Green' ? 'rgba(48,209,88,0.15)' : statusVal === 'Amber' ? 'rgba(255,159,10,0.15)' : 'rgba(255,69,58,0.15)';
+                              return (
+                                <tr key={r.id} style={{ borderBottom: "1px dotted rgba(255,255,255,0.05)" }}>
+                                  <td style={{ padding: "12px", fontSize: '13px' }}>{r.created_at?.split('T')[0] || r.review_date?.split('T')[0] || 'Recent'}</td>
+                                  <td style={{ padding: "12px", fontWeight: 600, fontSize: '13px' }}>{r.employee_name}</td>
+                                  <td style={{ padding: "12px" }}>
+                                    <span style={{
+                                      padding: '4px 10px',
+                                      borderRadius: '6px',
+                                      background: bg,
+                                      color: color,
+                                      fontWeight: '700',
+                                      fontSize: '12px',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '6px'
+                                    }}>
+                                      <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: color }}></span>
+                                      {statusVal}
+                                    </span>
+                                  </td>
                                 <td style={{ padding: "12px", fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '250px' }}>
                                   <span title={r.tl_feedback}>
                                     {r.tl_feedback ? `"${r.tl_feedback.substring(0, 100)}${r.tl_feedback.length > 100 ? '...' : ''}"` : "—"}
@@ -492,8 +518,9 @@ export default function TeamLeaderStatusView() {
                                     {r.employee_self_input ? `"${r.employee_self_input.substring(0, 80)}${r.employee_self_input.length > 80 ? '...' : ''}"` : "No input"}
                                   </span>
                                 </td>
-                              </tr>
-                            ))}
+                               </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
