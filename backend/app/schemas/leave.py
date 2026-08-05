@@ -14,7 +14,9 @@ class LeaveBase(BaseModel):
     total_days: Optional[Decimal] = None
     reason: str
     team_leader_id: Optional[str] = None
+    team_leader_name: Optional[str] = None
     manager_id: Optional[str] = None
+    manager_name: Optional[str] = None
 
 class LeaveCreate(LeaveBase):
     leave_id: Optional[str] = None

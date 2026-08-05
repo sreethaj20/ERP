@@ -333,6 +333,35 @@ class LeaveService:
                 .filter(LeaveRequest.employee_id == employee_id, LeaveRequest.deleted_at == None)
             
         results = query.order_by(LeaveRequest.created_at.desc()).all()
+
+        # Collect team leader & manager IDs to batch query employee names
+        tl_mgr_ids = set()
+        for leave, _, _, _, _ in results:
+            if leave.team_leader_id:
+                tl_mgr_ids.add(str(leave.team_leader_id))
+            if leave.manager_id:
+                tl_mgr_ids.add(str(leave.manager_id))
+
+        name_map = {}
+        if tl_mgr_ids:
+            from sqlalchemy import or_
+            id_conditions = [Employee.employee_id.in_(tl_mgr_ids)]
+            numeric_ids = [int(i) for i in tl_mgr_ids if i.isdigit()]
+            if numeric_ids:
+                id_conditions.append(Employee.id.in_(numeric_ids))
+                id_conditions.append(Employee.user_id.in_(numeric_ids))
+
+            emps = db.query(Employee).filter(or_(*id_conditions)).all()
+            for e in emps:
+                full_n = e.name or f"{e.first_name or ''} {e.last_name or ''}".strip()
+                if full_n:
+                    if e.employee_id:
+                        name_map[str(e.employee_id)] = full_n
+                    if e.id:
+                        name_map[str(e.id)] = full_n
+                    if e.user_id:
+                        name_map[str(e.user_id)] = full_n
+
         final_objects = []
         for leave, fn, ln, role, dept in results:
             # Attach extra data for manual serialization in API layers
@@ -340,6 +369,8 @@ class LeaveService:
             leave.employee_name = leave.name
             leave.role = role
             leave.department = dept
+            leave.team_leader_name = name_map.get(str(leave.team_leader_id)) if leave.team_leader_id else None
+            leave.manager_name = name_map.get(str(leave.manager_id)) if leave.manager_id else None
             final_objects.append(leave)
         return final_objects
 
