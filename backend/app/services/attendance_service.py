@@ -996,15 +996,17 @@ class ShiftService:
             start_dt = getattr(session, 'login_time', None) or getattr(session, 'started_at', None) or getattr(session, 'created_at', None)
             end_dt = getattr(session, 'logout_time', None) or getattr(session, 'ended_at', None)
             
-            # Calculate duration in seconds
-            total_sec = getattr(session, 'total_work_minutes', 0) * 60
-            if hasattr(session, 'total_work_seconds') and session.total_work_seconds:
-                total_sec = session.total_work_seconds
-            elif not total_sec and start_dt and end_dt:
-                total_sec = int((end_dt - start_dt).total_seconds())
-
             # Break duration
-            break_sec = getattr(session, 'total_break_seconds', 0)
+            break_sec = getattr(session, 'total_break_seconds', 0) or 0
+
+            # Calculate duration in seconds
+            total_sec = getattr(session, 'total_work_seconds', 0) or 0
+            if not total_sec and start_dt:
+                eff_end = end_dt or datetime.utcnow()
+                total_shift = max(0, int((eff_end - start_dt).total_seconds()))
+                total_sec = max(0, total_shift - break_sec)
+            elif not total_sec:
+                total_sec = getattr(session, 'total_work_minutes', 0) * 60
             
             if not shift and getattr(session, 'shift_id', None):
                 shift = db.query(shift_models.ShiftDefinition).filter(shift_models.ShiftDefinition.id == session.shift_id).first()

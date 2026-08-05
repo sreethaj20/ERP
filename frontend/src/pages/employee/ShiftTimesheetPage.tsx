@@ -3,11 +3,11 @@ import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import {
     FaClock, FaCoffee, FaCheckCircle, FaExclamationTriangle,
-    FaMoon, FaCalendarAlt, FaSearch, FaUserTie, FaCalendarCheck
+    FaMoon, FaCalendarAlt, FaSearch, FaUserTie, FaCalendarCheck, FaDownload
 } from "react-icons/fa";
 import shiftService, { ShiftSession, ShiftDefinition, BreakLog } from "../../services/shiftService";
 import { getWorkingDaysInMonth, getEmployees, getEmployeeShift, getHolidays } from "../../utils/storage";
-import { formatLocalTime, parseISOToLocalDate } from "../../utils/formatters";
+import { formatLocalTime, parseISOToLocalDate, downloadCSV } from "../../utils/formatters";
 
 const STATUS_STYLES: Record<string, { color: string; bg: string }> = {
     'Present': { color: '#30d158', bg: 'rgba(48,209,88,0.1)' },
@@ -45,6 +45,34 @@ function fmtDate(dateStr: string | null) {
     return d.toLocaleDateString('en-IN', {
         weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
     });
+}
+
+function getSessionBreakSec(session: any): number {
+    let breakSec = session.total_break_seconds || 0;
+    const isActive = !session.logout_time && !session.ended_at;
+    if (isActive && session.on_break && session.current_break_start) {
+        const curBreak = Math.max(0, Math.floor((Date.now() - parseISOToLocalDate(session.current_break_start).getTime()) / 1000));
+        breakSec += curBreak;
+    }
+    return breakSec;
+}
+
+function getSessionWorkSec(session: any): number {
+    const loginRaw = session.login_time || session.check_in || session.check_in_time || session.started_at || session.created_at;
+    const logoutRaw = session.logout_time || session.check_out || session.check_out_time || session.ended_at;
+
+    const loginMs = loginRaw ? parseISOToLocalDate(loginRaw).getTime() : 0;
+    const logoutMs = logoutRaw ? parseISOToLocalDate(logoutRaw).getTime() : Date.now();
+
+    const isActive = !logoutRaw;
+    const totalShiftSec = session.total_shift_seconds || (loginMs > 0 ? Math.max(0, Math.floor((logoutMs - loginMs) / 1000)) : 0);
+    const breakSec = getSessionBreakSec(session);
+
+    let workSec = session.total_work_seconds || 0;
+    if (isActive || !workSec || workSec <= 0) {
+        workSec = Math.max(0, totalShiftSec - breakSec);
+    }
+    return workSec;
 }
 
 // Get the shift assigned to an employee at session time (use shift on employee record)
@@ -191,8 +219,8 @@ export default function ShiftTimesheetPage() {
     const totalPresent = filteredSessions.filter(s => s.status === 'Present').length;
     const totalHalfDay = filteredSessions.filter(s => s.status === 'Half Day').length;
     const totalAbsent = filteredSessions.filter(s => s.status === 'Absent').length;
-    const totalWorkSecs = filteredSessions.reduce((acc, s) => acc + (s.total_work_seconds || 0), 0);
-    const totalBreakSecs = filteredSessions.reduce((acc, s) => acc + (s.total_break_seconds || 0), 0);
+    const totalWorkSecs = filteredSessions.reduce((acc, s) => acc + getSessionWorkSec(s), 0);
+    const totalBreakSecs = filteredSessions.reduce((acc, s) => acc + getSessionBreakSec(s), 0);
     const activeCount = filteredSessions.filter(s => !s.logout_time).length;
 
     // Separate progress for the current user
@@ -210,6 +238,41 @@ export default function ShiftTimesheetPage() {
 
     const availableRoles = [...new Set(sessions.map((s: any) => (s.role || '').toLowerCase().replace(/[\s_]+/g, '')))].filter(Boolean);
     const headerRole = userRole.charAt(0).toUpperCase() + userRole.slice(1);
+
+    const handleExportCSV = () => {
+        if (filteredSessions.length === 0) {
+            alert("No shift timesheet records available to export for the selected filters.");
+            return;
+        }
+
+        const exportData = filteredSessions.map((s: any) => {
+            const loginRaw = s.login_time || s.check_in || s.check_in_time || s.started_at || s.created_at;
+            const logoutRaw = s.logout_time || s.check_out || s.check_out_time || s.ended_at;
+            const workSec = getSessionWorkSec(s);
+            const breakSec = getSessionBreakSec(s);
+            const empShift = getShiftForEmployee(s.employee_id, allShifts);
+
+            return {
+                "Employee Name": s.employee_name || me?.name || "Staff",
+                "Employee ID": s.employee_id || "",
+                "Role": s.role || "",
+                "Department": s.department || "",
+                "Date": s.date || "",
+                "Month": s.month ? MONTHS[s.month - 1] : (s.date ? MONTHS[new Date(s.date + 'T00:00:00').getMonth()] : ""),
+                "Year": s.year || (s.date ? new Date(s.date + 'T00:00:00').getFullYear() : ""),
+                "Assigned Shift": empShift ? empShift.name : "General Shift",
+                "Login Time": fmtTime(loginRaw),
+                "Logout Time": fmtTime(logoutRaw),
+                "Work Hours": fmtSeconds(workSec),
+                "Break Time": fmtSeconds(breakSec),
+                "Status": s.remark === 'Shift Extension' ? 'Shift Extension' : s.status,
+                "Remark": s.remark || ""
+            };
+        });
+
+        const selectedMonthName = MONTHS[selectedMonth];
+        downloadCSV(exportData, `Shift_Timesheet_${selectedMonthName}_${selectedYear}.csv`);
+    };
 
     return (
         <div className="dashboard-container">
@@ -322,20 +385,7 @@ export default function ShiftTimesheetPage() {
                             const half = empSessions.filter((s: any) => s.status === 'Half Day').length;
                             const abs = empSessions.filter((s: any) => s.status === 'Absent').length;
 
-                            const wkSec = empSessions.reduce((a: number, s: any) => {
-                                let sSec = s.total_work_seconds || 0;
-                                if (!s.logout_time) {
-                                    const now = Date.now();
-                                    const loginMs = new Date(s.login_time || s.started_at).getTime();
-                                    const totalSec = Math.max(0, Math.floor((now - loginMs) / 1000));
-                                    let curBreak = 0;
-                                    if (s.on_break && s.current_break_start) {
-                                        curBreak = Math.max(0, Math.floor((now - new Date(s.current_break_start).getTime()) / 1000));
-                                    }
-                                    sSec = Math.max(0, totalSec - ((s.total_break_seconds || 0) + curBreak));
-                                }
-                                return a + sSec;
-                            }, 0);
+                            const wkSec = empSessions.reduce((a: number, s: any) => a + getSessionWorkSec(s), 0);
                             const rb = ROLE_BADGE[(emp.role || '').toLowerCase().replace(/[\s_]+/g, '')] || { color: '#fff', label: emp.role };
                             const sc = empShift?.color || '#0a84ff';
 
@@ -413,6 +463,26 @@ export default function ShiftTimesheetPage() {
                         <select className="apple-input" value={selectedYear} onChange={e => setSelectedYear(parseInt(e.target.value))} style={{ fontSize: '13px', width: 'auto' }}>
                             {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                         </select>
+
+                        <button
+                            onClick={handleExportCSV}
+                            className="apple-btn"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '13px',
+                                padding: '6px 14px',
+                                background: 'rgba(48,209,88,0.15)',
+                                color: '#30d158',
+                                border: '1px solid rgba(48,209,88,0.3)',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: '600'
+                            }}
+                        >
+                            <FaDownload size={12} /> Download CSV
+                        </button>
                     </div>
                 </div>
 
@@ -467,19 +537,8 @@ export default function ShiftTimesheetPage() {
 
                             // Total Shift Duration (seconds from login to logout or current time)
                             const totalShiftSec = session.total_shift_seconds || (loginMs > 0 ? Math.max(0, Math.floor((logoutMs - loginMs) / 1000)) : 0);
-
-                            // Total Break Time
-                            let breakSec = session.total_break_seconds || 0;
-                            if (isActive && onBreak && session.current_break_start) {
-                                const curBreak = Math.max(0, Math.floor((Date.now() - parseISOToLocalDate(session.current_break_start).getTime()) / 1000));
-                                breakSec += curBreak;
-                            }
-
-                            // Total Work Time (Shift Duration - Break Time)
-                            let workSec = session.total_work_seconds || 0;
-                            if (isActive || !workSec || workSec <= 0) {
-                                workSec = Math.max(0, totalShiftSec - breakSec);
-                            }
+                            const breakSec = getSessionBreakSec(session);
+                            const workSec = getSessionWorkSec(session);
                             const roleKey = (session.role || '').toLowerCase().replace(/[\s_]+/g, '');
                             const roleBadge = ROLE_BADGE[roleKey];
                             const empShift = getShiftForEmployee(session.employee_id, allShifts);
