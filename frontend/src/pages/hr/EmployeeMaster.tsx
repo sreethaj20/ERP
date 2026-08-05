@@ -60,7 +60,7 @@ export default function EmployeeMaster() {
       setEmployees(Array.isArray(data) ? data : []);
       const refs = await getEmployeesForReference();
       setAllEmployees(Array.isArray(refs) ? refs : []);
-      
+
       try {
         const deptsData = await getDepartments();
         const defaultDepts = ["Engineering", "Human Resources", "IT Operations", "Recruitment", "Marketing", "Sales", "Finance"];
@@ -554,8 +554,8 @@ export default function EmployeeMaster() {
     );
 
     // 2. Status filter
-    const matchesStatus = !statusFilter || 
-      emp.status === statusFilter || 
+    const matchesStatus = !statusFilter ||
+      emp.status === statusFilter ||
       (statusFilter === "Resigned" && emp.status === "Inactive") ||
       (statusFilter === "Offboarding" && emp.status === "On Notice");
 
@@ -582,18 +582,48 @@ export default function EmployeeMaster() {
 
   const handleExportDirectory = () => {
     const exportData = filteredDirectory.map((emp: any) => ({
-      'Employee ID': emp.id,
-      'Name': emp.name,
-      'Email': emp.email,
-      'Department': emp.department,
-      'Designation': emp.designation,
-      'Location': emp.joining_location,
-      'Employment Type': emp.employment_type,
-      'Status': emp.status,
-      'Reporting To': emp.reporting_to || 'N/A',
-      'Join Date': emp.join_date || emp.joining_date || 'N/A'
+      'Employee ID': emp.employee_id || emp.id,
+      'Full Name': emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+      'First Name': emp.first_name || '',
+      'Last Name': emp.last_name || '',
+      'Official Email': emp.official_email || emp.email || '',
+      'Personal Email': emp.personal_email || '',
+      'Phone': emp.phone || emp.personal_mobile || '',
+      'Alternate Mobile': emp.alternate_mobile || '',
+      'Department': emp.department || '',
+      'Designation': emp.designation || '',
+      'Role': emp.role || '',
+      'Employment Type': emp.employment_type || '',
+      'Status': emp.status || '',
+      'Work Location': emp.work_location || emp.joining_location || '',
+      'Reporting Manager ID': emp.reporting_to_id || emp.manager_id || emp.reporting_manager_id || '',
+      'Reporting Manager': emp.reporting_to || emp.manager_name || 'N/A',
+      'Team Leader ID': emp.team_leader_id || '',
+      'Joining Date': emp.join_date || emp.joining_date || 'N/A',
+      'Offer Date': emp.offer_date || '',
+      'Probation Period Days': emp.probation_period_days || 90,
+      'Notice Period Days': emp.notice_period || 30,
+      'Gender': emp.gender || '',
+      'Date of Birth': emp.dob || emp.date_of_birth || '',
+      'Blood Group': emp.blood_group || '',
+      'Marital Status': emp.marital_status || '',
+      'Nationality': emp.nationality || '',
+      'City': emp.city || '',
+      'State': emp.state || '',
+      'Country': emp.country || '',
+      'Aadhaar Number': emp.aadhaar_number || '',
+      'PAN Number': emp.pan_number || '',
+      'UAN Number': emp.uan_number || '',
+      'PF Number': emp.pf_number || '',
+      'ESI Number': emp.esi_number || '',
+      'Bank Name': emp.bank_name || '',
+      'Bank Account Number': emp.bank_account_number || '',
+      'Bank IFSC Code': emp.bank_ifsc_code || '',
+      'Emergency Contact Name': emp.emergency_contact_name || '',
+      'Emergency Contact Phone': emp.emergency_contact_phone || '',
+      'Emergency Contact Relation': emp.emergency_contact_relation || ''
     }));
-    downloadCSV(exportData, `Employee_Directory_${new Date().toISOString().split('T')[0]}.csv`);
+    downloadCSV(exportData, `Employee_Master_Full_Export_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
   return (
@@ -720,12 +750,12 @@ export default function EmployeeMaster() {
                   </div>
                 )}
               </div>
-              
+
               {/* Photo Uploader */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <div style={{ fontSize: '15px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{selectedEmp.name}</div>
                 <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>{selectedEmp.employee_id || selectedEmp.id} • {selectedEmp.designation}</div>
-                
+
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
                   <label style={{
                     padding: '3px 10px',
@@ -960,7 +990,7 @@ export default function EmployeeMaster() {
                         </div>
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                           {isOver
-                            ? <><strong style={{ color: '#30d158' }}>Confirmed</strong> — Probation ended on <strong>{probEndStr}</strong></>  
+                            ? <><strong style={{ color: '#30d158' }}>Confirmed</strong> — Probation ended on <strong>{probEndStr}</strong></>
                             : <><strong style={{ color: '#ff9f0a' }}>{daysLeft} day{daysLeft !== 1 ? 's' : ''} remaining</strong> — Ends on <strong>{probEndStr}</strong></>}
                         </div>
                       </div>
@@ -998,7 +1028,7 @@ export default function EmployeeMaster() {
                   <InputGroup label="PF Number" value={selectedEmp.pf_number || ''} onChange={(v: any) => setSelectedEmp({ ...selectedEmp, pf_number: v })} />
 
                   <div style={{ gridColumn: 'span 2', marginTop: '10px' }}><h3 style={{ fontSize: '14px', borderBottom: '1px solid var(--border-light)', paddingBottom: '5px' }}>Compliance Status Flags</h3></div>
-                  
+
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <input type="checkbox" checked={!!selectedEmp.pf_registered} onChange={(e) => setSelectedEmp({ ...selectedEmp, pf_registered: e.target.checked })} />
                     <span style={{ fontSize: '12px', fontWeight: '500' }}>PF Registered</span>
@@ -1295,7 +1325,7 @@ export default function EmployeeMaster() {
                 />
               </div>
             </div>
-            
+
             <div>
               <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>STATUS</label>
               <select
@@ -1313,7 +1343,7 @@ export default function EmployeeMaster() {
                 <option value="Resigned">Resigned</option>
               </select>
             </div>
-            
+
             <div>
               <label style={{ fontSize: '9px', color: 'var(--text-tertiary)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>DEPARTMENT</label>
               <select
@@ -1350,7 +1380,7 @@ export default function EmployeeMaster() {
                 style={{ padding: '4px 8px', fontSize: '11px', height: '27px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-light)', width: '100%', color: 'white' }}
               />
             </div>
-            
+
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button
                 onClick={handleExportDirectory}
@@ -1467,14 +1497,14 @@ export default function EmployeeMaster() {
                         <span style={{
                           padding: "3px 8px",
                           borderRadius: "4px",
-                          background: emp.status === "Active" ? "rgba(48, 209, 88, 0.1)" : 
-                                      emp.status === "Inactive" ? "rgba(255, 69, 58, 0.1)" :
-                                      emp.status === "On Notice" ? "rgba(255, 159, 10, 0.1)" :
-                                      "rgba(255, 159, 10, 0.1)",
-                          color: emp.status === "Active" ? "#30d158" : 
-                                 emp.status === "Inactive" ? "#ff453a" :
-                                 emp.status === "On Notice" ? "#ff9f0a" :
-                                 "#ff9f0a",
+                          background: emp.status === "Active" ? "rgba(48, 209, 88, 0.1)" :
+                            emp.status === "Inactive" ? "rgba(255, 69, 58, 0.1)" :
+                              emp.status === "On Notice" ? "rgba(255, 159, 10, 0.1)" :
+                                "rgba(255, 159, 10, 0.1)",
+                          color: emp.status === "Active" ? "#30d158" :
+                            emp.status === "Inactive" ? "#ff453a" :
+                              emp.status === "On Notice" ? "#ff9f0a" :
+                                "#ff9f0a",
                           fontSize: "11px",
                           fontWeight: 'bold'
                         }}>
@@ -1495,7 +1525,7 @@ export default function EmployeeMaster() {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination Controls */}
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', padding: '12px 4px 0 4px', borderTop: '1px solid var(--border-light)' }}>
