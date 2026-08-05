@@ -135,6 +135,28 @@ export default function TeamLeaderStatusView() {
     downloadCSV(exportData, `Manager_Team_Report_${new Date().toISOString().split('T')[0]}.csv`);
   };
 
+  const handleDownloadReviews = () => {
+    const filtered = reviews.filter(r => {
+      if (tlFilter === "All") return true;
+      const rid = String(r.submitted_by_id || '').trim().toUpperCase();
+      const fid = String(tlFilter || '').trim().toUpperCase();
+      return rid === fid;
+    });
+
+    const exportData = filtered.map(r => ({
+      'Date': r.created_at?.split('T')[0] || r.review_date?.split('T')[0] || 'Recent',
+      'Month/Year': `${r.review_month || ''} ${r.review_year || ''}`.trim(),
+      'Team Leader': r.submitted_by_name || '',
+      'Employee ID': r.employee_id || '',
+      'Employee Name': r.employee_name || '',
+      'RAG Status': r.rag_status || (r.score >= 8 ? 'Green' : r.score >= 5 ? 'Amber' : 'Red'),
+      'TL Feedback': r.tl_feedback || '',
+      'Employee Input': r.employee_self_input || ''
+    }));
+
+    downloadCSV(exportData, `Recent_Performance_Reviews_${new Date().toISOString().split('T')[0]}.csv`);
+  };
+
   if (loading) {
     return (
       <div className="dashboard-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
@@ -249,32 +271,42 @@ export default function TeamLeaderStatusView() {
       <div style={{ marginBottom: "30px" }}>
         <GlassCard title="Recent Performance Reviews" subtitle="Live feedback from team">
           {/* Divider/Filter for Team Leaders */}
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => setTlFilter("All")}
-              style={{ 
-                padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '600',
-                background: tlFilter === "All" ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
-                color: tlFilter === "All" ? '#fff' : 'var(--text-secondary)',
-                border: '1px solid rgba(255,255,255,0.1)'
-              }}
-            >
-              All Reviews
-            </button>
-            {teamStatus.map(tl => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '15px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button 
-                key={tl.tl_id}
-                onClick={() => setTlFilter(tl.tl_id)}
+                onClick={() => setTlFilter("All")}
                 style={{ 
                   padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '600',
-                  background: tlFilter === tl.tl_id ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
-                  color: tlFilter === tl.tl_id ? '#fff' : 'var(--text-secondary)',
+                  background: tlFilter === "All" ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                  color: tlFilter === "All" ? '#fff' : 'var(--text-secondary)',
                   border: '1px solid rgba(255,255,255,0.1)'
                 }}
               >
-                {tl.tl_name}'s Team
+                All Reviews
               </button>
-            ))}
+              {teamStatus.map(tl => (
+                <button 
+                  key={tl.tl_id}
+                  onClick={() => setTlFilter(tl.tl_id)}
+                  style={{ 
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: '600',
+                    background: tlFilter === tl.tl_id ? 'var(--accent-blue)' : 'rgba(255,255,255,0.05)',
+                    color: tlFilter === tl.tl_id ? '#fff' : 'var(--text-secondary)',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}
+                >
+                  {tl.tl_name}'s Team
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleDownloadReviews}
+              className="apple-btn"
+              style={{ padding: '6px 14px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <FaDownload size={11} /> Export CSV
+            </button>
           </div>
 
           <div style={{ marginTop: "15px", overflowX: "auto" }}>
@@ -370,24 +402,7 @@ export default function TeamLeaderStatusView() {
         </GlassCard>
       </div>
 
-      <div className="grid-3">
-        <GlassCard title="Export Reports">
-          <button onClick={handleDownload} className="apple-btn" style={{ width: '100%' }}>
-            <FaDownload /> Download Team CSV
-          </button>
-        </GlassCard>
-        <GlassCard title="Quick Actions">
-          <button className="apple-btn" style={{ width: '100%', background: 'rgba(255,255,255,0.08)' }}>
-            📋 Manage Leaves ({pendingLeaves.length})
-          </button>
-        </GlassCard>
-        <GlassCard title="System">
-          <div style={{ textAlign: 'center', fontSize: '28px', color: analytics.department_health > 70 ? '#30d158' : '#ff9f0a' }}>
-            {Number(analytics.department_health || 0).toFixed(0)}%
-          </div>
-          <div style={{ fontSize: '11px', textAlign: 'center', color: 'var(--text-tertiary)' }}>Health Score</div>
-        </GlassCard>
-      </div>
+
 
       {/* OVERSIGHT MODAL */}
       {/* OVERSIGHT MODAL */}
