@@ -259,7 +259,8 @@ export default function AttendanceManagement() {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const monthStr = monthNames[exportMonth];
     const daysInMonth = new Date(exportYear, exportMonth + 1, 0).getDate();
-    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const now = new Date();
+    const todayNumber = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 
     const getDailyWorkSec = (attRecord: any): number => {
       if (!attRecord) return 0;
@@ -315,6 +316,7 @@ export default function AttendanceManagement() {
         const monthNumFormatted = String(exportMonth + 1).padStart(2, '0');
         const dateStr = `${exportYear}-${monthNumFormatted}-${dayFormatted}`;
         const colHeader = `${dayFormatted}-${monthStr}`;
+        const dayNumber = exportYear * 10000 + (exportMonth + 1) * 100 + day;
 
         const dateObj = new Date(exportYear, exportMonth, day);
         const dayOfWeek = dateObj.getDay();
@@ -326,7 +328,7 @@ export default function AttendanceManagement() {
         });
 
         let statusText = "";
-        if (dateStr >= todayStr) {
+        if (dayNumber >= todayNumber) {
           statusText = "-";
         } else if (att) {
           const s = String(att.status || '').toLowerCase();

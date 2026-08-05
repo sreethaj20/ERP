@@ -294,7 +294,8 @@ export default function ShiftTimesheetPage() {
         const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
         const monthName = MONTHS[selectedMonth];
         const monthShort = monthName.slice(0, 3);
-        const todayStr = new Date().toLocaleDateString('sv-SE');
+        const now = new Date();
+        const todayNumber = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
 
         const exportData = uniqueEmps.map((emp: any) => {
             const empSessions = sessions.filter((s: any) => {
@@ -339,6 +340,7 @@ export default function ShiftTimesheetPage() {
                 const monthNumFormatted = String(selectedMonth + 1).padStart(2, '0');
                 const dateStr = `${selectedYear}-${monthNumFormatted}-${dayFormatted}`;
                 const colHeader = `${dayFormatted}-${monthShort}`;
+                const dayNumber = selectedYear * 10000 + (selectedMonth + 1) * 100 + day;
 
                 const dateObj = new Date(selectedYear, selectedMonth, day);
                 const dayOfWeek = dateObj.getDay();
@@ -349,7 +351,7 @@ export default function ShiftTimesheetPage() {
                 const sessionOnDay = empSessions.find((s: any) => s.date === dateStr);
 
                 let statusText = "-";
-                if (dateStr >= todayStr) {
+                if (dayNumber >= todayNumber) {
                     statusText = "-";
                 } else if (sessionOnDay) {
                     const workSec = getSessionWorkSec(sessionOnDay);
