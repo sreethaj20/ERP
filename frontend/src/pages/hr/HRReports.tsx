@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Header from '../../components/Header';
 import GlassCard from '../../components/GlassCard';
 import webSocketService from '../../services/websocketService';
-import { getAttendance, getLeaves, getEmployees } from '../../utils/storage';
+import { getEmployeesAsync, refreshAttendance, refreshLeaves } from '../../utils/storage';
 import { FaChartLine, FaUsers, FaCalendarAlt, FaFileAlt, FaClock } from 'react-icons/fa';
 import { AttendanceCorrection } from '../../types/correction.types';
 import api from '../../api/apiClient';
@@ -37,23 +37,40 @@ const HRReports = () => {
   }, []);
 
   const loadStats = async () => {
-    const [employees, attendance, leaves] = await Promise.all([
-      getEmployees(), 
-      getAttendance(), 
-      getLeaves()
-    ]);
+    try {
+      const [employees, attendance, leaves] = await Promise.all([
+        getEmployeesAsync().catch(() => []), 
+        refreshAttendance().catch(() => []), 
+        refreshLeaves().catch(() => [])
+      ]);
 
-    const today = new Date().toISOString().split('T')[0];
-    const presentToday = attendance.filter(a => a.date === today && a.status === 'Present').length;
-    const pendingLeaves = leaves.filter(l => l.status === 'Pending').length;
-    const avgHours = attendance.reduce((sum, a) => sum + (a.work_hours || 0), 0) / Math.max(attendance.length, 1);
+      const empList = Array.isArray(employees) ? employees : [];
+      const attList = Array.isArray(attendance) ? attendance : [];
+      const leaveList = Array.isArray(leaves) ? leaves : [];
 
-    setStats({
-      totalEmployees: employees.length,
-      presentToday,
-      pendingLeaves,
-      avgWorkHours: Number(avgHours.toFixed(1))
-    });
+      const today = new Date().toISOString().split('T')[0];
+      const presentToday = attList.filter((a: any) => a.date === today && (a.status === 'Present' || a.status === 'In-office' || a.status === 'Work From Home')).length;
+      const pendingLeaves = leaveList.filter((l: any) => String(l.status).toLowerCase() === 'pending').length;
+
+      const validHours = attList
+        .map((a: any) => {
+          const val = parseFloat(a.work_hours ?? a.total_hours ?? a.hours ?? 0);
+          return isNaN(val) ? 0 : val;
+        })
+        .filter((h: number) => h > 0);
+
+      const totalHours = validHours.reduce((sum: number, h: number) => sum + h, 0);
+      const avgHours = validHours.length > 0 ? totalHours / validHours.length : 0;
+
+      setStats({
+        totalEmployees: empList.length,
+        presentToday,
+        pendingLeaves,
+        avgWorkHours: isNaN(avgHours) ? 0 : Number(avgHours.toFixed(1))
+      });
+    } catch (error) {
+      console.error("Error loading HR reports stats:", error);
+    }
   };
 
   const loadCorrections = async () => {
