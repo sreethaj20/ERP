@@ -791,7 +791,6 @@ export default function AttendanceManagement() {
                   <button
                     key={dept}
                     onClick={() => setDeptFilter(dept === "All Departments" ? "all" : dept)}
-                    className="apple-btn"
                     style={{
                       padding: '6px 12px',
                       borderRadius: '20px',
@@ -802,7 +801,8 @@ export default function AttendanceManagement() {
                       border: isSelected ? '1px solid rgba(10,132,255,0.3)' : '1px solid rgba(255,255,255,0.05)',
                       whiteSpace: 'nowrap',
                       cursor: 'pointer',
-                      transition: 'all 0.2s ease'
+                      boxShadow: 'none',
+                      transition: 'none'
                     }}
                   >
                     {dept}
@@ -831,7 +831,6 @@ export default function AttendanceManagement() {
                   <button
                     key={pill.id}
                     onClick={() => setStatusFilter(pill.id)}
-                    className="apple-btn"
                     style={{
                       padding: '6px 12px',
                       borderRadius: '8px',
@@ -843,7 +842,8 @@ export default function AttendanceManagement() {
                       border: statusFilter === pill.id ? '1px solid rgba(255,255,255,0.15)' : '1px solid transparent',
                       background: statusFilter === pill.id ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
                       color: statusFilter === pill.id ? '#fff' : 'var(--text-secondary)',
-                      transition: 'all 0.2s ease',
+                      boxShadow: 'none',
+                      transition: 'none',
                       cursor: 'pointer'
                     }}
                   >
@@ -852,8 +852,7 @@ export default function AttendanceManagement() {
                         width: '6px', 
                         height: '6px', 
                         borderRadius: '50%', 
-                        background: pill.color,
-                        boxShadow: `0 0 5px ${pill.color}`
+                        background: pill.color
                       }} />
                     )}
                     {pill.label}
