@@ -10,7 +10,7 @@ export default function PerformanceFeedback() {
   const [reviews, setReviews] = useState<any[]>([]);
 
   const [selectedEmp, setSelectedEmp] = useState("");
-  const [score, setScore] = useState("");
+  const [ragStatus, setRagStatus] = useState<"Red" | "Amber" | "Green">("Green");
   const [tlFeedback, setTlFeedback] = useState("");
   const [employeeFeedback, setEmployeeFeedback] = useState("");
   const [month, setMonth] = useState(new Date().toLocaleString('default', { month: 'long' }));
@@ -43,19 +43,21 @@ export default function PerformanceFeedback() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEmp || !score || !tlFeedback) {
-      setMsg("Please provide at least a score and TL feedback");
+    if (!selectedEmp || !ragStatus || !tlFeedback) {
+      setMsg("Please select a RAG status and provide TL feedback");
       return;
     }
 
     setSubmitting(true);
     const emp = teamMembers.find(m => (m.employee_id || m.id) === selectedEmp);
+    const scoreMap = { Red: 3.0, Amber: 6.0, Green: 9.0 };
 
     try {
         await submitTeamPerformance({
             employee_id: selectedEmp,
             employee_name: emp ? `${emp.first_name} ${emp.last_name || ''}` : "Unknown",
-            score: parseFloat(score),
+            rag_status: ragStatus,
+            score: scoreMap[ragStatus],
             tl_feedback: tlFeedback,
             employee_self_input: employeeFeedback,
             review_month: month,
@@ -64,7 +66,7 @@ export default function PerformanceFeedback() {
         
         setSubmitting(false);
         setSelectedEmp("");
-        setScore("");
+        setRagStatus("Green");
         setTlFeedback("");
         setEmployeeFeedback("");
         setMsg("Feedback submitted successfully!");
@@ -82,7 +84,7 @@ export default function PerformanceFeedback() {
       "Year": r.review_year,
       "Employee ID": r.employee_id,
       "Employee Name": r.employee_name,
-      "Score": r.score,
+      "RAG Status": r.rag_status || (r.score >= 8 ? "Green" : r.score >= 5 ? "Amber" : "Red"),
       "TL Feedback": r.tl_feedback,
       "Employee Input": r.employee_self_input
     }));
@@ -140,17 +142,80 @@ export default function PerformanceFeedback() {
             </div>
 
             <div>
-              <label style={labelStyle}>Performance Score (0-10)</label>
-              <input
-                type="number"
-                min="0"
-                max="10"
-                step="0.1"
-                placeholder="Ex: 8.5"
-                value={score}
-                onChange={(e) => setScore(e.target.value)}
-                style={inputStyle}
-              />
+              <label style={labelStyle}>RAG Status</label>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", marginTop: "4px" }}>
+                <button
+                  type="button"
+                  onClick={() => setRagStatus("Red")}
+                  style={{
+                    padding: "12px",
+                    borderRadius: "10px",
+                    border: ragStatus === "Red" ? "2px solid #ff453a" : "1px solid rgba(255,255,255,0.1)",
+                    background: ragStatus === "Red" ? "rgba(255, 69, 58, 0.25)" : "rgba(0,0,0,0.3)",
+                    color: ragStatus === "Red" ? "#ff453a" : "var(--text-secondary)",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    transition: "all 0.2s ease",
+                    boxShadow: ragStatus === "Red" ? "0 0 12px rgba(255, 69, 58, 0.3)" : "none"
+                  }}
+                >
+                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ff453a", display: "inline-block" }}></span>
+                  Red
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRagStatus("Amber")}
+                  style={{
+                    padding: "12px",
+                    borderRadius: "10px",
+                    border: ragStatus === "Amber" ? "2px solid #ff9f0a" : "1px solid rgba(255,255,255,0.1)",
+                    background: ragStatus === "Amber" ? "rgba(255, 159, 10, 0.25)" : "rgba(0,0,0,0.3)",
+                    color: ragStatus === "Amber" ? "#ff9f0a" : "var(--text-secondary)",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    transition: "all 0.2s ease",
+                    boxShadow: ragStatus === "Amber" ? "0 0 12px rgba(255, 159, 10, 0.3)" : "none"
+                  }}
+                >
+                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ff9f0a", display: "inline-block" }}></span>
+                  Amber
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRagStatus("Green")}
+                  style={{
+                    padding: "12px",
+                    borderRadius: "10px",
+                    border: ragStatus === "Green" ? "2px solid #30d158" : "1px solid rgba(255,255,255,0.1)",
+                    background: ragStatus === "Green" ? "rgba(48, 209, 88, 0.25)" : "rgba(0,0,0,0.3)",
+                    color: ragStatus === "Green" ? "#30d158" : "var(--text-secondary)",
+                    fontWeight: "700",
+                    fontSize: "14px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    transition: "all 0.2s ease",
+                    boxShadow: ragStatus === "Green" ? "0 0 12px rgba(48, 209, 88, 0.3)" : "none"
+                  }}
+                >
+                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#30d158", display: "inline-block" }}></span>
+                  Green
+                </button>
+              </div>
             </div>
 
             <div>
@@ -230,36 +295,50 @@ export default function PerformanceFeedback() {
                       <th style={thStyle}>Month/Year</th>
                       <th style={thStyle}>ID</th>
                       <th style={thStyle}>Employee Name</th>
-                      <th style={thStyle}>Score</th>
+                      <th style={thStyle}>RAG Status</th>
                       <th style={thStyle}>TL Feedback</th>
                       <th style={thStyle}>Emp Input</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {reviews.map((r: any) => (
-                      <tr key={r.id} style={trStyle}>
-                        <td style={tdStyle}>{r.review_month} {r.review_year}</td>
-                        <td style={tdStyle}><span style={{ color: 'var(--accent-blue)', fontWeight: '700' }}>#{r.employee_id}</span></td>
-                        <td style={tdStyle}>{r.employee_name}</td>
-                        <td style={tdStyle}>
-                          <span style={{
-                            padding: '4px 8px',
-                            borderRadius: '6px',
-                            background: r.score >= 8 ? 'rgba(48,209,88,0.1)' : r.score >= 5 ? 'rgba(255,159,10,0.1)' : 'rgba(255,69,58,0.1)',
-                            color: r.score >= 8 ? '#30d158' : r.score >= 5 ? '#ff9f0a' : '#ff453a',
-                            fontWeight: '700'
-                          }}>
-                            {r.score}/10
-                          </span>
-                        </td>
-                        <td style={{ ...tdStyle, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.tl_feedback}>
-                          {r.tl_feedback}
-                        </td>
-                        <td style={{ ...tdStyle, maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.employee_self_input}>
-                          {r.employee_self_input || '—'}
-                        </td>
-                      </tr>
-                    ))}
+                    {reviews.map((r: any) => {
+                      const statusVal = r.rag_status || (r.score >= 8 ? 'Green' : r.score >= 5 ? 'Amber' : 'Red');
+                      const color = statusVal === 'Green' ? '#30d158' : statusVal === 'Amber' ? '#ff9f0a' : '#ff453a';
+                      const bg = statusVal === 'Green' ? 'rgba(48,209,88,0.15)' : statusVal === 'Amber' ? 'rgba(255,159,10,0.15)' : 'rgba(255,69,58,0.15)';
+                      return (
+                        <tr key={r.id} style={trStyle}>
+                          <td style={tdStyle}>{r.review_month} {r.review_year}</td>
+                          <td style={tdStyle}><span style={{ color: 'var(--accent-blue)', fontWeight: '700' }}>#{r.employee_id}</span></td>
+                          <td style={tdStyle}>{r.employee_name}</td>
+                          <td style={tdStyle}>
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: '6px',
+                              background: bg,
+                              color: color,
+                              fontWeight: '700',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                background: color
+                              }}></span>
+                              {statusVal}
+                            </span>
+                          </td>
+                          <td style={{ ...tdStyle, maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.tl_feedback}>
+                            {r.tl_feedback}
+                          </td>
+                          <td style={{ ...tdStyle, maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.employee_self_input}>
+                            {r.employee_self_input || '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

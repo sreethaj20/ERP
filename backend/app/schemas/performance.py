@@ -10,6 +10,7 @@ class PerformanceReviewBase(BaseModel):
     submitted_by_id: Optional[str] = None
     submitted_by_name: Optional[str] = None
     score: Optional[Decimal] = Decimal("0.00")
+    rag_status: Optional[str] = "Green"
     tl_feedback: str
     employee_self_input: Optional[str] = None
     metrics: Optional[dict] = None
@@ -23,6 +24,7 @@ class PerformanceReviewCreate(PerformanceReviewBase):
 
 class PerformanceReviewUpdate(BaseModel):
     score: Optional[Decimal] = None
+    rag_status: Optional[str] = None
     tl_feedback: Optional[str] = None
     employee_self_input: Optional[str] = None
 

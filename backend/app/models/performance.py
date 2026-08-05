@@ -12,6 +12,7 @@ class PerformanceReview(Base):
     submitted_by_name = Column(String(100))
     
     score = Column(Numeric(3, 1), default=0.0)
+    rag_status = Column(String(20), default="Green")
     tl_feedback = Column(Text)
     employee_self_input = Column(Text)
     metrics = Column(Text) # Text field for structured data

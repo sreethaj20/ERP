@@ -25,8 +25,20 @@ class PerformanceService:
         max_id = db.query(func.max(PerformanceReview.id)).scalar() or 0
         review_id = f"PR-{str(max_id + 1).zfill(3)}"
         
+        score_val = obj_in.score
+        if (score_val is None or score_val == 0) and obj_in.rag_status:
+            rag_lower = str(obj_in.rag_status).lower()
+            if rag_lower == "green":
+                score_val = 9.0
+            elif rag_lower == "amber":
+                score_val = 6.0
+            elif rag_lower == "red":
+                score_val = 3.0
+
+        db_obj_data = obj_in.dict(exclude={"review_id", "submitted_by_id", "employee_id", "employee_name", "score"})
         db_obj = PerformanceReview(
-            **obj_in.dict(exclude={"review_id", "submitted_by_id", "employee_id", "employee_name"}),
+            **db_obj_data,
+            score=score_val,
             review_id=review_id,
             employee_id=target_id,
             employee_name=target_name,
@@ -35,8 +47,8 @@ class PerformanceService:
         db.add(db_obj)
         
         # update employee record's general score
-        if target_emp and obj_in.score is not None:
-            target_emp.performance_score = obj_in.score
+        if target_emp and score_val is not None:
+            target_emp.performance_score = score_val
             db.add(target_emp)
             
         db.commit()

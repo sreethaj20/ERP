@@ -214,6 +214,14 @@ def on_startup():
                 p.company_name = "Mercure"
                 db.add(p)
 
+        # Ensure rag_status column exists in performance_reviews table
+        from sqlalchemy import text
+        try:
+            db.execute(text("ALTER TABLE performance_reviews ADD COLUMN rag_status VARCHAR(20) DEFAULT 'Green';"))
+            db.commit()
+        except Exception:
+            pass
+
         db.commit()
         db.close()
         if healed_count > 0:
