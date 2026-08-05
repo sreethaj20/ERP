@@ -291,6 +291,11 @@ export default function ShiftTimesheetPage() {
             return;
         }
 
+        const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+        const monthName = MONTHS[selectedMonth];
+        const monthShort = monthName.slice(0, 3);
+        const todayStr = new Date().toLocaleDateString('sv-SE');
+
         const exportData = uniqueEmps.map((emp: any) => {
             const empSessions = sessions.filter((s: any) => {
                 if (String(s.employee_id) !== String(emp.id)) return false;
@@ -312,25 +317,73 @@ export default function ShiftTimesheetPage() {
                 ? getWorkingDaysInMonth(selectedYear, selectedMonth, empShift.week_off_days || [], allHolidays)
                 : getWorkingDaysInMonth(selectedYear, selectedMonth, ['Sunday'], allHolidays);
 
-            const pres = empSessions.filter((s: any) => isAttendancePresent(s)).length;
-            const half = empSessions.filter((s: any) => s.status === 'Half Day').length;
-            const abs = empSessions.filter((s: any) => s.status === 'Absent').length;
-            const wkSec = empSessions.reduce((a: number, s: any) => a + getSessionWorkSec(s), 0);
+            let pres = 0;
+            let half = 0;
+            let abs = 0;
+            let totalWorkSec = 0;
 
-            return {
+            const row: Record<string, any> = {
                 "Employee Name": emp.name || "",
                 "Employee ID": emp.id || "",
                 "Role": emp.role || "",
                 "Assigned Shift": empShift ? empShift.shift_name : "No Shift Assigned",
                 "Shift Timings": empShift ? `${empShift.start_time} - ${empShift.end_time}` : "-",
-                "Month": MONTHS[selectedMonth],
+                "Month": monthName,
                 "Year": selectedYear,
                 "Expected Working Days": expDays,
-                "Present Days": pres,
-                "Half Days": half,
-                "Absent Days": abs,
-                "Total Work Hours": fmtSeconds(wkSec)
             };
+
+            // Day-by-Day columns
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dayFormatted = String(day).padStart(2, '0');
+                const monthNumFormatted = String(selectedMonth + 1).padStart(2, '0');
+                const dateStr = `${selectedYear}-${monthNumFormatted}-${dayFormatted}`;
+                const colHeader = `${dayFormatted}-${monthShort}`;
+
+                const dateObj = new Date(selectedYear, selectedMonth, day);
+                const dayOfWeek = dateObj.getDay();
+                const isOff = (empShift?.week_off_days || ['Sunday']).includes(
+                    ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]
+                );
+
+                const sessionOnDay = empSessions.find((s: any) => s.date === dateStr);
+
+                let statusText = "-";
+                if (sessionOnDay) {
+                    const workSec = getSessionWorkSec(sessionOnDay);
+                    if (isAttendancePresent(sessionOnDay)) {
+                        pres++;
+                        totalWorkSec += workSec;
+                        statusText = workSec > 0 ? fmtSeconds(workSec) : "8h 0m";
+                    } else if (sessionOnDay.status === 'Half Day') {
+                        half++;
+                        totalWorkSec += workSec;
+                        statusText = "Half Day";
+                    } else if (sessionOnDay.status === 'Absent') {
+                        abs++;
+                        statusText = "Absent";
+                    } else {
+                        statusText = sessionOnDay.status || "-";
+                    }
+                } else {
+                    if (isOff) {
+                        statusText = "Week Off";
+                    } else if (dateStr <= todayStr) {
+                        abs++;
+                        statusText = "Absent";
+                    } else {
+                        statusText = "-";
+                    }
+                }
+                row[colHeader] = statusText;
+            }
+
+            row["Total Present"] = pres;
+            row["Total Hours Worked"] = fmtSeconds(totalWorkSec);
+            row["Half Days"] = half;
+            row["Absent Days"] = abs;
+
+            return row;
         });
 
         const selectedMonthName = MONTHS[selectedMonth];

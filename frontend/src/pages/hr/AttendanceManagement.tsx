@@ -261,12 +261,44 @@ export default function AttendanceManagement() {
     const daysInMonth = new Date(exportYear, exportMonth + 1, 0).getDate();
     const todayStr = new Date().toLocaleDateString('sv-SE');
 
+    const getDailyWorkSec = (attRecord: any): number => {
+      if (!attRecord) return 0;
+      if (typeof attRecord.total_work_seconds === 'number' && attRecord.total_work_seconds > 0) {
+        return attRecord.total_work_seconds;
+      }
+      if (typeof attRecord.hours_worked === 'number' && attRecord.hours_worked > 0) {
+        return Math.round(attRecord.hours_worked * 3600);
+      }
+      if (typeof attRecord.hours_worked === 'string' && parseFloat(attRecord.hours_worked) > 0) {
+        return Math.round(parseFloat(attRecord.hours_worked) * 3600);
+      }
+      const login = attRecord.login_time || attRecord.check_in || attRecord.started_at;
+      const logout = attRecord.logout_time || attRecord.check_out || attRecord.ended_at;
+      if (login) {
+        const startMs = new Date(login).getTime();
+        const endMs = logout ? new Date(logout).getTime() : Date.now();
+        const breakSec = (attRecord.total_break_seconds || (attRecord.break_time ? attRecord.break_time * 60 : 0)) || 0;
+        if (!isNaN(startMs) && !isNaN(endMs) && endMs > startMs) {
+          return Math.max(0, Math.floor((endMs - startMs) / 1000) - breakSec);
+        }
+      }
+      return 0;
+    };
+
+    const formatSecToHours = (secs: number): string => {
+      if (secs <= 0) return '0h 0m';
+      const h = Math.floor(secs / 3600);
+      const m = Math.floor((secs % 3600) / 60);
+      return `${h}h ${m}m`;
+    };
+
     const exportData = activeWorkforce.map((m: any) => {
       let presentCount = 0;
       let halfDayCount = 0;
       let leaveCount = 0;
       let lopCount = 0;
       let weekendCount = 0;
+      let totalWorkSecInMonth = 0;
 
       const row: Record<string, any> = {
         "Employee ID": m.employee_id || m.id,
@@ -296,12 +328,16 @@ export default function AttendanceManagement() {
         let statusText = "";
         if (att) {
           const s = String(att.status || '').toLowerCase();
+          const dayWorkSec = getDailyWorkSec(att);
+
           if (s.includes('present') || s.includes('late') || s.includes('active')) {
-            statusText = "Present";
             presentCount++;
+            totalWorkSecInMonth += dayWorkSec;
+            statusText = dayWorkSec > 0 ? formatSecToHours(dayWorkSec) : (att.hours_worked ? `${att.hours_worked}h` : "8h 0m");
           } else if (s.includes('half')) {
-            statusText = "Half Day";
             halfDayCount++;
+            totalWorkSecInMonth += (dayWorkSec > 0 ? dayWorkSec : 14400);
+            statusText = "Half Day";
           } else if (s.includes('leave')) {
             statusText = "Leave";
             leaveCount++;
@@ -309,8 +345,9 @@ export default function AttendanceManagement() {
             statusText = "LOP";
             lopCount++;
           } else {
-            statusText = att.status || "Present";
             presentCount++;
+            totalWorkSecInMonth += dayWorkSec;
+            statusText = dayWorkSec > 0 ? formatSecToHours(dayWorkSec) : (att.hours_worked ? `${att.hours_worked}h` : "8h 0m");
           }
         } else {
           if (isWeekend) {
@@ -329,6 +366,7 @@ export default function AttendanceManagement() {
 
       // Overview summary at the end
       row["Total Present"] = presentCount;
+      row["Total Hours Worked"] = formatSecToHours(totalWorkSecInMonth);
       row["Total Half Days"] = halfDayCount;
       row["Total Leaves"] = leaveCount;
       row["Total LOP (Absent)"] = lopCount;
