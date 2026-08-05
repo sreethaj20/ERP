@@ -247,6 +247,12 @@ export default function ShiftTimesheetPage() {
     const personalPresent = myMonthSessions.filter(s => isAttendancePresent(s)).length;
     const personalProgress = `${personalPresent}/${expectedWorkDays}`;
 
+    const holidaysInMonthCount = (allHolidays || []).filter((h: any) => {
+        if (!h || !h.date) return false;
+        const d = new Date(typeof h.date === 'string' ? h.date : h.date);
+        return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    }).length;
+
     const availableRoles = [...new Set(sessions.map((s: any) => (s.role || '').toLowerCase().replace(/[\s_]+/g, '')))].filter(Boolean);
     const headerRole = userRole.charAt(0).toUpperCase() + userRole.slice(1);
 
@@ -392,6 +398,7 @@ export default function ShiftTimesheetPage() {
             row["Total Present"] = pres;
             row["Total Hours Worked"] = fmtSeconds(totalWorkSec);
             row["Half Days"] = half;
+            row["Holidays"] = holidaysInMonthCount;
             row["Absent Days"] = abs;
 
             return row;
@@ -464,6 +471,7 @@ export default function ShiftTimesheetPage() {
                     { label: 'Active Now', value: activeCount, color: '#0a84ff', icon: <FaClock />, glow: activeCount > 0 },
                     { label: 'Working Days (Present)', value: totalPresent, color: '#30d158', icon: <FaCheckCircle /> },
                     { label: 'Half Days', value: totalHalfDay, color: '#ff9f0a', icon: <FaMoon /> },
+                    { label: 'Holidays', value: holidaysInMonthCount, color: '#ffd60a', icon: <FaCalendarAlt /> },
                     { label: 'Absent', value: totalAbsent, color: '#ff453a', icon: <FaExclamationTriangle /> },
                     { label: 'Work Hours', value: fmtSeconds(totalWorkSecs), color: '#64d2ff', icon: <FaClock /> },
                     { label: 'Break Time', value: fmtSeconds(totalBreakSecs), color: '#bf5af2', icon: <FaCoffee /> },
@@ -510,10 +518,11 @@ export default function ShiftTimesheetPage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {/* Header */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 1fr 1fr', gap: '8px', padding: '6px 14px', fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: '8px', padding: '6px 14px', fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.6px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <div>Employee</div>
                             <div>Assigned Shift</div>
                             <div style={{ textAlign: 'center' }}>Expected Days</div>
+                            <div style={{ textAlign: 'center' }}>Holidays</div>
                             <div style={{ textAlign: 'center' }}>Present</div>
                             <div style={{ textAlign: 'center' }}>Half Day</div>
                             <div style={{ textAlign: 'center' }}>Absent</div>
@@ -547,7 +556,7 @@ export default function ShiftTimesheetPage() {
                             const sc = empShift?.color || '#0a84ff';
 
                             return (
-                                <div key={emp.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 1fr 1fr', gap: '8px', alignItems: 'center', padding: '10px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                <div key={emp.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr 1fr 1fr 1fr 1fr 1fr', gap: '8px', alignItems: 'center', padding: '10px 14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                                     <div>
                                         <div style={{ fontWeight: '600', fontSize: '13px' }}>{emp.name}</div>
                                         <span style={{ fontSize: '9px', fontWeight: '700', color: rb.color, background: `${rb.color}18`, borderRadius: '4px', padding: '1px 5px' }}>{rb.label}</span>
@@ -566,6 +575,7 @@ export default function ShiftTimesheetPage() {
                                         )}
                                     </div>
                                     <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#64d2ff' }}>{expDays}</div>
+                                    <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#ffd60a' }}>{holidaysInMonthCount}</div>
                                     <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#30d158' }}>{pres}</div>
                                     <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#ff9f0a' }}>{half}</div>
                                     <div style={{ textAlign: 'center', fontWeight: '700', fontSize: '14px', color: '#ff453a' }}>{abs}</div>

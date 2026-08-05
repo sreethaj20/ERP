@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import { FaCalendarAlt, FaCircle, FaChevronDown, FaChevronRight, FaClock } from "react-icons/fa";
-import { refreshAttendance, getEmployeesAsync, refreshPresence, getWorkingDaysInMonth, getEmployeeShift, refreshAttendanceCorrections, approveAttendanceCorrection } from "../../utils/storage";
+import { refreshAttendance, getEmployeesAsync, refreshPresence, getWorkingDaysInMonth, getEmployeeShift, refreshAttendanceCorrections, approveAttendanceCorrection, getHolidays } from "../../utils/storage";
 import { formatLocalTime, parseISOToLocalDate } from "../../utils/formatters";
 import api from "../../api/apiClient";
 
@@ -385,16 +385,16 @@ export default function MonthlyAttendance() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ textAlign: 'left', fontSize: '11px', color: 'var(--text-tertiary)', borderBottom: '1px solid var(--border-light)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                    {['Employee', 'Designation', 'Department', 'Working Days', 'Present', 'Leave', 'Absent/LOP', 'Fulfillment %'].map(h => (
+                                    {['Employee', 'Designation', 'Department', 'Working Days', 'Holidays', 'Present', 'Leave', 'Absent/LOP', 'Fulfillment %'].map(h => (
                                         <th key={h} style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{h}</th>
                                     ))}
                                 </tr>
                             </thead>
                             <tbody style={{ fontSize: '13px' }}>
                                 {loading ? (
-                                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', whiteSpace: 'nowrap' }}>Loading...</td></tr>
+                                    <tr><td colSpan={9} style={{ textAlign: 'center', padding: '40px', whiteSpace: 'nowrap' }}>Loading...</td></tr>
                                 ) : visibleReports.length === 0 ? (
-                                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
+                                    <tr><td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)', whiteSpace: 'nowrap' }}>
                                         No staff found.
                                     </td></tr>
                                 ) : visibleReports.map((emp: any, idx: number) => {
@@ -402,6 +402,11 @@ export default function MonthlyAttendance() {
                                     const present = empRecs.filter((r: any) => isPresent(r.status)).length;
                                     const leave = empRecs.filter((r: any) => r.status === 'Leave').length;
                                     const empWorkingDays = calculateWorkingDays(emp.employee_id, month, year);
+                                    const holidaysInMonth = (getHolidays() || []).filter((h: any) => {
+                                        if (!h || !h.date) return false;
+                                        const d = new Date(typeof h.date === 'string' ? h.date : h.date);
+                                        return d.getMonth() === (month - 1) && d.getFullYear() === year;
+                                    }).length;
                                     const absent = Math.max(0, empWorkingDays - present - leave);
                                     const fulfillment = empWorkingDays > 0 ? Math.round((present / empWorkingDays) * 100) : 0;
                                     const badge = roleBadge(emp.role);
@@ -426,6 +431,7 @@ export default function MonthlyAttendance() {
                                                 </td>
                                                 <td style={{ padding: '14px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{emp.department || '—'}</td>
                                                 <td style={{ padding: '14px', color: 'var(--text-secondary)', fontWeight: '600', whiteSpace: 'nowrap' }}>{empWorkingDays}</td>
+                                                <td style={{ padding: '14px', color: '#ffd60a', fontWeight: '700', whiteSpace: 'nowrap' }}>{holidaysInMonth}</td>
                                                 <td style={{ padding: '14px', fontWeight: '700', color: '#30d158', whiteSpace: 'nowrap' }}>{present}</td>
                                                 <td style={{ padding: '14px', fontWeight: '700', color: '#ff9f0a', whiteSpace: 'nowrap' }}>{leave}</td>
                                                 <td style={{ padding: '14px', fontWeight: '700', color: '#ff453a', whiteSpace: 'nowrap' }}>{absent}</td>

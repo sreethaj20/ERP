@@ -13,7 +13,9 @@ import {
   getOffboardingRequests,
   refreshOffboarding,
   getUserPresence,
-  refreshPresence
+  refreshPresence,
+  getHolidays,
+  refreshHolidays
 } from "../../utils/storage";
 import { 
   FaCheckCircle, 
@@ -81,7 +83,8 @@ export default function AttendanceManagement() {
           refreshAttendance(),
           refreshPresence(),
           refreshAttendanceCorrections(),
-          refreshOffboarding()
+          refreshOffboarding(),
+          refreshHolidays()
         ]);
       } catch (err) {
         console.error("Error fetching attendance data from server:", err);
@@ -293,10 +296,13 @@ export default function AttendanceManagement() {
       return `${h}h ${m}m`;
     };
 
+    const allHolidays = getHolidays();
+
     const exportData = activeWorkforce.map((m: any) => {
       let presentCount = 0;
       let halfDayCount = 0;
       let leaveCount = 0;
+      let holidayCount = 0;
       let lopCount = 0;
       let weekendCount = 0;
       let totalWorkSecInMonth = 0;
@@ -321,6 +327,11 @@ export default function AttendanceManagement() {
         const dateObj = new Date(exportYear, exportMonth, day);
         const dayOfWeek = dateObj.getDay();
         const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const isHoliday = (allHolidays || []).some((h: any) => {
+          if (!h || !h.date) return false;
+          const hDate = typeof h.date === 'string' ? h.date.split('T')[0] : '';
+          return hDate === dateStr;
+        });
 
         const att = attendance.find((a: any) => {
           if (!a.date || !isEmpMatch(a.employee_id, m)) return false;
@@ -329,12 +340,15 @@ export default function AttendanceManagement() {
 
         let statusText = "";
         if (dayNumber >= todayNumber) {
-          statusText = "-";
+          statusText = isHoliday ? "Holiday" : (isWeekend ? "Weekend" : "-");
         } else if (att) {
           const s = String(att.status || '').toLowerCase();
           const dayWorkSec = getDailyWorkSec(att);
 
-          if (s.includes('present') || s.includes('late') || s.includes('active')) {
+          if (s.includes('holiday')) {
+            holidayCount++;
+            statusText = "Holiday";
+          } else if (s.includes('present') || s.includes('late') || s.includes('active')) {
             presentCount++;
             totalWorkSecInMonth += dayWorkSec;
             statusText = dayWorkSec > 0 ? formatSecToHours(dayWorkSec) : (att.hours_worked ? `${att.hours_worked}h` : "8h 0m");
@@ -354,7 +368,10 @@ export default function AttendanceManagement() {
             statusText = dayWorkSec > 0 ? formatSecToHours(dayWorkSec) : (att.hours_worked ? `${att.hours_worked}h` : "8h 0m");
           }
         } else {
-          if (isWeekend) {
+          if (isHoliday) {
+            statusText = "Holiday";
+            holidayCount++;
+          } else if (isWeekend) {
             statusText = "Weekend";
             weekendCount++;
           } else {
@@ -371,9 +388,10 @@ export default function AttendanceManagement() {
       row["Total Hours Worked"] = formatSecToHours(totalWorkSecInMonth);
       row["Total Half Days"] = halfDayCount;
       row["Total Leaves"] = leaveCount;
+      row["Total Holidays"] = holidayCount;
       row["Total LOP (Absent)"] = lopCount;
       row["Total Weekends"] = weekendCount;
-      row["Total Payable Days"] = (presentCount + leaveCount + (halfDayCount * 0.5) + weekendCount);
+      row["Total Payable Days"] = (presentCount + leaveCount + holidayCount + (halfDayCount * 0.5) + weekendCount);
 
       return row;
     });
