@@ -51,22 +51,15 @@ def create_hr_department(obj_in: DepartmentCreate, db: Session = Depends(get_db)
 
 # --- HR Employee Master ---
 
-@router.get("/employees", response_model=List[EmployeeListOut])
+@router.get("/employees", response_model=List[EmployeeOut])
 def get_all_employees(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "admin", "it"]))):
     """
     HR Master List: Restricted to HR/Admin.
-    Returns safe summary data to prevent PII leakage.
+    Returns complete employee data for management and export.
     """
     from app.services.offboarding_service import offboarding_service
     offboarding_service.check_and_deactivate_expired_offboardings(db)
-    # Optimized fetch for list view
-    # Optimized fetch for list view - Include all hierarchy fields for proper frontend grouping
-    columns = [
-        "id", "employee_id", "name", "first_name", "last_name", "role", "department", 
-        "email", "designation", "status", "joining_date", "profile_photo_url", 
-        "reporting_to", "reporting_to_id", "manager_id", "team_leader_id", "reporting_manager_id"
-    ]
-    return employee_service.get_all_employees(db, skip, limit, role_filter="hr_master", columns=columns)
+    return employee_service.get_all_employees(db, skip, limit, role_filter="hr_master", columns=None)
 
 @router.post("/employees", response_model=EmployeeOut)
 async def create_employee(obj_in: EmployeeCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user_with_role(["hr", "manager"]))):

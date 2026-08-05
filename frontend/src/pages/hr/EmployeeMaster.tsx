@@ -581,12 +581,21 @@ export default function EmployeeMaster() {
   const paginatedDirectory = filteredDirectory.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleExportDirectory = () => {
+    const formatDate = (val: any) => {
+      if (!val) return 'N/A';
+      const str = String(val).trim();
+      if (str === 'N/A' || str === 'None' || str === 'null' || str === '') return 'N/A';
+      if (str.includes('T')) return str.split('T')[0];
+      if (str.length >= 10 && str.charAt(4) === '-' && str.charAt(7) === '-') return str.substring(0, 10);
+      return str;
+    };
+
     const exportData = filteredDirectory.map((emp: any) => ({
       'Employee ID': emp.employee_id || emp.id,
       'Full Name': emp.name || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
       'First Name': emp.first_name || '',
       'Last Name': emp.last_name || '',
-      'Official Email': emp.official_email || emp.email || '',
+      'Official Email': emp.official_email || emp.work_email || emp.email || '',
       'Personal Email': emp.personal_email || '',
       'Phone': emp.phone || emp.personal_mobile || '',
       'Alternate Mobile': emp.alternate_mobile || '',
@@ -597,17 +606,18 @@ export default function EmployeeMaster() {
       'Status': emp.status || '',
       'Work Location': emp.work_location || emp.joining_location || '',
       'Reporting Manager ID': emp.reporting_to_id || emp.manager_id || emp.reporting_manager_id || '',
-      'Reporting Manager': emp.reporting_to || emp.manager_name || 'N/A',
+      'Reporting Manager': emp.reporting_to || emp.reporting_manager || emp.manager_name || 'N/A',
       'Team Leader ID': emp.team_leader_id || '',
-      'Joining Date': emp.join_date || emp.joining_date || 'N/A',
-      'Offer Date': emp.offer_date || '',
-      'Probation Period Days': emp.probation_period_days || 90,
-      'Notice Period Days': emp.notice_period || 30,
+      'Joining Date': formatDate(emp.join_date || emp.joining_date),
+      'Offer Date': formatDate(emp.offer_date),
+      'Probation Period Days': emp.probation_period_days != null ? emp.probation_period_days : 90,
+      'Notice Period Days': emp.notice_period != null ? emp.notice_period : 30,
       'Gender': emp.gender || '',
-      'Date of Birth': emp.dob || emp.date_of_birth || '',
+      'Date of Birth': formatDate(emp.dob || emp.date_of_birth),
       'Blood Group': emp.blood_group || '',
       'Marital Status': emp.marital_status || '',
       'Nationality': emp.nationality || '',
+      'Address': emp.address || emp.permanent_address || emp.current_address || '',
       'City': emp.city || '',
       'State': emp.state || '',
       'Country': emp.country || '',
@@ -617,8 +627,8 @@ export default function EmployeeMaster() {
       'PF Number': emp.pf_number || '',
       'ESI Number': emp.esi_number || '',
       'Bank Name': emp.bank_name || '',
-      'Bank Account Number': emp.bank_account_number || '',
-      'Bank IFSC Code': emp.bank_ifsc_code || '',
+      'Bank Account Number': emp.bank_account_number || emp.bank_account_no || '',
+      'Bank IFSC Code': emp.bank_ifsc_code || emp.ifsc_code || '',
       'Emergency Contact Name': emp.emergency_contact_name || '',
       'Emergency Contact Phone': emp.emergency_contact_phone || '',
       'Emergency Contact Relation': emp.emergency_contact_relation || ''
