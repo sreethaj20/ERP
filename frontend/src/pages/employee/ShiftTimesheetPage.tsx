@@ -349,7 +349,9 @@ export default function ShiftTimesheetPage() {
                 const sessionOnDay = empSessions.find((s: any) => s.date === dateStr);
 
                 let statusText = "-";
-                if (sessionOnDay) {
+                if (dateStr >= todayStr) {
+                    statusText = "-";
+                } else if (sessionOnDay) {
                     const workSec = getSessionWorkSec(sessionOnDay);
                     if (isAttendancePresent(sessionOnDay)) {
                         pres++;
@@ -368,11 +370,9 @@ export default function ShiftTimesheetPage() {
                 } else {
                     if (isOff) {
                         statusText = "Week Off";
-                    } else if (dateStr <= todayStr) {
+                    } else {
                         abs++;
                         statusText = "Absent";
-                    } else {
-                        statusText = "-";
                     }
                 }
                 row[colHeader] = statusText;

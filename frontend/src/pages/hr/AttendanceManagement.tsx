@@ -326,7 +326,9 @@ export default function AttendanceManagement() {
         });
 
         let statusText = "";
-        if (att) {
+        if (dateStr >= todayStr) {
+          statusText = "-";
+        } else if (att) {
           const s = String(att.status || '').toLowerCase();
           const dayWorkSec = getDailyWorkSec(att);
 
@@ -353,11 +355,9 @@ export default function AttendanceManagement() {
           if (isWeekend) {
             statusText = "Weekend";
             weekendCount++;
-          } else if (dateStr <= todayStr) {
+          } else {
             statusText = "LOP";
             lopCount++;
-          } else {
-            statusText = "-";
           }
         }
 
