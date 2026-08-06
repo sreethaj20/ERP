@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
 import { requestEarlyLogin, getMyEarlyLoginRequests, getDashboard, getMyProfile } from "../../services/employeeService";
+import { formatLocalTime } from "../../utils/formatters";
 import { FaClock, FaPaperPlane, FaCheckCircle, FaTimesCircle, FaExclamationTriangle, FaCalendarDay, FaClock as FaClockIcon } from "react-icons/fa";
 
 export default function EarlyLoginRequest() {
@@ -222,7 +223,7 @@ export default function EarlyLoginRequest() {
                       return (
                         <tr key={req.id || idx} style={{ borderBottom: '1px dotted var(--border-light)' }}>
                           <td style={{ padding: '12px 0 12px 0', fontWeight: '600' }}>{req.date || '—'}</td>
-                          <td style={{ padding: '12px 8px 12px 0', fontWeight: '500' }}>{req.requested_start_time || '—'}</td>
+                          <td style={{ padding: '12px 8px 12px 0', fontWeight: '500' }}>{formatLocalTime(req.requested_start_time)}</td>
                           <td style={{ padding: '12px 16px 12px 0', fontSize: '13px' }}>{req.reason?.substring(0, 60)}{req.reason?.length > 60 ? '...' : ''}</td>
                           <td style={{ padding: '12px 0 12px 16px', textAlign: 'center' }}>
                             <span style={{

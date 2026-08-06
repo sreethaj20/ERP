@@ -498,39 +498,60 @@ class ShiftService:
         from datetime import time
         from app.models.shift import ShiftDefinition, ShiftAssignment
 
-        # 1. Find or create 10:00 AM - 7:00 PM General Shift definition
-        shift = db.query(ShiftDefinition).filter(
+        # 1. Ensure both standard shift definitions exist:
+        # Shift A: 9:30 AM - 6:30 PM
+        shift_930 = db.query(ShiftDefinition).filter(
             ShiftDefinition.deleted_at == None,
-            (ShiftDefinition.start_time == time(10, 0)) | (ShiftDefinition.shift_name == "General Shift")
+            (ShiftDefinition.start_time == time(9, 30)) | (ShiftDefinition.shift_name == "Day Shift (9:30 AM - 6:30 PM)")
         ).first()
-
-        if not shift:
-            shift = ShiftDefinition(
-                shift_name="General Shift",
-                shift_code="GEN-10-7",
-                start_time=time(10, 0),  # 10:00 AM
-                end_time=time(19, 0),    # 7:00 PM
+        if not shift_930:
+            shift_930 = ShiftDefinition(
+                shift_name="Day Shift (9:30 AM - 6:30 PM)",
+                shift_code="GEN-930-630",
+                start_time=time(9, 30),
+                end_time=time(18, 30),
                 grace_time=15,
                 break_duration_minutes=60,
                 color="#0a84ff",
                 is_active=True
             )
-            db.add(shift)
-            try:
-                db.commit()
-                db.refresh(shift)
-            except Exception:
-                db.rollback()
-                shift = db.query(ShiftDefinition).filter(ShiftDefinition.shift_name == "General Shift").first()
+            db.add(shift_930)
+
+        # Shift B: 10:00 AM - 7:00 PM
+        shift_1000 = db.query(ShiftDefinition).filter(
+            ShiftDefinition.deleted_at == None,
+            (ShiftDefinition.start_time == time(10, 0)) | (ShiftDefinition.shift_name == "General Shift")
+        ).first()
+        if not shift_1000:
+            shift_1000 = ShiftDefinition(
+                shift_name="General Shift",
+                shift_code="GEN-10-7",
+                start_time=time(10, 0),
+                end_time=time(19, 0),
+                grace_time=15,
+                break_duration_minutes=60,
+                color="#30d158",
+                is_active=True
+            )
+            db.add(shift_1000)
+
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        shift = shift_930 or shift_1000
 
         # 2. Check if employee already has a shift assignment
         if shift:
             existing = db.query(ShiftAssignment).filter(ShiftAssignment.employee_id == employee_id).first()
             if not existing:
+                from datetime import datetime
                 assignment = ShiftAssignment(
                     employee_id=employee_id,
                     shift_id=shift.id,
-                    assigned_by="system"
+                    assigned_by="system",
+                    assigned_at=datetime.utcnow()
                 )
                 db.add(assignment)
                 try:
@@ -618,7 +639,7 @@ class ShiftService:
             shift = db.query(shift_models.ShiftDefinition).order_by(shift_models.ShiftDefinition.id).first()
             if not shift:
                 # Emergency fallback if no shifts defined in system
-                shift = shift_models.ShiftDefinition(shift_name="General Shift", start_time=time(10,0), end_time=time(19,0), grace_time=15)
+                shift = shift_models.ShiftDefinition(shift_name="General Shift", start_time=time(9,30), end_time=time(18,30), grace_time=15)
                 db.add(shift); db.flush()
             shift_id = shift.id
 
@@ -702,9 +723,9 @@ class ShiftService:
                             detail=f"Shift grace period ended at {cutoff_str}. Late logins require an approved request from your Team Leader."
                         )
 
-        # Determine explicit session remark: Shift Extension, Early Login, or On Time
+        # Determine explicit session remark: Late Login, Early Login, or On Time
         if is_late:
-            session_remark = "Shift Extension"
+            session_remark = "Late Login"
         elif is_early:
             session_remark = "Early Login"
         else:

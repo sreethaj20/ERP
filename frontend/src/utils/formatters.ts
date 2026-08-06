@@ -315,3 +315,25 @@ export const formatLocalTime = (isoStr: string | null | undefined): string => {
         return '—';
     }
 };
+
+/**
+ * Formats an ISO datetime string or Date into localized string (e.g. "06/08/2026, 04:10:34 AM")
+ */
+export const formatLocalDateTime = (isoStr: string | null | undefined): string => {
+    if (!isoStr || isoStr === '—' || isoStr === 'N/A' || isoStr === 'null' || isoStr === 'undefined') return '—';
+    try {
+        const d = parseISOToLocalDate(isoStr);
+        if (isNaN(d.getTime())) return '—';
+        return d.toLocaleString('en-IN', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    } catch {
+        return '—';
+    }
+};

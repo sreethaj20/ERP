@@ -54,7 +54,7 @@ class ShiftAssignment(Base):
     employee_id = Column(String(30), index=True)
     shift_id = Column(Integer, index=True)
     assigned_by = Column(String(30)) # employee_id
-    assigned_at = Column(DateTime, server_default=func.now())
+    assigned_at = Column(DateTime, default=datetime.utcnow, server_default=func.now())
 
 class ShiftSession(Base):
     __tablename__ = "shift_sessions"

@@ -85,17 +85,22 @@ class ShiftAssignmentRepository:
         if not shift:
             raise HTTPException(status_code=404, detail=f"Shift ID {obj_in.shift_id} not found")
         
+        from datetime import datetime
         # Check if already assigned
         existing = db.query(ShiftAssignment).filter(ShiftAssignment.employee_id == obj_in.employee_id).first()
         if existing:
             existing.shift_id = obj_in.shift_id
             existing.assigned_by = obj_in.assigned_by
+            existing.assigned_at = datetime.utcnow()
             db.add(existing)
             db.commit()
             db.refresh(existing)
             return existing
         
-        db_obj = ShiftAssignment(**obj_in.dict())
+        data = obj_in.dict()
+        if not data.get("assigned_at"):
+            data["assigned_at"] = datetime.utcnow()
+        db_obj = ShiftAssignment(**data)
         db.add(db_obj)
         db.commit()
         db.refresh(db_obj)

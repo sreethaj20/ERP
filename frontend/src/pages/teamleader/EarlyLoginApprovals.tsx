@@ -4,6 +4,7 @@ import GlassCard from "../../components/GlassCard";
 import { FaClock, FaCheck, FaTimes, FaHistory } from "react-icons/fa";
 import api from "../../api/apiClient";
 import { handleEarlyLogin } from "../../services/teamleaderService";
+import { formatLocalTime, formatLocalDateTime } from "../../utils/formatters";
 
 export default function EarlyLoginApprovals() {
     const [requests, setRequests] = useState<any[]>([]);
@@ -131,7 +132,7 @@ export default function EarlyLoginApprovals() {
                                             <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
                                                 <td style={{ padding: '12px', fontWeight: '600' }}>{req.employee_name}</td>
                                                 <td style={{ padding: '12px' }}>{req.date}</td>
-                                                <td style={{ padding: '12px', fontWeight: '600', color: '#ff9f0a' }}>{req.requested_start_time}</td>
+                                                <td style={{ padding: '12px', fontWeight: '600', color: '#ff9f0a' }}>{formatLocalTime(req.requested_start_time)}</td>
                                                 <td style={{ padding: '12px', color: 'var(--text-tertiary)' }}>{req.reason}</td>
                                                 <td style={{ padding: '12px' }}>
                                                     <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: sc.bg, color: sc.color, textTransform: 'uppercase' }}>
@@ -139,7 +140,7 @@ export default function EarlyLoginApprovals() {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '12px', color: 'var(--text-tertiary)' }}>
-                                                    {req.updated_at ? new Date(req.updated_at).toLocaleString('en-IN') : (req.created_at ? new Date(req.created_at).toLocaleString('en-IN') : '—')}
+                                                    {formatLocalDateTime(req.updated_at || req.created_at)}
                                                 </td>
                                             </tr>
                                         );
