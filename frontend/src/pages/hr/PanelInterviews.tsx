@@ -361,17 +361,57 @@ function InterviewCard({ interview: int, isCompleted, onEvaluate }: {
 
             {/* CTA Button */}
             <button
-                className="apple-btn"
                 onClick={onEvaluate}
                 style={{
-                    width: '100%', fontSize: '12px',
-                    background: isCompleted ? 'rgba(255,255,255,0.05)' : `${color}22`,
-                    color: isCompleted ? 'var(--text-secondary)' : color,
-                    border: `1px solid ${isCompleted ? 'rgba(255,255,255,0.08)' : color + '44'}`
+                    width: '100%',
+                    padding: '11px 16px',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    background: isCompleted 
+                        ? 'linear-gradient(135deg, rgba(191, 90, 242, 0.22) 0%, rgba(10, 132, 255, 0.22) 100%)' 
+                        : `linear-gradient(135deg, ${color}35 0%, ${color}15 100%)`,
+                    color: '#ffffff',
+                    border: `1px solid ${isCompleted ? 'rgba(191, 90, 242, 0.45)' : color + '55'}`,
+                    boxShadow: isCompleted 
+                        ? '0 4px 14px rgba(191, 90, 242, 0.2)' 
+                        : `0 4px 14px ${color}25`,
+                    backdropFilter: 'blur(8px)',
+                    outline: 'none'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.background = isCompleted 
+                        ? 'linear-gradient(135deg, rgba(191, 90, 242, 0.35) 0%, rgba(10, 132, 255, 0.35) 100%)' 
+                        : `linear-gradient(135deg, ${color}50 0%, ${color}25 100%)`;
+                    e.currentTarget.style.boxShadow = isCompleted 
+                        ? '0 6px 22px rgba(191, 90, 242, 0.4)' 
+                        : `0 6px 22px ${color}45`;
+                    e.currentTarget.style.borderColor = isCompleted 
+                        ? 'rgba(191, 90, 242, 0.75)' 
+                        : color;
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.background = isCompleted 
+                        ? 'linear-gradient(135deg, rgba(191, 90, 242, 0.22) 0%, rgba(10, 132, 255, 0.22) 100%)' 
+                        : `linear-gradient(135deg, ${color}35 0%, ${color}15 100%)`;
+                    e.currentTarget.style.boxShadow = isCompleted 
+                        ? '0 4px 14px rgba(191, 90, 242, 0.2)' 
+                        : `0 4px 14px ${color}25`;
+                    e.currentTarget.style.borderColor = isCompleted 
+                        ? 'rgba(191, 90, 242, 0.45)' 
+                        : color + '55';
                 }}
             >
-                <FaRegCommentDots />
-                {isCompleted ? 'View Scorecard' : 'Open Evaluation Panel'}
+                <FaRegCommentDots style={{ fontSize: '14px', color: isCompleted ? '#bf5af2' : color }} />
+                <span>{isCompleted ? 'View Scorecard' : 'Open Evaluation Panel'}</span>
             </button>
         </GlassCard>
     );
