@@ -4,7 +4,7 @@ import {
     FaHome, FaUsers, FaUserTie, FaClipboardList, FaBullhorn,
     FaCalendarAlt, FaFileAlt, FaCog, FaSignOutAlt, FaLaptop,
     FaBriefcase, FaMoneyBillWave, FaBuilding, FaUserShield, FaSitemap,
-    FaSync, FaUserPlus, FaStar, FaClock, FaProjectDiagram
+    FaSync, FaUserPlus, FaStar, FaClock, FaProjectDiagram, FaCalendarPlus
 } from 'react-icons/fa';
 import Logo from './Logo';
 import { logoutUser, endShiftSession, getActiveSessionHours } from '../utils/storage';
@@ -32,6 +32,8 @@ export default function Sidebar() {
             case 'manager':
                 return [
                     { name: 'Home', path: '/manager/dashboard', icon: <FaHome /> },
+                    { name: 'Apply Leave', path: '/manager/leaves?tab=apply', icon: <FaCalendarPlus /> },
+                    { name: 'Leave Pipeline', path: '/manager/leaves', icon: <FaClipboardList /> },
                     { name: 'Lifecycle', path: '/manager/lifecycle', icon: <FaSync /> },
                     { name: 'Onboarding', path: '/manager/onboarding', icon: <FaUserPlus /> },
                     { name: 'Workflow', path: '/manager/workflow', icon: <FaProjectDiagram /> },

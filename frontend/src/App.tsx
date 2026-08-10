@@ -284,6 +284,7 @@ function App() {
                         <Route path="/manager/access-control" element={<RoleAccessControl />} />
                         <Route path="/manager/offboarding" element={<OffboardingGovernance />} />
                         <Route path="/manager/leaves" element={<LeaveApprovals />} />
+                        <Route path="/manager/my-leave" element={<StaffLeaveManagement role="Manager" roleLabel="Manager" />} />
                         <Route path="/manager/pipeline" element={<RecruiterPipelineView />} />
                         <Route path="/manager/team-status" element={<TeamLeaderStatusView />} />
                         <Route path="/manager/it-tickets" element={<ITTicketsView />} />

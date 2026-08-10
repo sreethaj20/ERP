@@ -12,7 +12,7 @@ import {
   FaClipboardList,
   FaChartBar, FaCalendarCheck, FaUserShield, FaBuilding,
   FaKey, FaProjectDiagram, FaUserCheck, FaCogs, FaWrench, FaSearch, FaClock,
-  FaGlobe, FaShieldAlt, FaTimes, FaUserTie, FaUsers, FaLaptop
+  FaGlobe, FaShieldAlt, FaTimes, FaUserTie, FaUsers, FaLaptop, FaCalendarPlus
 } from "react-icons/fa";
 import { syncCompanyProfile } from "../../utils/companyUtils";
 
@@ -92,6 +92,7 @@ export default function ManagerDashboard() {
   ];
 
   const operationalModules = [
+    { title: "Apply Leave", subtitle: "Submit personal leave request", path: "/manager/leaves?tab=apply", icon: <FaCalendarPlus color="#ff3b30" /> },
     { title: "My Assets", subtitle: "Assigned devices & hardware", path: "/manager/my-assets", icon: <FaLaptop color="#64d2ff" /> },
     { title: "Pre-boarding", subtitle: "New hire monitoring", path: "/manager/lifecycle?tab=preboarding", icon: <FaUserCheck color="#30b0c7" /> },
     { title: "Interview Panel", subtitle: "Strategic participation", path: "/manager/interviews", icon: <FaCalendarCheck color="#30d158" /> },
