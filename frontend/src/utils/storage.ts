@@ -226,6 +226,8 @@ export const refreshProfile = async () => {
 export const normalizeEmployee = (e: any) => ({
     ...e,
     name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim(),
+    photo: e.photo || e.profile_photo_url,
+    profile_photo_url: e.profile_photo_url || e.photo,
     role: e.role || e.user?.role || 'Employee',
     dob: e.dob || e.date_of_birth,
     joining_date: e.joining_date || e.date_of_joining,

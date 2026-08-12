@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import GlassCard from "../../components/GlassCard";
-import { getEmployees, getFileUrl } from "../../utils/storage";
+import { getEmployees, getEmployeesAsync, getFileUrl } from "../../utils/storage";
 import { FaUserTie, FaUserShield, FaUserEdit, FaUsers, FaAngleRight, FaAngleDown, FaSitemap } from "react-icons/fa";
 
 interface Employee {
@@ -14,6 +14,7 @@ interface Employee {
     reporting_to_id?: string;
     status: string;
     photo?: string;
+    profile_photo_url?: string;
 }
 
 
@@ -24,7 +25,7 @@ export default function OrganizationHierarchy() {
 
     const loadData = async () => {
         try {
-            const data = await getEmployees();
+            const data = await getEmployeesAsync();
             const employeesArray = Array.isArray(data) ? data : [];
             setEmployees(employeesArray);
             
@@ -89,9 +90,12 @@ export default function OrganizationHierarchy() {
                         )}
 
                         <img
-                            src={(emp.photo || (emp as any).profile_photo_url) ? getFileUrl(emp.photo || (emp as any).profile_photo_url) : `https://ui-avatars.com/api/?name=${emp.name}&background=random`}
-                            alt={emp.name}
-                            style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-light)' }}
+                            src={(emp.photo || emp.profile_photo_url) ? getFileUrl(emp.photo || emp.profile_photo_url || "") : `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || "User")}&background=random`}
+                            alt={emp.name || "Employee"}
+                            style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-light)', objectFit: 'cover' }}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || "User")}&background=random`;
+                            }}
                         />
 
                         <div>
