@@ -67,9 +67,14 @@ class StorageService:
                 'ContentType': self._get_mime_type(filename)
             }
             try:
-                self.s3_client.put_object(ACL='public-read', **put_kwargs)
-            except Exception:
-                self.s3_client.put_object(**put_kwargs)
+                try:
+                    self.s3_client.put_object(ACL='public-read', **put_kwargs)
+                except Exception:
+                    self.s3_client.put_object(**put_kwargs)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"S3 upload failed for key '{path}': {e}")
+                raise RuntimeError(f"AWS S3 upload failed: {str(e)}") from e
         else:
             # Save locally
             target_dir = os.path.join(self.base_path, clean_sub_dir)
