@@ -19,17 +19,14 @@ class StorageService:
             s3_region = settings.AWS_REGION or "ap-south-1"
             s3_config = Config(
                 region_name=s3_region,
-                signature_version='s3v4',
-                s3={'addressing_style': 'virtual'}
+                signature_version='s3v4'
             )
-            endpoint_url = f"https://s3.{s3_region}.amazonaws.com"
             
             self.s3_client = boto3.client(
                 's3',
                 aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
                 aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
                 region_name=s3_region,
-                endpoint_url=endpoint_url,
                 config=s3_config
             )
             self.bucket = settings.AWS_S3_BUCKET
@@ -136,16 +133,15 @@ class StorageService:
             return clean_key
 
         if self.use_s3:
-            if expires_in is not None:
-                try:
-                    return self.s3_client.generate_presigned_url(
-                        'get_object',
-                        Params={'Bucket': self.bucket, 'Key': clean_key},
-                        ExpiresIn=expires_in
-                    )
-                except Exception:
-                    return f"{self.base_url}/{clean_key}"
-            return f"{self.base_url}/{clean_key}"
+            try:
+                # Generate presigned URL (valid for 24 hours default) for private S3 access
+                return self.s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': self.bucket, 'Key': clean_key},
+                    ExpiresIn=expires_in or 86400
+                )
+            except Exception:
+                return f"{self.base_url}/{clean_key}"
         else:
             return f"/uploads/{clean_key}"
 
