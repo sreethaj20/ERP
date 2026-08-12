@@ -18,7 +18,7 @@ const Logo: React.FC<LogoProps> = ({
     height,
     className = "",
     showTagline = false,
-    showName = true,
+    showName = false,
     printMode = false,
     layout = 'vertical'
 }) => {

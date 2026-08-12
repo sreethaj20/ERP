@@ -255,7 +255,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
             </button>
           )}
           <div style={{ maxWidth: 'clamp(140px, 30vw, 260px)' }}>
-            <Logo width="100%" height="auto" layout="horizontal" showTagline={false} />
+            <Logo width="100%" height="auto" layout="horizontal" showTagline={false} showName={false} />
           </div>
         </div>
       </div>

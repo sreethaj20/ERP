@@ -123,7 +123,7 @@ export default function Sidebar() {
     return (
         <aside className="sidebar glass-panel">
             <div className="sidebar-header">
-                <Logo width="100%" layout="horizontal" showTagline={false} />
+                <Logo width="100%" layout="horizontal" showTagline={false} showName={false} />
             </div>
 
             <nav className="sidebar-nav">
