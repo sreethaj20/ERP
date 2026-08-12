@@ -179,32 +179,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             else workedRecordStatus = 'absent';
         }
 
-        // 🟢 LIVE PRESENCE FALLBACK FOR TODAY: If current user is logged in today, mark as Present
-        if (!workedRecordStatus && isToday && type === 'individual') {
-            const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" || !!sessionStorage.getItem("token");
-            if (isLoggedIn) {
-                workedRecordStatus = 'present';
-            }
-        }
-
-        // 2. Check Priorities
-        const holiday = holidays.find(h => String(h.date || '').substring(0, 10) === dateStr);
-        const myShift = getEmployeeShift((employeeId || userId) as string);
-        const weekOffs = (myShift && myShift.week_off_days && myShift.week_off_days.length > 0) ? myShift.week_off_days : ['Sunday'];
-        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-
-        // If they ACTUALLY worked (Present or Extension), let it override weekends/holidays so overtime is visible
-        if (workedRecordStatus === 'shift-extension' || workedRecordStatus === 'present' || workedRecordStatus === 'half-day') {
-            return workedRecordStatus;
-        }
-
-        // 3. Check Approved Leaves (Takes priority over future date status so approved ranges display on calendar)
+        // 2. Check Approved Leaves (Takes priority over passive live session presence)
         let approvedLeave = null;
         if (type === 'individual') {
             approvedLeave = leaves.find(l => {
                 const lStart = String(l.start_date || l.startDate || l.from_date || l.fromDate || '').substring(0, 10);
                 const lEnd = String(l.end_date || l.endDate || l.to_date || l.toDate || '').substring(0, 10);
-                return (((employeeId && String(l.employee_id) === String(employeeId)) || String(l.employee_id) === String(userId)) && l.status?.toLowerCase() === 'approved' && dateStr >= lStart && dateStr <= lEnd);
+                const st = String(l.status || '').toLowerCase();
+                return isEmpMatch(l.employee_id) && (st === 'approved' || st === 'pending') && dateStr >= lStart && dateStr <= lEnd;
             });
         } else {
             const myTeam = employees
@@ -222,11 +204,30 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                 const lEnd = String(l.end_date || l.endDate || l.to_date || l.toDate || '').substring(0, 10);
                 const isTeamMember = myTeam.includes(String(l.employee_id));
                 const isDirectlyManaged = (employeeId && (String(l.manager_id) === String(employeeId) || String(l.team_leader_id) === String(employeeId))) || (String(l.manager_id) === String(userId) || String(l.team_leader_id) === String(userId));
-                return ((isTeamMember || isDirectlyManaged) && l.status?.toLowerCase() === 'approved' && dateStr >= lStart && dateStr <= lEnd);
+                const st = String(l.status || '').toLowerCase();
+                return ((isTeamMember || isDirectlyManaged) && (st === 'approved' || st === 'pending') && dateStr >= lStart && dateStr <= lEnd);
             });
         }
 
         if (approvedLeave || workedRecordStatus === 'leave') return 'leave';
+
+        // 🟢 LIVE PRESENCE FALLBACK FOR TODAY: If current user is logged in today & no leave active, mark as Present
+        if (!workedRecordStatus && isToday && type === 'individual') {
+            const isLoggedIn = sessionStorage.getItem("isLoggedIn") === "true" || !!sessionStorage.getItem("token");
+            if (isLoggedIn) {
+                workedRecordStatus = 'present';
+            }
+        }
+
+        // 3. Priorities & Overrides
+        const holiday = holidays.find(h => String(h.date || '').substring(0, 10) === dateStr);
+        const myShift = getEmployeeShift((employeeId || userId) as string);
+        const weekOffs = (myShift && myShift.week_off_days && myShift.week_off_days.length > 0) ? myShift.week_off_days : ['Sunday'];
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+        if (workedRecordStatus === 'shift-extension' || workedRecordStatus === 'present' || workedRecordStatus === 'half-day') {
+            return workedRecordStatus;
+        }
 
         if (holiday) return 'holiday';
         if (weekOffs.includes(dayName)) return 'weekend';
