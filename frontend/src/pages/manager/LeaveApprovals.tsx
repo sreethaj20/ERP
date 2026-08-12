@@ -80,6 +80,15 @@ export default function LeaveApprovals() {
     };
   }, []);
 
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam === "apply") {
+      setActiveMainTab("apply");
+    } else if (!tabParam) {
+      setActiveMainTab("approvals");
+    }
+  }, [searchParams]);
+
   const handleTabChange = (tab: "approvals" | "apply") => {
     setActiveMainTab(tab);
     setSearchParams(tab === "apply" ? { tab: "apply" } : {});

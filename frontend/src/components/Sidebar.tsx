@@ -7,7 +7,7 @@ import {
     FaSync, FaUserPlus, FaStar, FaClock, FaProjectDiagram, FaCalendarPlus
 } from 'react-icons/fa';
 import Logo from './Logo';
-import { logoutUser, endShiftSession, getActiveSessionHours } from '../utils/storage';
+import { logoutUser, endShiftSession, getActiveSessionHours, getRole } from '../utils/storage';
 import { useLogoutLogic } from '../hooks/useLogoutLogic';
 
 export default function Sidebar() {
@@ -16,7 +16,11 @@ export default function Sidebar() {
 
     // Extract role from URL path (e.g., /manager/dashboard -> manager)
     const pathSegments = location.pathname.split('/').filter(Boolean);
-    const currentRole = pathSegments[0] || 'employee';
+    const rawRole = pathSegments[0] || getRole();
+    let currentRole = (rawRole || 'employee').toLowerCase().replace(/[_\s]+/g, '');
+    if (['itdepartment', 'itadmin', 'itsupport'].includes(currentRole)) currentRole = 'it';
+    if (['teamleader', 'tl', 'teamlead'].includes(currentRole)) currentRole = 'teamleader';
+    if (['requiter', 'recruiting'].includes(currentRole)) currentRole = 'recruiter';
 
     const executeLogout = async () => {
         await logoutUser();

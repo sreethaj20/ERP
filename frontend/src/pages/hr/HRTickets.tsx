@@ -110,7 +110,7 @@ export default function HRTickets() {
         // Search Query Filter
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
-            const ticketId = (t.id || '').toString().toLowerCase();
+            const ticketId = (t.id ?? '').toString().toLowerCase();
             const empName = (t.employee_name || t.author_name || t.author || '').toLowerCase();
             const empId = (t.emp_id || t.employee_id || '').toLowerCase();
             const issue = (t.issue || t.subject || t.description || '').toLowerCase();

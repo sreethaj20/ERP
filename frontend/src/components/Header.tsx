@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaBell, FaUserCircle, FaArrowLeft, FaCoffee, FaPlay } from 'react-icons/fa';
 import Logo from './Logo';
-import { logoutUser, getNotifications, markNotificationRead, getData, getActiveShiftSession, startShiftSession, getEmployeeShift, takeBreak, endBreak, getFileUrl } from '../utils/storage';
+import { logoutUser, getNotifications, markNotificationRead, getData, getActiveShiftSession, startShiftSession, getEmployeeShift, takeBreak, endBreak, getFileUrl, getRole } from '../utils/storage';
 import { parseISOToLocalDate, getOrSetDailyLoginTime } from '../utils/formatters';
 import { useTheme } from '../context/ThemeContext';
 import { useLogoutLogic } from '../hooks/useLogoutLogic';
@@ -398,7 +398,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
           </div>
 
           <div
-            onClick={() => navigate(`/${role.toLowerCase().replace(/\s/g, '')}/profile`)}
+            onClick={() => navigate(`/${getRole()}/profile`)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
             title="View Profile"
           >

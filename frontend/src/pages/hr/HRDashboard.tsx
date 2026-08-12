@@ -156,9 +156,12 @@ export default function HRDashboard() {
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "24px", marginBottom: "40px" }}>
         {/* Attendance - Main Focus */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <GlassCard title="Attendance Overview" subtitle="Company-wide presence map">
+          <GlassCard 
+            title="My Attendance Calendar" 
+            subtitle="Your monthly attendance and shift activity"
+          >
             <div style={{ marginTop: "15px" }}>
-              <AttendanceCalendar type="team" />
+              <AttendanceCalendar type="individual" />
             </div>
           </GlassCard>
         </div>

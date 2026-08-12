@@ -95,6 +95,14 @@ const formatLetterData = (emp: any, reqRecord: any) => {
 export default function LifecycleControl() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<'onboarding' | 'preboarding' | 'role_assignments' | 'offboarding' | 'workforce' | 'offers'>('workforce');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam && ['onboarding', 'preboarding', 'role_assignments', 'offboarding', 'workforce', 'offers'].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [location.search]);
   const [employees, setEmployeesState] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);

@@ -98,7 +98,24 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         const target = String(rEmpId).trim().toLowerCase();
         const eCode = String(employeeId || '').trim().toLowerCase();
         const uId = String(userId || '').trim().toLowerCase();
-        return (eCode !== '' && target === eCode) || (uId !== '' && target === uId);
+        if ((eCode !== '' && target === eCode) || (uId !== '' && target === uId)) return true;
+
+        const myEmp = employees.find((e: any) => 
+            (eCode !== '' && String(e.employee_id || '').trim().toLowerCase() === eCode) ||
+            (uId !== '' && String(e.id || '').trim().toLowerCase() === uId) ||
+            (uId !== '' && String(e.user_id || '').trim().toLowerCase() === uId)
+        );
+
+        if (myEmp) {
+            const mCode = String(myEmp.employee_id || '').trim().toLowerCase();
+            const mId = String(myEmp.id || '').trim().toLowerCase();
+            const mUserId = String(myEmp.user_id || '').trim().toLowerCase();
+            if (mCode !== '' && target === mCode) return true;
+            if (mId !== '' && target === mId) return true;
+            if (mUserId !== '' && target === mUserId) return true;
+        }
+
+        return false;
     };
 
     // Real attendance logic

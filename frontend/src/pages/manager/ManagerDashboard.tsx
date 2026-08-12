@@ -96,7 +96,7 @@ export default function ManagerDashboard() {
     { title: "My Assets", subtitle: "Assigned devices & hardware", path: "/manager/my-assets", icon: <FaLaptop color="#64d2ff" /> },
     { title: "Pre-boarding", subtitle: "New hire monitoring", path: "/manager/lifecycle?tab=preboarding", icon: <FaUserCheck color="#30b0c7" /> },
     { title: "Interview Panel", subtitle: "Strategic participation", path: "/manager/interviews", icon: <FaCalendarCheck color="#30d158" /> },
-    { title: "Leave Pulse", subtitle: "Executive approvals", path: "/manager/leaves", icon: <FaCalendarCheck color="#ff9500" /> },
+    { title: "Leave Approvals", subtitle: "Executive approvals", path: "/manager/leaves", icon: <FaCalendarCheck color="#ff9500" /> },
   ];
 
   const departmentalViews = [
@@ -346,45 +346,45 @@ export default function ManagerDashboard() {
   );
 }
 
-              const SectionHeader = ({title}: {title: string }) => (
-              <div style={{ marginBottom: "20px" }}>
-                <h2 style={{ fontSize: "20px", fontWeight: "600", color: "var(--text-primary)", display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {title}
-                </h2>
-              </div>
-              );
+const SectionHeader = ({ title }: { title: string }) => (
+  <div style={{ marginBottom: "20px" }}>
+    <h2 style={{ fontSize: "20px", fontWeight: "600", color: "var(--text-primary)", display: 'flex', alignItems: 'center', gap: '10px' }}>
+      {title}
+    </h2>
+  </div>
+);
 
-              const ModuleCard = ({title, subtitle, icon, isMaintenance, onClick}: any) => (
-              <div onClick={onClick} className="glass-module-card" style={isMaintenance ? { border: '1px solid rgba(255, 159, 10, 0.3)' } : {}}>
-                <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                    <div style={{ opacity: 0.9 }}>
-                      {React.cloneElement(icon, { size: 32 })}
-                    </div>
-                    {isMaintenance && (
-                      <span style={{ background: 'rgba(255, 159, 10, 0.15)', color: '#ff9f0a', padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', border: '1px solid rgba(255, 159, 10, 0.3)' }}>
-                        🛠️ MAINTENANCE
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px' }}>{title}</div>
-                    <div style={{ fontSize: '13px', color: isMaintenance ? '#ff9f0a' : 'var(--text-secondary)', marginBottom: '20px' }}>{subtitle}</div>
-                  </div>
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '6px',
-                    fontSize: '12px', fontWeight: '600',
-                    color: isMaintenance ? '#ff9f0a' : 'var(--accent-blue)',
-                    background: isMaintenance ? 'rgba(255, 159, 10, 0.1)' : 'rgba(14, 165, 233, 0.1)',
-                    padding: '8px 16px', borderRadius: '12px', alignSelf: 'flex-start'
-                  }}>
-                    {isMaintenance ? 'Under Maintenance 🛠️' : 'Command Center →'}
-                  </div>
-                </div>
-              </div>
-              );
+const ModuleCard = ({ title, subtitle, icon, isMaintenance, onClick }: any) => (
+  <div onClick={onClick} className="glass-module-card" style={isMaintenance ? { border: '1px solid rgba(255, 159, 10, 0.3)' } : {}}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ opacity: 0.9 }}>
+          {React.cloneElement(icon, { size: 32 })}
+        </div>
+        {isMaintenance && (
+          <span style={{ background: 'rgba(255, 159, 10, 0.15)', color: '#ff9f0a', padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '800', border: '1px solid rgba(255, 159, 10, 0.3)' }}>
+            🛠️ MAINTENANCE
+          </span>
+        )}
+      </div>
+      <div>
+        <div style={{ fontSize: '16px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '6px' }}>{title}</div>
+        <div style={{ fontSize: '13px', color: isMaintenance ? '#ff9f0a' : 'var(--text-secondary)', marginBottom: '20px' }}>{subtitle}</div>
+      </div>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: '6px',
+        fontSize: '12px', fontWeight: '600',
+        color: isMaintenance ? '#ff9f0a' : 'var(--accent-blue)',
+        background: isMaintenance ? 'rgba(255, 159, 10, 0.1)' : 'rgba(14, 165, 233, 0.1)',
+        padding: '8px 16px', borderRadius: '12px', alignSelf: 'flex-start'
+      }}>
+        {isMaintenance ? 'Under Maintenance 🛠️' : 'Command Center →'}
+      </div>
+    </div>
+  </div>
+);
 
-              const AccessRow = ({label, desc, icon, iconBg, iconColor, checked, onChange}: any) => (
+const AccessRow = ({ label, desc, icon, iconBg, iconColor, checked, onChange }: any) => (
   <div className="access-row-card">
     <div className="access-info">
       <div className="access-icon-wrapper" style={{ background: iconBg, color: iconColor }}>
@@ -418,81 +418,81 @@ export default function ManagerDashboard() {
 );
 
 
-              const iconCircleStyle: React.CSSProperties = {
-                width: '45px',
-              height: '45px',
-              borderRadius: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
+const iconCircleStyle: React.CSSProperties = {
+  width: '45px',
+  height: '45px',
+  borderRadius: '14px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0
 };
 
-              const controlTitleStyle: React.CSSProperties = {
-                fontSize: '15px',
-              fontWeight: '700',
-              color: '#fff',
-              marginBottom: '2px'
+const controlTitleStyle: React.CSSProperties = {
+  fontSize: '15px',
+  fontWeight: '700',
+  color: '#fff',
+  marginBottom: '2px'
 };
 
-              const controlSubtitleStyle: React.CSSProperties = {
-                fontSize: '11px',
-              color: 'var(--text-tertiary)',
-              fontWeight: '500'
+const controlSubtitleStyle: React.CSSProperties = {
+  fontSize: '11px',
+  color: 'var(--text-tertiary)',
+  fontWeight: '500'
 };
 
-              // Modal Styles
-              const modalOverlayStyle: React.CSSProperties = {
-                position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0, 0, 0, 0.7)',
-              backdropFilter: 'blur(10px)',
-              zIndex: 9999,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '24px'
+// Modal Styles
+const modalOverlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  background: 'rgba(0, 0, 0, 0.7)',
+  backdropFilter: 'blur(10px)',
+  zIndex: 9999,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '24px'
 };
 
-              const modalContentStyle: React.CSSProperties = {
-                background: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid var(--border-light)',
-              borderRadius: '30px',
-              width: '100%',
-              maxWidth: '800px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
-              position: 'relative'
+const modalContentStyle: React.CSSProperties = {
+  background: 'rgba(15, 23, 42, 0.95)',
+  border: '1px solid var(--border-light)',
+  borderRadius: '30px',
+  width: '100%',
+  maxWidth: '800px',
+  maxHeight: '90vh',
+  overflowY: 'auto',
+  boxShadow: '0 40px 100px rgba(0,0,0,0.6)',
+  position: 'relative'
 };
 
-              const modalHeaderStyle: React.CSSProperties = {
-                padding: '24px',
-              borderBottom: '1px solid var(--border-light)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              position: 'sticky',
-              top: 0,
-              background: 'rgba(15, 23, 42, 0.98)',
-              zIndex: 10
+const modalHeaderStyle: React.CSSProperties = {
+  padding: '24px',
+  borderBottom: '1px solid var(--border-light)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  position: 'sticky',
+  top: 0,
+  background: 'rgba(15, 23, 42, 0.98)',
+  zIndex: 10
 };
 
-              const closeBtnStyle: React.CSSProperties = {
-                background: 'rgba(255,255,255,0.05)',
-              border: 'none',
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              color: '#fff',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s'
+const closeBtnStyle: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: 'none',
+  width: '40px',
+  height: '40px',
+  borderRadius: '50%',
+  color: '#fff',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  transition: 'all 0.2s'
 };
 
 
