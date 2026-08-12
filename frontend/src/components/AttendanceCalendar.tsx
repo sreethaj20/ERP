@@ -100,7 +100,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
         const uId = String(userId || '').trim().toLowerCase();
         if ((eCode !== '' && target === eCode) || (uId !== '' && target === uId)) return true;
 
-        const myEmp = employees.find((e: any) => 
+        const myEmp = employees.find((e: any) =>
             (eCode !== '' && String(e.employee_id || '').trim().toLowerCase() === eCode) ||
             (uId !== '' && String(e.id || '').trim().toLowerCase() === uId) ||
             (uId !== '' && String(e.user_id || '').trim().toLowerCase() === uId)
@@ -143,12 +143,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
                         const mgrId = String(e.manager_id || '');
                         const repMgrId = String(e.reporting_manager_id || '');
                         return tlId === String(userId) || tlId === String(employeeId) ||
-                               repId === String(userId) || repId === String(employeeId) ||
-                               mgrId === String(userId) || mgrId === String(employeeId) ||
-                               repMgrId === String(userId) || repMgrId === String(employeeId);
+                            repId === String(userId) || repId === String(employeeId) ||
+                            mgrId === String(userId) || mgrId === String(employeeId) ||
+                            repMgrId === String(userId) || repMgrId === String(employeeId);
                     })
                     .flatMap((e: any) => [String(e.employee_id), String(e.id)]);
-                
+
                 // Include the Team Leader themselves in the team aggregate view
                 if (employeeId) myTeamIds.push(String(employeeId));
                 if (userId) myTeamIds.push(String(userId));
@@ -240,7 +240,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
             joinDateObj.setHours(0, 0, 0, 0);
             if (dateObj < joinDateObj) return 'future';
         }
-        
+
         // 4. Default to absent if past date with no work record
         return 'absent';
     };

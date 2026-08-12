@@ -1,15 +1,21 @@
+from typing import Optional
 import os
 from pydantic_settings import BaseSettings
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv()
+# Automatically locate .env in current or parent directories
+env_file_path = find_dotenv(usecwd=True)
+if env_file_path:
+    load_dotenv(env_file_path)
+else:
+    load_dotenv()
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "HRMS Backend"
     API_V1_STR: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str = os.getenv("DATABASE_URL")
+    DATABASE_URL: Optional[str] = os.getenv("DATABASE_URL")
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-super-secret-key-change-in-prod")
@@ -25,11 +31,11 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     
     # AWS S3
-    AWS_ACCESS_KEY_ID: str = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_REGION: str = os.getenv("AWS_REGION", "ap-south-1")
-    AWS_S3_BUCKET: str = os.getenv("AWS_S3_BUCKET")
-    AWS_S3_PUBLIC_BASE_URL: str = os.getenv("AWS_S3_PUBLIC_BASE_URL")
+    AWS_ACCESS_KEY_ID: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_REGION: Optional[str] = os.getenv("AWS_REGION", "ap-south-1")
+    AWS_S3_BUCKET: Optional[str] = os.getenv("AWS_S3_BUCKET")
+    AWS_S3_PUBLIC_BASE_URL: Optional[str] = os.getenv("AWS_S3_PUBLIC_BASE_URL")
     
     class Config:
         case_sensitive = True
