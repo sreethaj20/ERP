@@ -708,7 +708,9 @@ th, td {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: var(--bg-primary);
+    background: transparent;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     justify-content: space-between;
     align-items: center;
