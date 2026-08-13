@@ -1,13 +1,33 @@
 import { useState, useEffect } from 'react';
-import { getActiveShiftSession, getEmployeeShift } from '../utils/storage';
+import { getActiveShiftSession, getEmployeeShift, getLeaves } from '../utils/storage';
 import { parseISOToLocalDate } from '../utils/formatters';
 
 export function useLogoutLogic() {
     const [canLogout, setCanLogout] = useState(false);
+    const [isOnLeaveToday, setIsOnLeaveToday] = useState(false);
     const [workInfo, setWorkInfo] = useState<{ totalWorkSec: number; targetSec: number; halfDaySec: number } | null>(null);
 
     useEffect(() => {
         const check = async () => {
+            const targetId = sessionStorage.getItem("employeeId") || localStorage.getItem("employeeId") || sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
+            const todayStr = new Date().toLocaleDateString('sv-SE');
+
+            // Check if current employee has an active / approved leave for today
+            const allLeaves = getLeaves();
+            const userOnLeave = Array.isArray(allLeaves) && allLeaves.some((l: any) => {
+                const empMatch = String(l.employee_id || '').toLowerCase() === String(targetId).toLowerCase() ||
+                                 String(l.user_id || '').toLowerCase() === String(targetId).toLowerCase();
+                const status = (l.status || '').toLowerCase();
+                const isApprovedOrPending = status === 'approved' || status === 'pending' || status === 'recommended';
+                if (!empMatch || !isApprovedOrPending) return false;
+
+                const start = l.start_date ? String(l.start_date).split('T')[0] : '';
+                const end = l.end_date ? String(l.end_date).split('T')[0] : start;
+                return todayStr >= start && todayStr <= end;
+            });
+
+            setIsOnLeaveToday(userOnLeave);
+
             const res = await getActiveShiftSession();
             if (res?.active && res.session) {
                 const session = res.session;
@@ -22,7 +42,6 @@ export function useLogoutLogic() {
                 const totalBreakSec = (session.total_break_seconds || 0) + currentBreakSec;
                 const totalWorkSec = Math.max(0, totalShiftSec - totalBreakSec);
 
-                const targetId = sessionStorage.getItem("employeeId") || localStorage.getItem("employeeId") || sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
                 const myShift = getEmployeeShift(targetId);
                 let shiftHours = 8;
                 
@@ -37,11 +56,17 @@ export function useLogoutLogic() {
                 }
                 
                 const targetSec = shiftHours * 3600;
-                const halfDaySec = 4 * 3600; // Exact 4 hours (14,400 seconds / 240 minutes) for half-day credit
+                const halfDaySec = 4 * 3600; // Exact 4 hours for standard half-day credit
 
                 setWorkInfo({ totalWorkSec, targetSec, halfDaySec });
-                // Require half-day completion (4 hours) across ALL portals when an active shift session is running
-                setCanLogout(totalWorkSec >= halfDaySec);
+
+                // 🚨 CRITICAL RULE: If employee applied leave for today and logged in accidentally, ENABLE LOGOUT IMMEDIATELY
+                if (userOnLeave) {
+                    setCanLogout(true);
+                } else {
+                    // Standard shift logic: require 4 hours minimum
+                    setCanLogout(totalWorkSec >= halfDaySec);
+                }
             } else {
                 setWorkInfo(null);
                 setCanLogout(true); // No active session — allow logout
@@ -55,7 +80,12 @@ export function useLogoutLogic() {
 
     // Wrapper function to intercept clicks
     const handleSafeLogout = async (originalLogoutAction: () => Promise<void> | void) => {
-        if (workInfo) {
+        if (isOnLeaveToday) {
+            const confirmLogout = window.confirm(
+                `🏖️ You are currently ON LEAVE today!\n\nLogging out now will ensure your day is recorded strictly as 'Leave' (not a working day).\n\nClick 'OK' to log out immediately.`
+            );
+            if (!confirmLogout) return;
+        } else if (workInfo) {
             const { totalWorkSec, targetSec, halfDaySec } = workInfo;
 
             // 1. HALF-DAY or more: prompt for half-day vs full shift logout
@@ -85,5 +115,6 @@ export function useLogoutLogic() {
         await originalLogoutAction();
     };
 
-    return { canLogout, handleSafeLogout };
+    return { canLogout, isOnLeaveToday, handleSafeLogout };
 }
+

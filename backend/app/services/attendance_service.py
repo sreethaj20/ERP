@@ -26,6 +26,17 @@ class AttendanceService:
                 return attendance_repo.update(db, db_obj, AttendanceUpdate(check_in=now_dt, check_in_time=now_dt))
             return db_obj
         
+        # Check if user has an active/approved/pending leave for today
+        leave_active = db.query(leave_models.LeaveRequest).filter(
+            leave_models.LeaveRequest.employee_id == employee_id,
+            leave_models.LeaveRequest.start_date <= today,
+            leave_models.LeaveRequest.end_date >= today,
+            leave_models.LeaveRequest.status.in_(["Approved", "Pending", "Recommended"]),
+            leave_models.LeaveRequest.deleted_at == None
+        ).first()
+
+        attn_status = "Leave" if leave_active else "Present"
+
         # New check-in
         obj_in = AttendanceCreate(
             employee_id=employee_id, 
@@ -34,7 +45,7 @@ class AttendanceService:
             year=today.year,
             check_in=now_dt, 
             check_in_time=now_dt,
-            status="Present"
+            status=attn_status
         )
         return attendance_repo.create(db, obj_in)
 
@@ -52,12 +63,22 @@ class AttendanceService:
             diff = now_dt - c_in
             hrs = round(diff.total_seconds() / 3600, 2)
 
+        leave_active = db.query(leave_models.LeaveRequest).filter(
+            leave_models.LeaveRequest.employee_id == employee_id,
+            leave_models.LeaveRequest.start_date <= today,
+            leave_models.LeaveRequest.end_date >= today,
+            leave_models.LeaveRequest.status.in_(["Approved", "Pending", "Recommended"]),
+            leave_models.LeaveRequest.deleted_at == None
+        ).first()
+
+        new_status = "Leave" if (db_obj.status == "Leave" or leave_active) else "Present"
+
         return attendance_repo.update(db, db_obj, AttendanceUpdate(
             check_out=now_dt, 
             check_out_time=now_dt,
             total_hours=Decimal(str(hrs)),
             work_hours=Decimal(str(hrs)),
-            status="Present"
+            status=new_status
         ))
 
     def get_my_attendance(self, db: Session, employee_id: str = None, skip: int = 0, limit: int = 2000, viewer_role: str = "hr", viewer_id: int = None, date_filter: date = None, start_date: date = None, end_date: date = None):

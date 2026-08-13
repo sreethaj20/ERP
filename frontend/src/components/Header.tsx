@@ -18,7 +18,7 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
   const isDashboard = location.pathname.endsWith('/dashboard');
   const userId = sessionStorage.getItem('userId') || localStorage.getItem('userId') || '';
   const { theme, toggleTheme } = useTheme();
-  const { canLogout, handleSafeLogout } = useLogoutLogic();
+  const { canLogout, isOnLeaveToday, handleSafeLogout } = useLogoutLogic();
 
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -278,6 +278,20 @@ const Header: React.FC<HeaderProps> = ({ role, title }) => {
             }}
           >
             Welcome, <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>{userName}</span>!
+            {isOnLeaveToday && (
+              <span style={{
+                background: 'rgba(255, 159, 10, 0.15)',
+                color: '#ff9f0a',
+                border: '1px solid rgba(255, 159, 10, 0.3)',
+                borderRadius: '12px',
+                padding: '2px 8px',
+                fontSize: '10px',
+                fontWeight: 700,
+                marginLeft: '6px'
+              }}>
+                🏖️ On Leave Today
+              </span>
+            )}
           </div>
           <div
             style={{
