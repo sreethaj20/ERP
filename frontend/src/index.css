@@ -707,10 +707,17 @@ th, td {
 
 /* === TOP HEADER RESPONSIVE STYLES === */
 .top-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10, 15, 30, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
+    padding-top: clamp(0.75rem, 2vw, 1.25rem);
     padding-bottom: clamp(0.75rem, 2vw, 1.25rem);
     border-bottom: 1px solid var(--border-light);
     gap: 1rem;
