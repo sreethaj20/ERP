@@ -269,7 +269,7 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
 .dashboard-container {
     padding: var(--container-padding);
     padding-bottom: clamp(5.5rem, 10vh, 7rem); /* Safe space for bottom navigation dock */
-    max-width: 87.5rem; /* 1400px equivalent */
+    max-width: 70rem; /* 1120px max width to fit opening page contents up to Strategic Command without full width stretch */
     width: 100%;
     margin: 0 auto;
     min-height: 100vh;
@@ -723,7 +723,7 @@ th, td {
 /* Tier 1: Extra Large Desktops & 4K Monitors (1920px and above) */
 @media (min-width: 1920px) {
     .dashboard-container {
-        max-width: 112.5rem; /* 1800px limit */
+        max-width: 75rem; /* 1200px limit */
         padding: 2.5rem 3rem 7rem;
     }
 }
@@ -731,7 +731,7 @@ th, td {
 /* Tier 2: Large Desktops (1440px to 1919px) */
 @media (min-width: 1440px) and (max-width: 1919px) {
     .dashboard-container {
-        max-width: 87.5rem; /* 1400px limit */
+        max-width: 70rem; /* 1120px limit */
         padding: 2rem 2.5rem 6.5rem;
     }
 }
@@ -739,7 +739,7 @@ th, td {
 /* Tier 3: Standard Laptops (1280px to 1439px) */
 @media (min-width: 1280px) and (max-width: 1439px) {
     .dashboard-container {
-        max-width: 78rem;
+        max-width: 68rem;
         padding: 1.75rem 2rem 6.25rem;
     }
 }

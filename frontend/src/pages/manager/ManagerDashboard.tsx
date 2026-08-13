@@ -119,17 +119,17 @@ export default function ManagerDashboard() {
       <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
 
       {/* Hero Stats & Intelligence */}
-      <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr", gap: "20px", marginBottom: "40px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "3fr 1.2fr", gap: "20px", marginBottom: "24px" }}>
         {/* Main Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "15px" }}>
           {companyStats.map((stat, index) => (
-            <GlassCard key={index} style={{ borderLeft: `4px solid ${stat.color}`, padding: '20px' }}>
+            <GlassCard key={index} style={{ borderLeft: `4px solid ${stat.color}`, padding: '16px 20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: "32px", fontWeight: "800", color: "#fff", letterSpacing: '-0.5px' }}>{stat.value}</div>
-                  <div style={{ fontSize: "12px", color: "var(--text-tertiary)", fontWeight: "600", textTransform: "uppercase", marginTop: '4px' }}>{stat.label}</div>
+                  <div style={{ fontSize: "28px", fontWeight: "800", color: "#fff", letterSpacing: '-0.5px' }}>{stat.value}</div>
+                  <div style={{ fontSize: "11px", color: "var(--text-tertiary)", fontWeight: "600", textTransform: "uppercase", marginTop: '4px' }}>{stat.label}</div>
                 </div>
-                <div style={{ fontSize: '24px', opacity: 0.3, color: stat.color }}>{stat.icon}</div>
+                <div style={{ fontSize: '22px', opacity: 0.3, color: stat.color }}>{stat.icon}</div>
               </div>
             </GlassCard>
           ))}
@@ -139,25 +139,25 @@ export default function ManagerDashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Strategic Intelligence (Executive Alerts) */}
           {attentionItems.length > 0 && (
-            <div style={{ marginBottom: '20px' }}>
+            <div>
               <SectionHeader title="Strategic Intelligence" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {attentionItems.map((item: any, i: number) => (
                   <div key={i} style={{
-                    padding: '16px 20px',
-                    borderRadius: '20px',
+                    padding: '14px 18px',
+                    borderRadius: '18px',
                     background: item.type === 'risk' ? 'rgba(255,69,58,0.08)' : item.type === 'task' ? 'rgba(10,132,255,0.08)' : 'rgba(255,159,10,0.08)',
                     border: `1px solid ${item.type === 'risk' ? '#ff453a30' : item.type === 'task' ? '#0a84ff30' : '#ff9f0a30'}`,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '15px'
+                    gap: '12px'
                   }}>
                     <div style={{
                       width: '10px', height: '10px', borderRadius: '50%',
                       background: item.type === 'risk' ? '#ff453a' : item.type === 'task' ? '#0a84ff' : '#ff9f0a',
                       boxShadow: `0 0 10px ${item.type === 'risk' ? '#ff453a' : item.type === 'task' ? '#0a84ff' : '#ff9f0a'}`
                     }} />
-                    <div style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-primary)' }}>{item.message}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-primary)' }}>{item.message}</div>
                   </div>
                 ))}
               </div>
@@ -167,7 +167,7 @@ export default function ManagerDashboard() {
       </div>
 
       <SectionHeader title="Strategic Command" />
-      <div style={{ display: "flex", gap: "20px", marginBottom: "40px" }}>
+      <div style={{ display: "flex", gap: "20px", marginBottom: "28px" }}>
         <div
           onClick={() => setActiveModal('presence')}
           className="glass-module-card"
