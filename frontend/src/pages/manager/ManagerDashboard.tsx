@@ -119,7 +119,7 @@ export default function ManagerDashboard() {
       <NoticePeriodBanner noticePeriod={dashboardData?.notice_period} />
 
       {/* Hero Stats & Intelligence */}
-      <div style={{ display: "grid", gridTemplateColumns: "3fr 1.2fr", gap: "20px", marginBottom: "24px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "3fr 1.2fr", gap: "20px", marginBottom: "32px" }}>
         {/* Main Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "15px" }}>
           {companyStats.map((stat, index) => (
@@ -167,7 +167,7 @@ export default function ManagerDashboard() {
       </div>
 
       <SectionHeader title="Strategic Command" />
-      <div style={{ display: "flex", gap: "20px", marginBottom: "28px" }}>
+      <div style={{ display: "flex", gap: "20px", marginBottom: "70px" }}>
         <div
           onClick={() => setActiveModal('presence')}
           className="glass-module-card"
