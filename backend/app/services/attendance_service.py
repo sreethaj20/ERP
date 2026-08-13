@@ -31,7 +31,7 @@ class AttendanceService:
             leave_models.LeaveRequest.employee_id == employee_id,
             leave_models.LeaveRequest.start_date <= today,
             leave_models.LeaveRequest.end_date >= today,
-            leave_models.LeaveRequest.status.in_(["Approved", "Pending", "Recommended"]),
+            leave_models.LeaveRequest.status.in_(["Approved", "Accepted"]),
             leave_models.LeaveRequest.deleted_at == None
         ).first()
 
@@ -67,7 +67,7 @@ class AttendanceService:
             leave_models.LeaveRequest.employee_id == employee_id,
             leave_models.LeaveRequest.start_date <= today,
             leave_models.LeaveRequest.end_date >= today,
-            leave_models.LeaveRequest.status.in_(["Approved", "Pending", "Recommended"]),
+            leave_models.LeaveRequest.status.in_(["Approved", "Accepted"]),
             leave_models.LeaveRequest.deleted_at == None
         ).first()
 

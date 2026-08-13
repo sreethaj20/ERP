@@ -18,8 +18,8 @@ export function useLogoutLogic() {
                 const empMatch = String(l.employee_id || '').toLowerCase() === String(targetId).toLowerCase() ||
                                  String(l.user_id || '').toLowerCase() === String(targetId).toLowerCase();
                 const status = (l.status || '').toLowerCase();
-                const isApprovedOrPending = status === 'approved' || status === 'pending' || status === 'recommended';
-                if (!empMatch || !isApprovedOrPending) return false;
+                const isApproved = status === 'approved' || status === 'accepted';
+                if (!empMatch || !isApproved) return false;
 
                 const start = l.start_date ? String(l.start_date).split('T')[0] : '';
                 const end = l.end_date ? String(l.end_date).split('T')[0] : start;
