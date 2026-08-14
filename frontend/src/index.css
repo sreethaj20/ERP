@@ -264,9 +264,9 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
 }
 
 .dashboard-container {
-    padding: var(--container-padding);
+    padding: clamp(0.75rem, 2vw, 1.5rem);
     padding-bottom: clamp(5.5rem, 10vh, 7rem); /* Safe space for bottom navigation dock */
-    max-width: 70rem; /* 1120px max width to fit opening page contents up to Strategic Command without full width stretch */
+    max-width: 82rem; /* 1312px max width for optimal screen ratio layout */
     width: 100%;
     margin: 0 auto;
     min-height: 100vh;
@@ -827,19 +827,19 @@ tr.transaction-row:hover {
 /* === TOP HEADER STYLES MATCHING REFERENCE SCREENSHOT === */
 .top-header {
     position: sticky;
-    top: 12px;
+    top: 10px;
     z-index: 10000;
-    margin-top: 8px;
-    margin-bottom: 24px;
+    margin-top: 4px;
+    margin-bottom: 18px;
     background: rgba(17, 24, 39, 0.88);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 24px;
+    padding: 10px 20px;
     border: 1px solid rgba(14, 165, 233, 0.3);
-    border-radius: 20px;
+    border-radius: 18px;
     box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(14, 165, 233, 0.18);
     gap: 1rem;
     width: 100%;

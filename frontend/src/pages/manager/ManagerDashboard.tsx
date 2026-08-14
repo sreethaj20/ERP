@@ -108,7 +108,7 @@ export default function ManagerDashboard() {
   ];
 
   return (
-    <>
+    <div className="dashboard-container">
       <Header role="Manager" title="Command Center" />
 
       <WelcomeBanner role="Strategic Manager" />
@@ -342,7 +342,7 @@ export default function ManagerDashboard() {
           />
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
