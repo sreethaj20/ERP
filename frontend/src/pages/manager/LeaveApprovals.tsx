@@ -353,25 +353,19 @@ export default function LeaveApprovals() {
           </div>
 
           <GlassCard title="All Leave Requests" subtitle="Approve or reject directly from this view">
-            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '550px', marginTop: '15px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+            <div style={{ overflowX: 'auto', width: '100%', marginTop: '15px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
               {allLeaves.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
                   No leave requests in the system currently.
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
                   <thead>
-                    <tr>
-                      {['Employee', 'Role', 'Leave Type', 'Period', 'Days', 'Reason', 'Status', 'Action'].map((h, hIdx) => (
+                    <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
+                      {['Employee', 'Role', 'Leave Type', 'Period', 'Days', 'Reason', 'Status', 'Action'].map((h) => (
                         <th
                           key={h}
                           style={{
-                            position: 'sticky',
-                            top: 0,
-                            zIndex: 10,
-                            background: 'rgba(17, 24, 39, 0.96)',
-                            backdropFilter: 'blur(16px)',
-                            WebkitBackdropFilter: 'blur(16px)',
                             padding: '12px 14px',
                             fontSize: '11px',
                             fontWeight: '700',
@@ -379,9 +373,7 @@ export default function LeaveApprovals() {
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px',
                             whiteSpace: 'nowrap',
-                            borderBottom: '2px solid var(--border-light)',
-                            textAlign: 'left',
-                            minWidth: h === 'Action' ? '190px' : h === 'Reason' ? '180px' : 'auto'
+                            minWidth: h === 'Action' ? '190px' : h === 'Reason' ? '200px' : h === 'Employee' ? '160px' : h === 'Period' ? '160px' : h === 'Status' ? '120px' : 'auto'
                           }}
                         >
                           {h}
