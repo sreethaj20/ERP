@@ -66,7 +66,7 @@ html {
     font-size: 100%; /* 1rem = 16px */
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
-    overflow-x: hidden;
+    overflow-x: clip;
     scroll-behavior: smooth;
 }
 
@@ -215,7 +215,7 @@ body {
     min-height: 100dvh;
     letter-spacing: -0.01em;
     transition: background-color 0.3s ease, color 0.3s ease;
-    overflow-x: hidden;
+    overflow-x: clip;
     /* Responsive base typography */
     font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1.0625rem);
     line-height: 1.5;
@@ -824,45 +824,46 @@ tr.transaction-row:hover {
     flex-shrink: 0;
 }
 
-/* === TOP HEADER RESPONSIVE STYLES & UNIFORM GLASSMORPHISM FINISH === */
+/* === TOP HEADER RESPONSIVE STYLES & MORPHING GLASSMORPHISM SCROLL EFFECT === */
 .top-header {
     position: sticky;
     top: 0;
-    z-index: 1000;
-    background: rgba(17, 24, 39, 0.75);
-    backdrop-filter: blur(25px) saturate(190%);
-    -webkit-backdrop-filter: blur(25px) saturate(190%);
+    z-index: 10000;
+    margin-top: 0;
+    background: rgba(11, 15, 25, 0.4);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
-    padding: clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem);
-    border: 1px solid var(--border-light);
-    border-radius: clamp(1rem, 2.5vw, 1.5rem);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.38), 0 0 18px rgba(14, 165, 233, 0.12);
+    padding: clamp(0.75rem, 2vw, 1.25rem) clamp(0.5rem, 1vw, 1rem);
+    border-bottom: 1px solid var(--border-light);
+    border-radius: 0;
     gap: 1rem;
     width: 100%;
     box-sizing: border-box;
-    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .top-header.scrolled {
-    background: rgba(17, 24, 39, 0.88);
+    background: rgba(17, 24, 39, 0.85);
     backdrop-filter: blur(30px) saturate(200%);
     -webkit-backdrop-filter: blur(30px) saturate(200%);
-    border-color: rgba(14, 165, 233, 0.3);
-    box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.5), 0 0 24px rgba(14, 165, 233, 0.22);
+    border: 1px solid rgba(14, 165, 233, 0.35);
+    border-radius: clamp(1rem, 2.5vw, 1.5rem);
+    box-shadow: 0 16px 45px 0 rgba(0, 0, 0, 0.55), 0 0 25px rgba(14, 165, 233, 0.25);
+    padding: clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem);
 }
 
 [data-theme="light"] .top-header {
-    background: rgba(255, 255, 255, 0.82);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+    background: rgba(243, 244, 246, 0.4);
 }
 
 [data-theme="light"] .top-header.scrolled {
     background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(14, 165, 233, 0.3);
-    box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(14, 165, 233, 0.35);
+    box-shadow: 0 14px 36px 0 rgba(0, 0, 0, 0.15), 0 0 20px rgba(14, 165, 233, 0.2);
 }
 
 /* === COMPREHENSIVE MULTI-DEVICE PIXEL BREAKPOINTS === */
