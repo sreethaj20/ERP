@@ -66,7 +66,7 @@ html {
     font-size: 100%; /* 1rem = 16px */
     -webkit-text-size-adjust: 100%;
     touch-action: manipulation;
-    overflow-x: clip;
+    overflow-x: hidden;
     scroll-behavior: smooth;
 }
 
@@ -215,7 +215,7 @@ body {
     min-height: 100dvh;
     letter-spacing: -0.01em;
     transition: background-color 0.3s ease, color 0.3s ease;
-    overflow-x: clip;
+    overflow-x: hidden;
     /* Responsive base typography */
     font-size: clamp(0.875rem, 0.8rem + 0.4vw, 1.0625rem);
     line-height: 1.5;
@@ -264,10 +264,8 @@ p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
 }
 
 .dashboard-container {
-    --dash-pt: clamp(0.875rem, 3vw, 2.5rem);
-    --dash-px: clamp(0.875rem, 3vw, 2.5rem);
-    --dash-pb: clamp(5.5rem, 10vh, 7rem);
-    padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
+    padding: var(--container-padding);
+    padding-bottom: clamp(5.5rem, 10vh, 7rem); /* Safe space for bottom navigation dock */
     max-width: 70rem; /* 1120px max width to fit opening page contents up to Strategic Command without full width stretch */
     width: 100%;
     margin: 0 auto;
@@ -708,118 +706,81 @@ th, td {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: rgba(11, 15, 25, 0.75);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: transparent;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: calc(-1 * var(--dash-pt, clamp(0.875rem, 3vw, 2.5rem)));
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
     margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
-    padding-top: clamp(0.75rem, 1.5vw, 1.125rem);
-    padding-bottom: clamp(0.75rem, 1.5vw, 1.125rem);
-    padding-left: max(var(--dash-px, 1.5rem), calc(50vw - 35rem));
-    padding-right: max(var(--dash-px, 1.5rem), calc(50vw - 35rem));
+    padding-top: clamp(0.75rem, 2vw, 1.25rem);
+    padding-bottom: clamp(0.75rem, 2vw, 1.25rem);
     border-bottom: 1px solid var(--border-light);
     gap: 1rem;
-    width: 100vw;
+    width: 100%;
     box-sizing: border-box;
-}
-
-[data-theme="light"] .top-header {
-    background: rgba(243, 244, 246, 0.85);
 }
 
 /* === COMPREHENSIVE MULTI-DEVICE PIXEL BREAKPOINTS === */
 
-/* Tier 1: Desktop (1920 × 1080, 16:9 Aspect Ratio & 4K Displays) */
+/* Tier 1: Extra Large Desktops & 4K Monitors (1920px and above) */
 @media (min-width: 1920px) {
     .dashboard-container {
         max-width: 75rem; /* 1200px limit */
-        --dash-pt: 2.5rem;
-        --dash-px: 3rem;
-        --dash-pb: 7rem;
-        padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
-    }
-
-    .top-header {
-        padding-left: max(3rem, calc(50vw - 37.5rem));
-        padding-right: max(3rem, calc(50vw - 37.5rem));
+        padding: 2.5rem 3rem 7rem;
     }
 }
 
-/* Tier 2: Desktop / Laptop (1440 × 900, 16:10 Aspect Ratio) */
+/* Tier 2: Large Desktops (1440px to 1919px) */
 @media (min-width: 1440px) and (max-width: 1919px) {
     .dashboard-container {
         max-width: 70rem; /* 1120px limit */
-        --dash-pt: 2rem;
-        --dash-px: 2.5rem;
-        --dash-pb: 6.5rem;
-        padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
-    }
-
-    .top-header {
-        padding-left: max(2.5rem, calc(50vw - 35rem));
-        padding-right: max(2.5rem, calc(50vw - 35rem));
+        padding: 2rem 2.5rem 6.5rem;
     }
 }
 
-/* Tier 3: Standard Laptop (1366 × 768, ~16:9 Aspect Ratio) */
-@media (min-width: 1025px) and (max-width: 1439px) {
+/* Tier 3: Standard Laptops (1280px to 1439px) */
+@media (min-width: 1280px) and (max-width: 1439px) {
     .dashboard-container {
-        max-width: 68rem; /* 1088px limit */
-        --dash-pt: 1.75rem;
-        --dash-px: 2rem;
-        --dash-pb: 6.25rem;
-        padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
+        max-width: 68rem;
+        padding: 1.75rem 2rem 6.25rem;
     }
+}
 
-    .top-header {
-        padding-left: max(2rem, calc(50vw - 34rem));
-        padding-right: max(2rem, calc(50vw - 34rem));
+/* Tier 4: Small Laptops / Surface Devices (1024px to 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .dashboard-container {
+        padding: 1.5rem 1.75rem 6rem;
     }
-
+    
     .grid-4 {
         grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)) !important;
     }
 }
 
-/* Tier 4: Tablet / iPad (1024 × 768, 4:3 Aspect Ratio) */
-@media (min-width: 768px) and (max-width: 1024px) {
+/* Tier 5: Tablets / iPads (768px to 1023px) (iPad Air / iPad Mini / Android Tablets) */
+@media (min-width: 768px) and (max-width: 1023px) {
     .dashboard-container {
-        --dash-pt: 1.25rem;
-        --dash-px: 1.5rem;
-        --dash-pb: 5.5rem;
-        padding: var(--dash-pt) var(--dash-px) var(--dash-pb) !important;
+        padding: 1.25rem 1.25rem 5.5rem !important;
     }
-
-    .top-header {
-        padding-left: 1.5rem;
-        padding-right: 1.5rem;
-    }
-
+    
     .grid-4 {
         grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)) !important;
     }
-
+    
     .grid-3 {
         grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)) !important;
     }
 }
 
-/* Tier 5: Mobile Phones (390 × 844, ~19.5:9 Aspect Ratio & all Mobile screens up to 767px) */
+/* Tier 6: Large Mobile Phones (430px to 767px) (iPhone 14/15 Pro Max, Galaxy S23 Ultra) */
 @media (max-width: 767px) {
     body {
         text-align: left;
     }
 
     .dashboard-container {
-        --dash-pt: 0.875rem;
-        --dash-px: 0.75rem;
-        --dash-pb: 5.5rem;
-        padding: var(--dash-pt) var(--dash-px) var(--dash-pb) !important;
+        padding: 0.875rem 0.75rem 5.5rem !important;
         width: 100% !important;
         max-width: 100vw !important;
     }
@@ -830,8 +791,6 @@ th, td {
         gap: 0.75rem;
         margin-bottom: 1rem !important;
         padding-bottom: 0.75rem !important;
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
     }
 
     .top-header > div {
