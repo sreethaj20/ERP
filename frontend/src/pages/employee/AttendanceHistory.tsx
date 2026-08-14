@@ -206,7 +206,7 @@ export default function AttendanceHistory() {
         <p style={{ color: "var(--text-secondary)" }}>View and track your monthly attendance records</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           <GlassCard title="Attendance Calendar" subtitle="Monthly visual overview">
             <div style={{ marginTop: '10px' }}>

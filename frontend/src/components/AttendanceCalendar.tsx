@@ -260,45 +260,47 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({
     const blanks = Array.from({ length: firstDayOfMonth }, (_, i) => i);
 
     return (
-        <div className="attendance-calendar" style={{ width: '100%', userSelect: 'none' }}>
+        <div className="attendance-calendar" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', userSelect: 'none' }}>
             {/* Calendar Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: minimal ? '15px' : '25px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <h4 style={{ fontSize: minimal ? '15px' : '18px', fontWeight: '700', color: '#fff', margin: 0, minWidth: minimal ? '80px' : '150px' }}>
-                        {minimal ? monthNames[month] : `${monthNames[month]} ${year}`}
-                    </h4>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                        <button onClick={prevMonth} style={navBtnStyle}><FaChevronLeft size={minimal ? 8 : 10} /></button>
-                        <button onClick={goToCurrent} style={todayBtnStyle}>{minimal ? '•' : 'Today'}</button>
-                        <button onClick={nextMonth} style={navBtnStyle}><FaChevronRight size={minimal ? 8 : 10} /></button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: minimal ? '15px' : '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h4 style={{ fontSize: minimal ? '15px' : '18px', fontWeight: '700', color: '#fff', margin: 0 }}>
+                            {minimal ? monthNames[month] : `${monthNames[month]} ${year}`}
+                        </h4>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            <button onClick={prevMonth} style={navBtnStyle}><FaChevronLeft size={minimal ? 8 : 10} /></button>
+                            <button onClick={goToCurrent} style={todayBtnStyle}>{minimal ? '•' : 'Today'}</button>
+                            <button onClick={nextMonth} style={navBtnStyle}><FaChevronRight size={minimal ? 8 : 10} /></button>
+                        </div>
                     </div>
-                </div>
 
-                {!minimal && (
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <LegendItem color={statusColors.present} label="Present" />
-                        <LegendItem color={statusColors['shift-extension']} label="Shift Extension" />
-                        <LegendItem color={statusColors.holiday} label="Holiday" />
-                        <LegendItem color={statusColors.leave} label="Leave" />
-                        <LegendItem color={statusColors.absent} label="Absent" />
-                        <LegendItem color={statusColors['half-day']} label="Half Day" />
-                        <LegendItem color={statusColors.weekend} label="Week Off" />
-                    </div>
-                )}
-                {minimal && (
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#30d158' }} />
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff453a' }} />
-                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ffd60a' }} />
-                    </div>
-                )}
+                    {!minimal && (
+                        <div style={{ display: 'flex', gap: '8px 12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <LegendItem color={statusColors.present} label="Present" />
+                            <LegendItem color={statusColors['shift-extension']} label="Shift Extension" />
+                            <LegendItem color={statusColors.holiday} label="Holiday" />
+                            <LegendItem color={statusColors.leave} label="Leave" />
+                            <LegendItem color={statusColors.absent} label="Absent" />
+                            <LegendItem color={statusColors['half-day']} label="Half Day" />
+                            <LegendItem color={statusColors.weekend} label="Week Off" />
+                        </div>
+                    )}
+                    {minimal && (
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#30d158' }} />
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ff453a' }} />
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ffd60a' }} />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: minimal ? '4px' : '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: minimal ? '4px' : '8px', width: '100%' }}>
                 {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                     <div key={i} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.2)', paddingBottom: minimal ? '4px' : '10px' }}>
-                        {minimal ? d : d}
+                        {d}
                     </div>
                 ))}
 
