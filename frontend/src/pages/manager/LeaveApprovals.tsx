@@ -17,6 +17,8 @@ export default function LeaveApprovals() {
   const [allLeaves, setAllLeaves] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState<string>("all");
 
   // --- Apply My Leave State ---
   const userId = sessionStorage.getItem("userId") || "";
@@ -199,7 +201,7 @@ export default function LeaveApprovals() {
     <div className="dashboard-container">
       <Header role="Manager" title="Leave Portal" />
 
-      <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+      <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "16px" }}>
         <div>
           <h1 style={{ fontSize: "32px", fontWeight: "700", marginBottom: "4px" }}>Leave Hub</h1>
           <p className="subtitle" style={{ margin: 0 }}>
@@ -209,14 +211,75 @@ export default function LeaveApprovals() {
           </p>
         </div>
 
-        <button
-          className="apple-btn-secondary"
-          onClick={() => { fetchData(); fetchMyData(); }}
-          style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", fontSize: "13px" }}
-        >
-          <FaSyncAlt size={14} className={loading || myLoading ? "spin" : ""} />
-          Refresh
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          {/* Month & Year Filter Dropdowns */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-tertiary)", fontWeight: "600" }}>Month:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "10px",
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid var(--border-light)",
+                color: "var(--text-primary)",
+                fontSize: "12px",
+                fontWeight: "600",
+                outline: "none",
+                cursor: "pointer"
+              }}
+            >
+              <option value="all">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-tertiary)", fontWeight: "600" }}>Year:</span>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                borderRadius: "10px",
+                background: "rgba(255, 255, 255, 0.06)",
+                border: "1px solid var(--border-light)",
+                color: "var(--text-primary)",
+                fontSize: "12px",
+                fontWeight: "600",
+                outline: "none",
+                cursor: "pointer"
+              }}
+            >
+              <option value="all">All Years</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+              <option value="2027">2027</option>
+            </select>
+          </div>
+
+          <button
+            className="apple-btn-secondary"
+            onClick={() => { fetchData(); fetchMyData(); }}
+            style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 16px", fontSize: "13px" }}
+          >
+            <FaSyncAlt size={14} className={loading || myLoading ? "spin" : ""} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Main Mode Tabs Switcher */}
@@ -290,22 +353,56 @@ export default function LeaveApprovals() {
           </div>
 
           <GlassCard title="All Leave Requests" subtitle="Approve or reject directly from this view">
-            <div style={{ overflowX: 'auto', marginTop: '15px' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '550px', marginTop: '15px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
               {allLeaves.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-tertiary)' }}>
                   No leave requests in the system currently.
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: '13px' }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border-light)', textAlign: 'left' }}>
-                      {['Employee', 'Role', 'Leave Type', 'Period', 'Days', 'Reason', 'Status', 'Action'].map(h => (
-                        <th key={h} style={{ padding: '10px 12px', fontSize: '11px', fontWeight: '700', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                    <tr>
+                      {['Employee', 'Role', 'Leave Type', 'Period', 'Days', 'Reason', 'Status', 'Action'].map((h, hIdx) => (
+                        <th
+                          key={h}
+                          style={{
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 10,
+                            background: 'rgba(17, 24, 39, 0.96)',
+                            backdropFilter: 'blur(16px)',
+                            WebkitBackdropFilter: 'blur(16px)',
+                            padding: '12px 14px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            color: 'var(--text-tertiary)',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            whiteSpace: 'nowrap',
+                            borderBottom: '2px solid var(--border-light)',
+                            textAlign: 'left',
+                            minWidth: h === 'Action' ? '190px' : h === 'Reason' ? '180px' : 'auto'
+                          }}
+                        >
+                          {h}
+                        </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {allLeaves.map((leave, i) => {
+                    {allLeaves
+                      .filter((leave: any) => {
+                        const dStr = leave.start_date || leave.created_at || leave.from_date || '';
+                        if (!dStr) return true;
+                        const parts = dStr.split(/[-/]/);
+                        if (parts.length < 2) return true;
+                        const yStr = parts[0];
+                        const mStr = parts[1];
+                        if (selectedYear !== "all" && yStr !== selectedYear) return false;
+                        if (selectedMonth !== "all" && mStr.padStart(2, "0") !== selectedMonth.padStart(2, "0")) return false;
+                        return true;
+                      })
+                      .map((leave, i) => {
                       const sStatus = (leave.status || '').toLowerCase();
                       const s = statusStyles[sStatus] || { color: 'var(--text-secondary)', bg: 'rgba(255,255,255,0.05)', label: leave.status };
                       const emp = employees.find((e: any) => String(e.id) === String(leave.employee_id) || String(e.employee_id) === String(leave.employee_id));
@@ -319,29 +416,35 @@ export default function LeaveApprovals() {
                       const days = leave.total_days;
                       const showAction = sStatus === 'pending_manager' || sStatus === 'pending';
 
+                      const approverEmpId = leave.approved_by || leave.approver_id || leave.approved_by_id || leave.processed_by || leave.manager_id;
+                      const approverObj = employees.find((e: any) => String(e.id) === String(approverEmpId) || String(e.employee_id) === String(approverEmpId));
+                      const approverName = approverObj
+                        ? `${approverObj.first_name || ''} ${approverObj.last_name || ''}`.trim() || approverObj.name
+                        : leave.approved_by_name || leave.approver_name || leave.manager_name || leave.processed_by_name || (leave.approved_by ? `ID: ${leave.approved_by}` : (sessionStorage.getItem('userName') || 'Manager'));
+
                       return (
                         <tr key={i} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                             <div style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{empName}</div>
                             <div style={{ fontSize: '10px', color: 'var(--text-tertiary)' }}>{empDisplayId}</div>
                           </td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                             <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', color: rColor, background: `${rColor}18`, textTransform: 'capitalize', whiteSpace: 'nowrap', display: 'inline-block' }}>
                               {empRole}
                             </span>
                           </td>
-                          <td style={{ padding: '12px', color: 'var(--accent-blue)', fontWeight: '600', whiteSpace: 'nowrap' }}>{leave.leave_type}</td>
-                          <td style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 14px', color: 'var(--accent-blue)', fontWeight: '600', whiteSpace: 'nowrap' }}>{leave.leave_type}</td>
+                          <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                             {fromD} → {toD}
                           </td>
-                          <td style={{ padding: '12px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{days}d</td>
-                          <td style={{ padding: '12px', color: 'var(--text-secondary)', minWidth: '180px', maxWidth: '300px', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.4' }} title={leave.reason}>{leave.reason || '—'}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 14px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>{days}d</td>
+                          <td style={{ padding: '12px 14px', color: 'var(--text-secondary)', minWidth: '180px', maxWidth: '300px', wordBreak: 'break-word', whiteSpace: 'normal', lineHeight: '1.4' }} title={leave.reason}>{leave.reason || '—'}</td>
+                          <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
                             <span style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: '700', background: s.bg, color: s.color, whiteSpace: 'nowrap', display: 'inline-block' }}>
                               {s.label}
                             </span>
                           </td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', minWidth: '190px' }}>
                             {showAction ? (
                               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                 <button
@@ -358,9 +461,14 @@ export default function LeaveApprovals() {
                                 </button>
                               </div>
                             ) : (
-                              <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
-                                {sStatus === 'approved' ? '✓ Done' : sStatus === 'rejected' ? '✕ Done' : 'Waiting...'}
-                              </span>
+                              <div>
+                                <div style={{ fontSize: '12px', fontWeight: '700', color: sStatus === 'approved' ? '#30d158' : sStatus === 'rejected' ? '#ff453a' : 'var(--text-tertiary)' }}>
+                                  {sStatus === 'approved' ? '✓ Approved' : sStatus === 'rejected' ? '✕ Rejected' : 'Processed'}
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '3px' }}>
+                                  By: <span style={{ color: 'var(--accent-blue)', fontWeight: '700' }}>{approverName}</span>
+                                </div>
+                              </div>
                             )}
                           </td>
                         </tr>
