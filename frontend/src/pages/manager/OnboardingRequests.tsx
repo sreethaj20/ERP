@@ -166,7 +166,7 @@ export default function OnboardingRequests() {
   const processedStaff = staffRequests.filter((r: any) => ['approved', 'completed', 'verified'].includes(r.status?.toLowerCase()));
 
   return (
-    <>
+    <div className="dashboard-container">
       <Header role="Manager" title="Strategic Onboarding" />
 
       <div style={{ marginBottom: "30px" }}>
@@ -379,7 +379,7 @@ export default function OnboardingRequests() {
           )}
         </GlassCard>
       </div>
-    </>
+    </div>
   );
 }
 

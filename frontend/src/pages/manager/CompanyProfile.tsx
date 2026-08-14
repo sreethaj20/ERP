@@ -164,7 +164,7 @@ export default function CompanyProfile() {
       <div style={{ position: 'absolute', top: '-100px', right: '-100px', width: '400px', height: '400px', background: 'radial-gradient(circle, rgba(10,132,255,0.15) 0%, transparent 70%)', filter: 'blur(60px)', zIndex: -1 }}></div>
       <div style={{ position: 'absolute', bottom: '100px', left: '-100px', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(100,210,255,0.1) 0%, transparent 70%)', filter: 'blur(60px)', zIndex: -1 }}></div>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
+      <div style={{ width: '100%', margin: '0 auto', paddingBottom: '100px' }}>
         <div style={{ marginBottom: '30px' }}>
           <h1 style={{ fontSize: '32px', fontWeight: '800', background: 'linear-gradient(135deg, #fff 0%, #a2a2a2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '8px' }}>
             Company Profile
