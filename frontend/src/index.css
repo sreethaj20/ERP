@@ -708,23 +708,28 @@ th, td {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: transparent;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: rgba(11, 15, 25, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-top: calc(-1 * var(--dash-pt, clamp(0.875rem, 3vw, 2.5rem)));
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
     margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
-    padding-top: clamp(0.75rem, 2vw, 1.25rem);
-    padding-bottom: clamp(0.75rem, 2vw, 1.25rem);
+    padding-top: clamp(0.75rem, 1.5vw, 1.125rem);
+    padding-bottom: clamp(0.75rem, 1.5vw, 1.125rem);
+    padding-left: max(var(--dash-px, 1.5rem), calc(50vw - 35rem));
+    padding-right: max(var(--dash-px, 1.5rem), calc(50vw - 35rem));
     border-bottom: 1px solid var(--border-light);
     gap: 1rem;
-    width: 100%;
+    width: 100vw;
     box-sizing: border-box;
 }
 
 [data-theme="light"] .top-header {
-    background: transparent;
+    background: rgba(243, 244, 246, 0.85);
 }
 
 /* === COMPREHENSIVE MULTI-DEVICE PIXEL BREAKPOINTS === */
