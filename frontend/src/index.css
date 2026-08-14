@@ -734,7 +734,7 @@ th, td {
 
 /* === COMPREHENSIVE MULTI-DEVICE PIXEL BREAKPOINTS === */
 
-/* Tier 1: Extra Large Desktops & 4K Monitors (1920px and above) */
+/* Tier 1: Desktop (1920 × 1080, 16:9 Aspect Ratio & 4K Displays) */
 @media (min-width: 1920px) {
     .dashboard-container {
         max-width: 75rem; /* 1200px limit */
@@ -743,9 +743,14 @@ th, td {
         --dash-pb: 7rem;
         padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
     }
+
+    .top-header {
+        padding-left: max(3rem, calc(50vw - 37.5rem));
+        padding-right: max(3rem, calc(50vw - 37.5rem));
+    }
 }
 
-/* Tier 2: Large Desktops (1440px to 1919px) */
+/* Tier 2: Desktop / Laptop (1440 × 900, 16:10 Aspect Ratio) */
 @media (min-width: 1440px) and (max-width: 1919px) {
     .dashboard-container {
         max-width: 70rem; /* 1120px limit */
@@ -754,52 +759,57 @@ th, td {
         --dash-pb: 6.5rem;
         padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
     }
+
+    .top-header {
+        padding-left: max(2.5rem, calc(50vw - 35rem));
+        padding-right: max(2.5rem, calc(50vw - 35rem));
+    }
 }
 
-/* Tier 3: Standard Laptops (1280px to 1439px) */
-@media (min-width: 1280px) and (max-width: 1439px) {
+/* Tier 3: Standard Laptop (1366 × 768, ~16:9 Aspect Ratio) */
+@media (min-width: 1025px) and (max-width: 1439px) {
     .dashboard-container {
-        max-width: 68rem;
+        max-width: 68rem; /* 1088px limit */
         --dash-pt: 1.75rem;
         --dash-px: 2rem;
         --dash-pb: 6.25rem;
         padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
     }
-}
 
-/* Tier 4: Small Laptops / Surface Devices (1024px to 1279px) */
-@media (min-width: 1024px) and (max-width: 1279px) {
-    .dashboard-container {
-        --dash-pt: 1.5rem;
-        --dash-px: 1.75rem;
-        --dash-pb: 6rem;
-        padding: var(--dash-pt) var(--dash-px) var(--dash-pb);
+    .top-header {
+        padding-left: max(2rem, calc(50vw - 34rem));
+        padding-right: max(2rem, calc(50vw - 34rem));
     }
-    
+
     .grid-4 {
         grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)) !important;
     }
 }
 
-/* Tier 5: Tablets / iPads (768px to 1023px) (iPad Air / iPad Mini / Android Tablets) */
-@media (min-width: 768px) and (max-width: 1023px) {
+/* Tier 4: Tablet / iPad (1024 × 768, 4:3 Aspect Ratio) */
+@media (min-width: 768px) and (max-width: 1024px) {
     .dashboard-container {
         --dash-pt: 1.25rem;
-        --dash-px: 1.25rem;
+        --dash-px: 1.5rem;
         --dash-pb: 5.5rem;
         padding: var(--dash-pt) var(--dash-px) var(--dash-pb) !important;
     }
-    
+
+    .top-header {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+
     .grid-4 {
         grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)) !important;
     }
-    
+
     .grid-3 {
         grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr)) !important;
     }
 }
 
-/* Tier 6: Large Mobile Phones (430px to 767px) (iPhone 14/15 Pro Max, Galaxy S23 Ultra) */
+/* Tier 5: Mobile Phones (390 × 844, ~19.5:9 Aspect Ratio & all Mobile screens up to 767px) */
 @media (max-width: 767px) {
     body {
         text-align: left;
@@ -820,6 +830,8 @@ th, td {
         gap: 0.75rem;
         margin-bottom: 1rem !important;
         padding-bottom: 0.75rem !important;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
     }
 
     .top-header > div {
