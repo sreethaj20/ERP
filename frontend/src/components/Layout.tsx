@@ -78,9 +78,7 @@ export default function Layout() {
                 </div>
             )}
 
-            <div className="dashboard-container">
-                <Outlet />
-            </div>
+            <Outlet />
             <BottomDock />
         </div>
     );

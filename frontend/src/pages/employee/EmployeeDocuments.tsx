@@ -89,7 +89,7 @@ export default function EmployeeDocuments() {
   ];
 
   return (
-    <div className="dashboard-container" style={{ position: 'relative', overflowX: 'hidden' }}>
+    <div className="dashboard-container" style={{ position: 'relative', overflowX: 'clip' }}>
       <Header role="Employee" title="Document Center" />
 
       {/* Background Glow */}

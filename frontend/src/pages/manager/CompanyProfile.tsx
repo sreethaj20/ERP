@@ -157,7 +157,7 @@ export default function CompanyProfile() {
   if (loading) return <div className="flex-center-full"><FaSpinner className="spin" size={30} /></div>;
 
   return (
-    <div className="dashboard-container" style={{ position: 'relative', overflowX: 'hidden' }}>
+    <div className="dashboard-container" style={{ position: 'relative', overflowX: 'clip' }}>
       <Header role="Manager" title="Organization Control" />
 
       {/* Decorative Background Elements */}
