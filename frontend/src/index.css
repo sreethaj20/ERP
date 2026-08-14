@@ -708,30 +708,23 @@ th, td {
     position: sticky;
     top: 0;
     z-index: 1000;
-    background: var(--bg-primary, #0b0f19);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: transparent;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: calc(-1 * var(--dash-pt, clamp(0.875rem, 3vw, 2.5rem)));
-    margin-left: calc(-1 * var(--dash-px, clamp(0.875rem, 3vw, 2.5rem)));
-    margin-right: calc(-1 * var(--dash-px, clamp(0.875rem, 3vw, 2.5rem)));
-    margin-bottom: clamp(1rem, 2.5vw, 2rem);
-    padding-top: clamp(0.75rem, 1.5vw, 1rem);
-    padding-bottom: clamp(0.75rem, 1.5vw, 1rem);
-    padding-left: var(--dash-px, clamp(0.875rem, 3vw, 2.5rem));
-    padding-right: var(--dash-px, clamp(0.875rem, 3vw, 2.5rem));
+    margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
+    padding-top: clamp(0.75rem, 2vw, 1.25rem);
+    padding-bottom: clamp(0.75rem, 2vw, 1.25rem);
     border-bottom: 1px solid var(--border-light);
     gap: 1rem;
-    width: calc(100% + 2 * var(--dash-px, clamp(0.875rem, 3vw, 2.5rem)));
+    width: 100%;
     box-sizing: border-box;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 [data-theme="light"] .top-header {
-    background: var(--bg-primary, #f3f4f6);
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    background: transparent;
 }
 
 /* === COMPREHENSIVE MULTI-DEVICE PIXEL BREAKPOINTS === */
