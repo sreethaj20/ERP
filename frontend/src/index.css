@@ -824,22 +824,23 @@ tr.transaction-row:hover {
     flex-shrink: 0;
 }
 
-/* === TOP HEADER RESPONSIVE STYLES & MORPHING GLASSMORPHISM SCROLL EFFECT === */
+/* === TOP HEADER RESPONSIVE STYLES & FLOATING GLASS CAPSULE CARD === */
 .top-header {
     position: sticky;
-    top: 0;
+    top: clamp(0.5rem, 1.5vw, 1rem);
     z-index: 10000;
-    margin-top: 0;
-    background: rgba(11, 15, 25, 0.4);
-    backdrop-filter: blur(14px) saturate(160%);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    margin-top: 0.5rem;
+    margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
+    background: rgba(17, 24, 39, 0.72);
+    backdrop-filter: blur(25px) saturate(190%);
+    -webkit-backdrop-filter: blur(25px) saturate(190%);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: clamp(1.25rem, 3vw, 2.5rem);
-    padding: clamp(0.75rem, 2vw, 1.25rem) clamp(0.75rem, 1.5vw, 1.25rem);
-    border-bottom: 1px solid var(--border-light);
-    border-radius: 0 0 1.25rem 1.25rem;
+    padding: clamp(0.75rem, 2vw, 1rem) clamp(1.25rem, 2.5vw, 2rem);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: clamp(1.25rem, 3vw, 2rem);
+    box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.45), 0 0 20px rgba(14, 165, 233, 0.18);
     gap: 1rem;
     width: 100%;
     box-sizing: border-box;
@@ -848,29 +849,23 @@ tr.transaction-row:hover {
 
 .top-header.scrolled {
     background: rgba(17, 24, 39, 0.88);
-    backdrop-filter: blur(30px) saturate(200%);
-    -webkit-backdrop-filter: blur(30px) saturate(200%);
-    border-left: 1px solid rgba(14, 165, 233, 0.25);
-    border-right: 1px solid rgba(14, 165, 233, 0.25);
-    border-bottom: 1px solid rgba(14, 165, 233, 0.35);
-    border-top: none;
-    border-radius: 0 0 clamp(1rem, 2.5vw, 1.5rem) clamp(1rem, 2.5vw, 1.5rem);
-    box-shadow: 0 16px 45px 0 rgba(0, 0, 0, 0.55), 0 0 25px rgba(14, 165, 233, 0.25);
-    padding: clamp(0.75rem, 2vw, 1.25rem) clamp(1rem, 2.5vw, 1.75rem);
+    backdrop-filter: blur(32px) saturate(200%);
+    -webkit-backdrop-filter: blur(32px) saturate(200%);
+    border-color: rgba(14, 165, 233, 0.4);
+    box-shadow: 0 20px 50px 0 rgba(0, 0, 0, 0.6), 0 0 30px rgba(14, 165, 233, 0.3);
+    transform: translateY(-2px);
 }
 
 [data-theme="light"] .top-header {
-    background: rgba(243, 244, 246, 0.4);
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 12px 32px 0 rgba(0, 0, 0, 0.12);
 }
 
 [data-theme="light"] .top-header.scrolled {
     background: rgba(255, 255, 255, 0.92);
-    border-left: 1px solid rgba(14, 165, 233, 0.2);
-    border-right: 1px solid rgba(14, 165, 233, 0.2);
-    border-bottom: 1px solid rgba(14, 165, 233, 0.35);
-    border-top: none;
-    border-radius: 0 0 clamp(1rem, 2.5vw, 1.5rem) clamp(1rem, 2.5vw, 1.5rem);
-    box-shadow: 0 14px 36px 0 rgba(0, 0, 0, 0.15), 0 0 20px rgba(14, 165, 233, 0.2);
+    border-color: rgba(14, 165, 233, 0.35);
+    box-shadow: 0 16px 40px 0 rgba(0, 0, 0, 0.18);
 }
 
 /* === COMPREHENSIVE MULTI-DEVICE PIXEL BREAKPOINTS === */
