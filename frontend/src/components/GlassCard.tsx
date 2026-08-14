@@ -28,14 +28,7 @@ const GlassCard: React.FC<GlassCardProps> = ({
   return (
     <div
       className={`glass-card ${className}`}
-      style={{
-        backdropFilter: 'blur(20px)',
-        background: 'var(--glass-bg)',
-        border: '1px solid var(--border-light)',
-        borderRadius: 'var(--card-radius)',
-        padding: 'clamp(1rem, 2.5vw, 1.5rem)',
-        ...style
-      }}
+      style={style}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
