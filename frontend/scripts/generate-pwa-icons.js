@@ -15,30 +15,16 @@ if (!fs.existsSync(outputDir)) {
   fs.mkdirSync(outputDir, { recursive: true });
 }
 
-async function getTransparentLogoBuffer() {
+async function getCleanLogoBuffer() {
   const meta = await sharp(rawUserIcon).metadata();
 
-  // Extract logo and cut off rightmost 35px to remove stray line artifact
+  // Cut off ONLY the last 4px at the extreme right edge (x >= 206) to remove the stray line,
+  // preserving 100% of the 3D "M" logo edges and curves intact!
   const croppedBuffer = await sharp(rawUserIcon)
-    .extract({ left: 0, top: 0, width: meta.width - 35, height: meta.height })
+    .extract({ left: 0, top: 0, width: meta.width - 4, height: meta.height })
     .toBuffer();
 
-  const { data, info } = await sharp(croppedBuffer)
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-
-  // Remove white background (R > 220, G > 220, B > 220)
-  for (let i = 0; i < data.length; i += 4) {
-    if (data[i] > 220 && data[i + 1] > 220 && data[i + 2] > 220) {
-      data[i + 3] = 0; // Make transparent
-    }
-  }
-
-  return await sharp(data, {
-    raw: { width: info.width, height: info.height, channels: 4 }
-  })
-    .trim() // Trim transparent boundaries to center the logo perfectly
+  return await sharp(croppedBuffer)
     .png()
     .toBuffer();
 }
@@ -46,15 +32,15 @@ async function getTransparentLogoBuffer() {
 async function createIcon({ logoBuffer, size, paddingPercent, bgHex, outputPath }) {
   const innerSize = Math.round(size * (1 - paddingPercent * 2));
 
-  // Resize transparent logo buffer to fit innerSize
+  // Resize logo buffer to fit innerSize cleanly
   const resizedLogo = await sharp(logoBuffer)
     .resize(innerSize, innerSize, {
       fit: 'contain',
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
+      background: bgHex
     })
     .toBuffer();
 
-  // Create composite icon on solid #0b0f19 dark background
+  // Create composite icon on solid pure white background (#ffffff)
   await sharp({
     create: {
       width: size,
@@ -76,16 +62,16 @@ async function createIcon({ logoBuffer, size, paddingPercent, bgHex, outputPath 
 }
 
 async function generateAllIcons() {
-  console.log('Generating clean PWA icons without line artifacts for Android & iOS...');
+  console.log('Generating full, uncut PWA icons on WHITE background for Android & iOS...');
 
-  const logoBuffer = await getTransparentLogoBuffer();
-  const bgHex = { r: 11, g: 15, b: 25, alpha: 1 }; // #0b0f19 theme background
+  const logoBuffer = await getCleanLogoBuffer();
+  const bgHex = { r: 255, g: 255, b: 255, alpha: 1 }; // Pure White #ffffff
 
-  // 1. Standard icons (purpose: "any")
+  // 1. Standard icons (purpose: "any") - 12% padding (preserves full logo visibility)
   await createIcon({
     logoBuffer,
     size: 192,
-    paddingPercent: 0.15,
+    paddingPercent: 0.12,
     bgHex,
     outputPath: path.join(outputDir, 'icon-192.png')
   });
@@ -93,7 +79,7 @@ async function generateAllIcons() {
   await createIcon({
     logoBuffer,
     size: 512,
-    paddingPercent: 0.15,
+    paddingPercent: 0.12,
     bgHex,
     outputPath: path.join(outputDir, 'icon-512.png')
   });
@@ -101,7 +87,7 @@ async function generateAllIcons() {
   await createIcon({
     logoBuffer,
     size: 192,
-    paddingPercent: 0.15,
+    paddingPercent: 0.12,
     bgHex,
     outputPath: path.join(outputDir, 'android-chrome-192x192.png')
   });
@@ -109,7 +95,7 @@ async function generateAllIcons() {
   await createIcon({
     logoBuffer,
     size: 512,
-    paddingPercent: 0.15,
+    paddingPercent: 0.12,
     bgHex,
     outputPath: path.join(outputDir, 'android-chrome-512x512.png')
   });
@@ -117,16 +103,16 @@ async function generateAllIcons() {
   await createIcon({
     logoBuffer,
     size: 180,
-    paddingPercent: 0.12,
+    paddingPercent: 0.10,
     bgHex,
     outputPath: path.join(outputDir, 'apple-touch-icon.png')
   });
 
-  // 2. Android Maskable Icon (purpose: "maskable") - 22% padding for safe area
+  // 2. Android Maskable Icon (purpose: "maskable") - 18% padding for safe area on white background
   await createIcon({
     logoBuffer,
     size: 512,
-    paddingPercent: 0.22,
+    paddingPercent: 0.18,
     bgHex,
     outputPath: path.join(outputDir, 'icon-512-maskable.png')
   });
@@ -135,12 +121,12 @@ async function generateAllIcons() {
   await createIcon({
     logoBuffer,
     size: 512,
-    paddingPercent: 0.10,
+    paddingPercent: 0.08,
     bgHex,
     outputPath: path.join(publicDir, 'favicon.png')
   });
 
-  console.log('Successfully updated clean Android & iOS PWA icons!');
+  console.log('Successfully updated full, uncut Android & iOS PWA icons with WHITE background!');
 }
 
 generateAllIcons().catch(err => {

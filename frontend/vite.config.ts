@@ -14,7 +14,7 @@ export default defineConfig({
         short_name: 'Mercure',
         description: 'Mercure HRMS & Enterprise Resource Planning Platform',
         theme_color: '#0b0f19',
-        background_color: '#0b0f19',
+        background_color: '#ffffff',
         display: 'standalone',
         orientation: 'any',
         start_url: '/',
