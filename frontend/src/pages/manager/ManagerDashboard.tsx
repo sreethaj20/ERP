@@ -450,7 +450,7 @@ const modalOverlayStyle: React.CSSProperties = {
   bottom: 0,
   background: 'rgba(0, 0, 0, 0.7)',
   backdropFilter: 'blur(10px)',
-  zIndex: 9999,
+  zIndex: 100000,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

@@ -828,7 +828,7 @@ tr.transaction-row:hover {
 .top-header {
     position: sticky;
     top: 10px;
-    z-index: 10000;
+    z-index: 500;
     margin-top: 4px;
     margin-bottom: 18px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%), rgba(17, 24, 39, 0.5);
