@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'favicon.png', 'icons/*.png'],
       manifest: {
-        name: 'Mercure HRMS & Enterprise Platform',
+        name: 'Mercure Enterprise Platform',
         short_name: 'Mercure',
-        description: 'Mercure HRMS & Enterprise Resource Planning Platform',
+        description: 'Mercure Enterprise Resource Planning Platform',
         theme_color: '#0b0f19',
         background_color: '#ffffff',
         display: 'standalone',

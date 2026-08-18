@@ -208,10 +208,10 @@ export default function CompanyProfile() {
               {activeTab === 'identity' && (
                 <div className="fade-in">
                   <SectionTitle title="Branding & Identity" subtitle="Primary company identifiers and logos" />
-                  <div style={{ display: 'flex', gap: '40px', marginBottom: '40px', alignItems: 'center' }}>
-                    <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
                       <div style={{
-                        width: '160px', height: '160px', borderRadius: '24px',
+                        width: '140px', height: '140px', borderRadius: '24px',
                         background: 'rgba(255,255,255,0.03)', border: '2px dashed rgba(255,255,255,0.1)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
                       }}>
@@ -227,9 +227,9 @@ export default function CompanyProfile() {
                       )}
                       <input type="file" ref={fileInputRef} hidden accept="image/*" onChange={handleLogoUpload} />
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                       <label style={labelStyle}>Company Formal Name</label>
-                      <input type="text" name="company_name" value={formData.company_name || ""} onChange={handleChange} className="glass-input" style={{ fontSize: '20px', fontWeight: '700', padding: '15px' }} />
+                      <input type="text" name="company_name" value={formData.company_name || ""} onChange={handleChange} className="glass-input" style={{ fontSize: '18px', fontWeight: '700', padding: '12px 15px' }} />
                       <div style={{ marginTop: '15px' }}>
                         <label style={labelStyle}>Corporate Tagline</label>
                         <input type="text" name="company_tagline" value={formData.company_tagline || ""} onChange={handleChange} className="glass-input" placeholder="Innovating for the next generation" />

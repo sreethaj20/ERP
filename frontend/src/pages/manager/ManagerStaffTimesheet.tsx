@@ -362,6 +362,7 @@ function ShiftTable({
                     >
                         <div
                             onClick={() => setExpanded(isExpanded ? null : session.id)}
+                            className="shift-table-row"
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: '2.5fr 1fr 1fr 1fr 1fr 110px 28px',

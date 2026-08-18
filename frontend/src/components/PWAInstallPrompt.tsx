@@ -58,7 +58,7 @@ export const PWAInstallPrompt: React.FC = () => {
             <FiDownload className="w-5 h-5" />
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-slate-100">Install Mercure HRMS</h4>
+            <h4 className="text-sm font-semibold text-slate-100">Install Mercure</h4>
             <p className="text-xs text-slate-400 mt-0.5">Install app for fast desktop & mobile access</p>
           </div>
         </div>

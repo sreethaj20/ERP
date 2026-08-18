@@ -1,7 +1,7 @@
 {
-  "name": "Mercure HRMS & Enterprise Platform",
+  "name": "Mercure Enterprise Platform",
   "short_name": "Mercure",
-  "description": "Mercure HRMS & Enterprise Resource Planning Platform",
+  "description": "Mercure Enterprise Resource Planning Platform",
   "id": "/",
   "start_url": "/",
   "display": "standalone",

@@ -214,7 +214,7 @@ export default function OnboardingRequests() {
                   </div>
                   <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                     Join: {r.join_date || 'TBD'}
-                    {r.email && <span style={{ marginLeft: '8px', opacity: 0.7 }}>• {r.email}</span>}
+                    {r.email && <span className="break-all" style={{ marginLeft: '8px', opacity: 0.7, wordBreak: 'break-all' }}>• {r.email}</span>}
                   </div>
                 </div>
               ))}

@@ -250,8 +250,12 @@ h4, .h4 {
 /* Text Wrapping Protection */
 p, span, h1, h2, h3, h4, h5, h6, label, div, td, th {
     overflow-wrap: break-word;
-    word-break: break-word;
+    word-break: normal;
 }
+.break-all {
+    word-break: break-all !important;
+}
+
 
 /* App Root & Main Layout Containers */
 .layout-root {
@@ -953,9 +957,45 @@ tr.transaction-row:hover {
         width: 100% !important;
     }
 
+    /* Universal Mobile Grid Collapse for Inline Grid Styles */
+    div[style*="gridTemplateColumns"],
+    div[style*="grid-template-columns"],
+    form[style*="gridTemplateColumns"],
+    form[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        gap: 0.875rem !important;
+        width: 100% !important;
+    }
+
+    /* Preserve 7-column calendar grids */
+    div[style*="repeat(7, 1fr)"],
+    div[style*="repeat(7,1fr)"] {
+        grid-template-columns: repeat(7, 1fr) !important;
+        gap: 2px !important;
+    }
+
     .glass-card, .glass-module-card {
         padding: 1rem 0.875rem !important;
         border-radius: 1.125rem !important;
+    }
+
+    /* Shift Table & Data Grid Mobile Optimization */
+    .shift-table-row {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 14px !important;
+    }
+
+    .shift-table-row > div {
+        width: 100% !important;
+        text-align: left !important;
+    }
+
+    .shift-table-row > div:first-child > div {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
     }
 
     /* Universal Responsive Flex Container Wrap for All Pages */

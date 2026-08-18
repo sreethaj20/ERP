@@ -834,15 +834,17 @@ const ProfileField = ({ icon, label, value, isEditable, onEdit, type = "text" }:
     return value.charAt(0).toUpperCase() + value.slice(1);
   }, [value, type]);
 
+  const isEmail = typeof value === 'string' && value.includes('@');
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: '14px',
+      display: 'flex', alignItems: 'center', gap: '12px',
       padding: '13px 0', borderBottom: '1px solid var(--border-light)',
-      fontSize: '14px'
+      fontSize: '14px', flexWrap: 'wrap'
     }}>
       <div style={{ width: '20px', textAlign: 'center', flexShrink: 0 }}>{icon}</div>
-      <div style={{ minWidth: '130px', fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600', flexShrink: 0 }}>{label}</div>
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ width: '120px', minWidth: '100px', fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600', flexShrink: 0 }}>{label}</div>
+      <div style={{ flex: '1 1 160px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minWidth: 0 }}>
         {isEditable ? (
           <input
             type={type}
@@ -863,7 +865,9 @@ const ProfileField = ({ icon, label, value, isEditable, onEdit, type = "text" }:
           <span style={{
             color: value ? 'var(--text-primary)' : 'var(--text-tertiary)',
             fontWeight: value ? '500' : '400',
-            textTransform: (value && typeof value === 'string' && !value.includes('@') && !value.includes('http') && type !== 'date') ? 'capitalize' : 'none'
+            textTransform: (value && typeof value === 'string' && !value.includes('@') && !value.includes('http') && type !== 'date') ? 'capitalize' : 'none',
+            wordBreak: isEmail ? 'break-all' : 'normal',
+            overflowWrap: 'break-word'
           }}>
             {formattedValue}
           </span>
