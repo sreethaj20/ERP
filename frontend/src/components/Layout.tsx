@@ -5,6 +5,7 @@ import webSocketService from '../services/websocketService';
 import { getMyEmployee, getRole } from '../utils/storage';
 import { FaBullhorn, FaTimes } from 'react-icons/fa';
 import LiveTimesheetBanner from './LiveTimesheetBanner';
+import PWAInstallPrompt from './PWAInstallPrompt';
 
 export default function Layout() {
     const [alert, setAlert] = useState<{ title: string, message: string } | null>(null);
@@ -80,6 +81,7 @@ export default function Layout() {
 
             <Outlet />
             <BottomDock />
+            <PWAInstallPrompt />
         </div>
     );
 }
